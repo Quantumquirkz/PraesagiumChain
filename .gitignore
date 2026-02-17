@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/target/
+**/Cargo.lock
+
+# Build artifacts
+coverage/
+cache/
+artifacts/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+backend-rust/data/
+
+# Temporary files
+*.tmp
+*.bak
