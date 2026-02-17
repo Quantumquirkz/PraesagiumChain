@@ -1,71 +1,53 @@
-# Backend PraesagiumChain (Rust)
+# PraesagiumChain Backend (Rust)
 
-Backend completo en Rust usando Axum, con integración directa del motor PHPE y persistencia SQLite.
+Production-oriented Rust backend built with **Axum** and **SQLite**, with direct integration of the **PHPE** prediction engine.
 
-## Ventajas sobre Node.js
+## Key capabilities
 
-- **Rendimiento**: Rust es significativamente más rápido y eficiente en memoria.
-- **Seguridad**: Sin garbage collector, control de memoria explícito, menos bugs de runtime.
-- **Integración directa**: El motor PHPE se usa como librería, sin procesos externos.
-- **Type safety**: El compilador garantiza que los tipos coincidan en toda la aplicación.
-- **Ecosistema unificado**: Todo en Rust (backend + modelo de predicción).
+- REST API for markets and predictions
+- SQLite persistence with migrations
+- Optional on-chain indexing (config-driven)
+- AI sentiment endpoint (mock or Hugging Face Inference API)
+- In-memory prediction cache + basic metrics endpoint
 
-## Instalación
+## Build & run
 
 ```bash
 cd backend-rust
 cargo build --release
+cargo run --release
 ```
 
-## Variables de entorno
+## Environment variables
 
 ```bash
 PORT=4000
 DATABASE_URL=sqlite:./data/markets.db
-RPC_URL=http://127.0.0.1:8545  # Opcional: para indexador
-PREDICTION_MARKET_ADDRESS=0x...  # Opcional: para indexador
-START_BLOCK=0  # Opcional: bloque inicial para indexación
+
+# Optional: on-chain indexer
+RPC_URL=http://127.0.0.1:8545
+PREDICTION_MARKET_ADDRESS=0x...
+START_BLOCK=0
+
+# Optional: AI provider
+AI_PROVIDER=mock            # or: huggingface
+HF_API_KEY=...
+HF_MODEL=distilbert-base-uncased-finetuned-sst-2-english
 ```
 
-## Ejecución
+## API overview
 
-```bash
-cargo run --release
-```
+- `GET /health`
+- `GET /api/markets` (query: `page`, `limit`, `status`)
+- `POST /api/markets`
+- `POST /api/markets/conditional`
+- `GET /api/markets/stats`
+- `GET /api/markets/:id`
+- `PATCH /api/markets/:id/status`
+- `POST /api/markets/:id/prediction`
+- `GET /api/markets/:id/predictions` (query: `limit`)
+- `POST /api/predict` (PHPE)
+- `POST /api/ai/sentiment`
+- `POST /api/markets/:id/ai/predict`
+- `GET /api/metrics`
 
-O con variables de entorno:
-
-```bash
-PORT=4000 DATABASE_URL=sqlite:./data/markets.db cargo run --release
-```
-
-## API
-
-Mismos endpoints que el backend Node.js:
-
-- `GET /health` — Estado del servicio
-- `GET /api/markets` — Lista mercados (query: `page`, `limit`, `status`)
-- `GET /api/markets/:id` — Detalle de un mercado
-- `POST /api/markets` — Crear mercado
-- `PATCH /api/markets/:id/status` — Actualizar estado
-- `POST /api/markets/:id/prediction` — Fijar predicción
-- `POST /api/predict` — Ejecutar motor PHPE (integración directa, sin CLI)
-
-## Estructura
-
-- `src/main.rs` — Punto de entrada, configuración de rutas
-- `src/api/` — Handlers de endpoints
-- `src/services/` — Lógica de negocio (mercados, predicciones)
-- `src/models.rs` — Tipos de datos y requests/responses
-- `src/db.rs` — Conexión y migraciones SQLite
-- `migrations/` — Scripts SQL de migración
-
-## Integración con PHPE
-
-El motor PHPE se integra directamente como dependencia en `Cargo.toml`:
-
-```toml
-praesagium-phpe = { path = "../rust-engine" }
-```
-
-No hay necesidad de procesos externos ni comunicación por stdin/stdout. La función `predict()` se llama directamente desde Rust.

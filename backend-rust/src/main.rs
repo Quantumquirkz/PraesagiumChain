@@ -19,7 +19,7 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::db::Database;
-use crate::services::{Cache, MarketService, PredictionService};
+use crate::services::{AiService, Cache, HuggingFaceProvider, MarketService, MockAiProvider, PredictionService, ReputationService};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,8 +35,22 @@ async fn main() -> anyhow::Result<()> {
     let cache = Arc::new(Cache::new());
 
     let db_clone = db.clone();
+    let db_rep = db.clone();
     let market_service = Arc::new(MarketService::new(db));
     let prediction_service = Arc::new(PredictionService::new(db_clone, cache.clone()));
+    let reputation_service = Arc::new(ReputationService::new(db_rep));
+
+    let ai_provider: Arc<dyn crate::services::ai::AiProvider> = match config.ai_provider.as_str() {
+        "huggingface" => {
+            if let (Some(key), Some(model)) = (config.hf_api_key.clone(), config.hf_model.clone()) {
+                Arc::new(HuggingFaceProvider::new(key, model))
+            } else {
+                Arc::new(MockAiProvider)
+            }
+        }
+        _ => Arc::new(MockAiProvider),
+    };
+    let ai_service = Arc::new(AiService::new(ai_provider));
 
     if let (Some(rpc_url), Some(contract_addr)) = (&config.rpc_url, &config.prediction_market_address) {
         let contract_address: ethers::types::Address = contract_addr.parse()?;
@@ -69,15 +83,21 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/markets", get(api::markets::list).post(api::markets::create))
+        .route("/api/markets/conditional", post(api::markets::create_conditional))
         .route("/api/markets/stats", get(api::markets::stats))
         .route("/api/markets/:id", get(api::markets::get_by_id))
         .route("/api/markets/:id/status", patch(api::markets::update_status))
         .route("/api/markets/:id/prediction", post(api::markets::set_prediction))
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
+        .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict))
         .route("/api/predict", post(api::predictions::run_predict))
+        .route("/api/ai/sentiment", post(api::ai::sentiment))
+        .route("/api/reputation/:address", get(api::reputation::get_reputation))
         .route("/api/metrics", get(api::metrics::get_metrics))
         .layer(Extension(market_service))
         .layer(Extension(prediction_service))
+        .layer(Extension(ai_service))
+        .layer(Extension(reputation_service))
         .layer(Extension(cache))
         .layer(CorsLayer::permissive());
 

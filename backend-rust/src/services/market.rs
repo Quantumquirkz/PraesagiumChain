@@ -1,8 +1,8 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    CreateMarketRequest, Market, MarketStats, MarketView, PaginatedResponse, Prediction,
-    PredictionView, UpdateStatusRequest,
+    CreateConditionalMarketRequest, CreateMarketRequest, Market, MarketStats, MarketView,
+    PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
 };
 use tracing::{debug, info, warn};
 
@@ -109,12 +109,18 @@ impl MarketService {
         info!("Creating market: {}", req.question);
 
         let id = sqlx::query(
-            "INSERT INTO markets (question, close_time, resolve_time, status, created_at) VALUES (?, ?, ?, 'Open', ?)"
+            "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata, details_hash, encrypted_uri)
+             VALUES (?, ?, ?, 'Open', ?, ?, ?, ?, ?, ?)"
         )
         .bind(req.question.trim())
         .bind(req.close_time)
         .bind(req.resolve_time)
         .bind(now)
+        .bind(req.creator)
+        .bind(req.market_type.unwrap_or_else(|| "base".to_string()))
+        .bind(req.metadata)
+        .bind(req.details_hash)
+        .bind(req.encrypted_uri)
         .execute(self.db.pool())
         .await?
         .last_insert_rowid();
@@ -132,7 +138,8 @@ impl MarketService {
         info!("Syncing market from chain: id={}", market_id);
         let now = chrono::Utc::now().timestamp();
         sqlx::query(
-            "INSERT OR REPLACE INTO markets (id, question, close_time, resolve_time, status, created_at) VALUES (?, ?, ?, ?, 'Open', ?)"
+            "INSERT OR REPLACE INTO markets (id, question, close_time, resolve_time, status, created_at, market_type)
+             VALUES (?, ?, ?, ?, 'Open', ?, 'base')"
         )
         .bind(market_id)
         .bind(question.trim())
@@ -143,6 +150,54 @@ impl MarketService {
         .await?;
 
         self.get_by_id(market_id).await
+    }
+
+    pub async fn create_conditional(&self, req: CreateConditionalMarketRequest) -> Result<MarketView> {
+        let now = chrono::Utc::now().timestamp();
+        if req.question.trim().is_empty() {
+            return Err(AppError::Validation("question cannot be empty".to_string()));
+        }
+        if req.conditions.is_empty() {
+            return Err(AppError::Validation("conditions cannot be empty".to_string()));
+        }
+        if req.close_time <= now {
+            return Err(AppError::Validation("closeTime must be in the future".to_string()));
+        }
+        if req.resolve_time <= req.close_time {
+            return Err(AppError::Validation("resolveTime must be after closeTime".to_string()));
+        }
+
+        let id = sqlx::query(
+            "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata)
+             VALUES (?, ?, ?, 'Open', ?, ?, 'conditional', ?)"
+        )
+        .bind(req.question.trim())
+        .bind(req.close_time)
+        .bind(req.resolve_time)
+        .bind(now)
+        .bind(req.creator.clone())
+        .bind(req.metadata.clone())
+        .execute(self.db.pool())
+        .await?
+        .last_insert_rowid();
+
+        for c in req.conditions {
+            if c.expected_outcome != "Yes" && c.expected_outcome != "No" {
+                return Err(AppError::Validation("expected_outcome must be 'Yes' or 'No'".to_string()));
+            }
+            sqlx::query(
+                "INSERT INTO conditional_conditions (market_id, condition_contract, condition_market_id, expected_outcome)
+                 VALUES (?, ?, ?, ?)"
+            )
+            .bind(id)
+            .bind(c.condition_contract)
+            .bind(c.condition_market_id)
+            .bind(c.expected_outcome)
+            .execute(self.db.pool())
+            .await?;
+        }
+
+        self.get_by_id(id).await
     }
 
     pub async fn update_status(

@@ -7,6 +7,9 @@ pub struct Config {
     pub rpc_url: Option<String>,
     pub prediction_market_address: Option<String>,
     pub start_block: Option<u64>,
+    pub ai_provider: String,
+    pub hf_api_key: Option<String>,
+    pub hf_model: Option<String>,
 }
 
 impl Config {
@@ -27,6 +30,9 @@ impl Config {
             start_block: std::env::var("START_BLOCK")
                 .ok()
                 .and_then(|s| s.parse().ok()),
+            ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "mock".to_string()),
+            hf_api_key: std::env::var("HF_API_KEY").ok(),
+            hf_model: std::env::var("HF_MODEL").ok(),
         })
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./interfaces/IPredictionMarket.sol";
+import "./interfaces/IReputationSystem.sol";
 
 /// @title PredictionMarket
 /// @notice Contrato principal para mercados de predicción en PraesagiumChain.
@@ -16,6 +17,7 @@ contract PredictionMarket is IPredictionMarket {
         Outcome outcome;
         uint256 totalYesStake;
         uint256 totalNoStake;
+        address creator;
     }
 
     /// @notice Siguiente ID de mercado a asignar.
@@ -36,6 +38,9 @@ contract PredictionMarket is IPredictionMarket {
 
     /// @notice Dirección del owner/admin.
     address public owner;
+
+    /// @notice Optional reputation system contract.
+    IReputationSystem public reputationSystem;
 
     // ====== Modificadores ======
 
@@ -60,6 +65,10 @@ contract PredictionMarket is IPredictionMarket {
         resolver = _resolver;
     }
 
+    function setReputationSystem(address rep) external onlyOwner {
+        reputationSystem = IReputationSystem(rep);
+    }
+
     // ====== Funciones IPredictionMarket ======
 
     /// @inheritdoc IPredictionMarket
@@ -81,10 +90,16 @@ contract PredictionMarket is IPredictionMarket {
             status: MarketStatus.Open,
             outcome: Outcome.Undecided,
             totalYesStake: 0,
-            totalNoStake: 0
+            totalNoStake: 0,
+            creator: msg.sender
         });
 
         emit MarketCreated(marketId, question, closeTime, resolveTime, msg.sender);
+
+        if (address(reputationSystem) != address(0)) {
+            // Best-effort: reputation system may restrict callers; market deployer should authorize.
+            try reputationSystem.onMarketCreated(marketId, msg.sender) {} catch {}
+        }
     }
 
     /// @inheritdoc IPredictionMarket
@@ -132,6 +147,10 @@ contract PredictionMarket is IPredictionMarket {
         m.outcome = outcome;
 
         emit MarketResolved(marketId, outcome, m.totalYesStake, m.totalNoStake);
+
+        if (address(reputationSystem) != address(0)) {
+            try reputationSystem.onMarketResolved(marketId, m.creator, uint8(outcome)) {} catch {}
+        }
     }
 
     /// @inheritdoc IPredictionMarket

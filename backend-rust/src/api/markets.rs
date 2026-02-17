@@ -10,10 +10,10 @@ use tracing::info;
 
 use crate::error::{AppError, Result};
 use crate::models::{
-    CreateMarketRequest, MarketView, PaginatedResponse, SetPredictionRequest, UpdateStatusRequest,
-    MarketStats,
+    CreateConditionalMarketRequest, CreateMarketRequest, MarketStats, MarketView, PaginatedResponse,
+    SetPredictionRequest, UpdateStatusRequest,
 };
-use crate::services::MarketService;
+use crate::services::{MarketService, ReputationService};
 
 #[derive(Deserialize)]
 pub struct ListQuery {
@@ -44,18 +44,41 @@ pub async fn get_by_id(
 
 pub async fn create(
     Extension(service): Extension<Arc<MarketService>>,
+    Extension(reputation): Extension<Arc<ReputationService>>,
     Json(req): Json<CreateMarketRequest>,
 ) -> Result<impl IntoResponse> {
     let market = service.create(req).await?;
+    if let Some(ref creator) = market.creator {
+        let _ = reputation.on_market_created(creator).await;
+    }
+    Ok((StatusCode::CREATED, Json(market)))
+}
+
+/// Creates a conditional (if-then) market and persists its conditions.
+pub async fn create_conditional(
+    Extension(service): Extension<Arc<MarketService>>,
+    Extension(reputation): Extension<Arc<ReputationService>>,
+    Json(req): Json<CreateConditionalMarketRequest>,
+) -> Result<impl IntoResponse> {
+    let market = service.create_conditional(req).await?;
+    if let Some(ref creator) = market.creator {
+        let _ = reputation.on_market_created(creator).await;
+    }
     Ok((StatusCode::CREATED, Json(market)))
 }
 
 pub async fn update_status(
     Path(id): Path<i64>,
     Extension(service): Extension<Arc<MarketService>>,
+    Extension(reputation): Extension<Arc<ReputationService>>,
     Json(req): Json<UpdateStatusRequest>,
 ) -> Result<Json<MarketView>> {
-    let market = service.update_status(id, req).await?;
+    let market = service.update_status(id, req.clone()).await?;
+    if req.status == "Resolved" {
+        if let (Some(ref creator), Some(ref outcome)) = (&market.creator, &req.outcome) {
+            let _ = reputation.on_market_resolved(creator, id, outcome).await;
+        }
+    }
     Ok(Json(market))
 }
 

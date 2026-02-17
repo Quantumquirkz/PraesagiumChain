@@ -13,7 +13,9 @@ pub async fn run_predict(
     Extension(market_service): Extension<Arc<MarketService>>,
     Json(req): Json<RunPredictRequest>,
 ) -> Result<Json<RunPredictResponse>> {
-    let result = prediction_service.run_prediction(&req.time_series);
+    let result = prediction_service
+        .run_prediction(&req.time_series, req.market_id)
+        .await;
 
     if let Some(market_id) = req.market_id {
         let _ = market_service
