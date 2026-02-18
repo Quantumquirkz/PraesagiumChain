@@ -7,6 +7,10 @@
     "compile": "hardhat compile",
     "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy/deployWithFunctions.js --network sepolia",
+    "deploy:polygon": "hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
+    "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
+    "verify:polygon": "hardhat run scripts/verify/verify.js --network polygonAmoy",
     "backend": "cargo run -C backend-rust -p praesagium-backend"
   },
   "devDependencies": {
