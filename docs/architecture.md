@@ -4,7 +4,7 @@ This document describes the system architecture, smart contracts, Chainlink CRE 
 
 ---
 
-## 1. System Overview
+## 1. System overview
 
 PraesagiumChain is a decentralized prediction market system that combines:
 
@@ -25,7 +25,7 @@ flowchart LR
 
 ---
 
-## 2. Repository Structure
+## 2. Repository structure
 
 ```text
 praesagiumchain/
@@ -33,7 +33,7 @@ praesagiumchain/
 ├── contracts/              # Solidity smart contracts
 ├── backend-rust/           # REST API, PHPE, AI
 │   ├── phpe/               # Prediction engine
-│   ├── scripts/ai/        # Chainlink Functions scripts
+│   ├── scripts/ai/         # Chainlink Functions scripts
 │   └── src/services/
 │       ├── ai/             # Sentiment: Mock, Gemini, HuggingFace
 │       ├── sources/        # Binance, Chainlink
@@ -48,9 +48,9 @@ praesagiumchain/
 
 ---
 
-## 3. Smart Contracts
+## 3. Smart contracts
 
-### 3.1 Resolution Flow
+### 3.1 Resolution flow
 
 Resolution is oracle-driven: Chainlink delivers an outcome (e.g. Yes=1 / No=0) to the consumer, which forwards it to CRE, which calls the market contract.
 
@@ -70,7 +70,7 @@ sequenceDiagram
     U->>PM: claimPayout
 ```
 
-### 3.2 Contract Roles
+### 3.2 Contract roles
 
 | Contract | Role |
 |----------|------|
@@ -87,7 +87,7 @@ Features (AI, private, reputation, conditional, tokenized) are modular and can b
 
 ---
 
-## 4. Chainlink CRE Workflow (Compute – Report – Evaluate)
+## 4. Chainlink CRE workflow (Compute – Report – Evaluate)
 
 Resolution uses Chainlink so that **off-chain data** drives on-chain outcome in a decentralized way. The flow implements the **CRE (Compute-Report-Evaluate)** pattern required for prediction markets.
 
@@ -131,15 +131,15 @@ flowchart LR
 
 ### 4.3 Chainlink components (key tools)
 
-- **Chainlink Functions** — To connect to external APIs. In this project: [PredictionMarketFunctionsConsumer.sol](../contracts/PredictionMarketFunctionsConsumer.sol) sends the request; the script (e.g. [sentiment-analysis.js](../backend-rust/scripts/ai/sentiment-analysis.js) or one that calls a weather/sports/price API) runs off-chain and returns 0/1; the Router calls `fulfillRequest` and the Consumer forwards to CREWorkflow.
-- **Chainlink Automation** — For scheduled tasks (e.g. resolve markets after the event). The contract is already set up: when `resolveTime` is reached, a Chainlink Automation **Upkeep** can invoke (via an intermediary contract or off-chain) the resolution request (e.g. call Functions or the backend which then calls `OracleConsumer.oracleCallback`). Typical steps: (1) Register an Upkeep that runs at the desired date/time; (2) in `performUpkeep`, call the logic that obtains the outcome (API/AI) and sends the result on-chain. Documentation: [Chainlink Automation](https://docs.chain.link/chainlink-automation). The resolution itself (Evaluate) remains OracleConsumer / PredictionMarketFunctionsConsumer → CREWorkflow → PredictionMarket.
-- **Chainlink VRF** — If verifiable randomness were needed (lotteries, random markets), it would be integrated as another source in the Report step; not required for event-based binary markets (weather, sports, price).
+- **Chainlink Functions** — To connect to external APIs. In this project: PredictionMarketFunctionsConsumer sends the request; the script (e.g. sentiment-analysis.js or one that calls a weather/sports/price API) runs off-chain and returns 0/1; the Router calls `fulfillRequest` and the Consumer forwards to CREWorkflow.
+- **Chainlink Automation** — For scheduled tasks (e.g. resolve markets after the event). When `resolveTime` is reached, a Chainlink Automation **Upkeep** can invoke the resolution request (e.g. call Functions or the backend which then calls `OracleConsumer.oracleCallback`). Documentation: [Chainlink Automation](https://docs.chain.link/chainlink-automation).
+- **Chainlink VRF** — If verifiable randomness were needed, it would be integrated as another source in the Report step; not required for event-based binary markets.
 
 Only the configured **resolver** can resolve; resolution is final once set.
 
 ---
 
-## 5. PHPE Prediction Engine
+## 5. PHPE prediction engine
 
 **PHPE (Praesagium Hybrid Predictive Engine)** produces calibrated probabilities and uncertainty for binary events.
 
@@ -171,9 +171,9 @@ PHPE runs **off-chain** and is used in-process by the backend. Predictions can b
 
 ---
 
-## 6. Data Flows
+## 6. Data flows
 
-### 6.1 Market Lifecycle
+### 6.1 Market lifecycle
 
 ```mermaid
 flowchart TD
@@ -184,7 +184,7 @@ flowchart TD
     Resolve --> Payout[Claim payouts]
 ```
 
-### 6.2 On-Chain vs Off-Chain
+### 6.2 On-chain vs off-chain
 
 | On-chain | Off-chain |
 |----------|-----------|
@@ -194,11 +194,11 @@ flowchart TD
 
 ---
 
-## 7. Security Summary
+## 7. Security summary
 
 - **Contracts** — Permissioned resolver; resolution immutable once set.
 - **PHPE** — Deterministic, versioned, hash for traceability.
 - **Backend** — Rust type safety, input validation, env-based secrets (e.g. `HF_API_KEY`, `GEMINI_API_KEY`).
 - **AI** — API keys in env or Chainlink secrets; treat AI output as one input to resolution, not sole authority.
 
-For API details, configuration, and feature guides, see **[docs/DEVELOPMENT.md](DEVELOPMENT.md)**.
+For API details, configuration, and setup, see [development.md](development.md).
