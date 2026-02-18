@@ -15,6 +15,12 @@ async function main() {
   }
 
   const [deployer] = await hre.ethers.getSigners();
+  if (!deployer) {
+    throw new Error(
+      "No deployer account. Set PRIVATE_KEY in .env (wallet with testnet ETH). " +
+      "For Sepolia: get ETH from https://sepoliafaucet.com"
+    );
+  }
   console.log("Deployer:", deployer.address);
 
   const PredictionMarket = await hre.ethers.getContractFactory("PredictionMarket");

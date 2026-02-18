@@ -17,6 +17,8 @@ pub struct Market {
     pub metadata: Option<String>,
     pub details_hash: Option<String>,
     pub encrypted_uri: Option<String>,
+    /// Set by indexer when syncing from chain; NULL for API-created markets.
+    pub on_chain_market_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +64,7 @@ impl From<Market> for MarketView {
         }
     }
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Prediction {

@@ -11,7 +11,7 @@ PraesagiumChain is a decentralized prediction market system that combines:
 - **Smart contracts (Solidity)** — On-chain market lifecycle, bets, and payouts.
 - **Chainlink CRE** — Trustless resolution from off-chain data and AI.
 - **PHPE (Praesagium Hybrid Predictive Engine)** — Calibrated probabilities and uncertainty in Rust.
-- **Backend (Rust, Axum)** — REST API, engine integration, AI, Binance/Chainlink data sources.
+- **Backend (Rust, Axum)** — REST API, engine integration, AI, Binance/Chainlink data sources; **PostgreSQL (Supabase)** for persistence.
 
 ```mermaid
 flowchart LR
@@ -189,7 +189,7 @@ flowchart TD
 | On-chain | Off-chain |
 |----------|-----------|
 | Market creation, bets, resolution, payouts | PHPE predictions, AI sentiment, reputation aggregation |
-| Contract state and events | Backend API, SQLite, event indexer |
+| Contract state and events | Backend API, PostgreSQL (Supabase), event indexer |
 | Oracle callback for resolution | Chainlink Functions / Automation, Gemini / Hugging Face |
 
 ---

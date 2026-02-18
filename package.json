@@ -11,7 +11,8 @@
     "deploy:polygon": "hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
     "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
     "verify:polygon": "hardhat run scripts/verify/verify.js --network polygonAmoy",
-    "backend": "cargo run -C backend-rust -p praesagium-backend"
+    "backend": "cargo run -C backend-rust -p praesagium-backend",
+    "db:push": "npx supabase db push"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

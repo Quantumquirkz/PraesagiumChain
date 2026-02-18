@@ -1,22 +1,56 @@
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions};
 use std::str::FromStr;
+
+/// Rewrites DATABASE_URL so the host is an IPv4 address. Fixes "Network is unreachable"
+/// when the system resolves the host to IPv6 and the network has no IPv6 route (e.g. WSL2).
+/// Skips rewrite for pooler hosts (pooler.supabase.com) — they are IPv4-friendly and need the hostname for TLS SNI.
+pub async fn database_url_force_ipv4(url: &str) -> anyhow::Result<String> {
+    let mut parsed = url::Url::parse(url).map_err(|e| anyhow::anyhow!("invalid DATABASE_URL: {}", e))?;
+    let host = match parsed.host_str() {
+        Some(h) => h,
+        None => return Ok(url.to_string()),
+    };
+    if host.parse::<std::net::Ipv4Addr>().is_ok() {
+        return Ok(url.to_string());
+    }
+    if host.contains("pooler.supabase.com") {
+        return Ok(url.to_string());
+    }
+    let addrs: Vec<std::net::SocketAddr> = tokio::net::lookup_host((host, 5432))
+        .await
+        .map_err(|e| anyhow::anyhow!("DNS resolution failed for {}: {}", host, e))?
+        .collect();
+    let ipv4 = addrs
+        .into_iter()
+        .find(|a| a.is_ipv4())
+        .map(|a| a.ip().to_string())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "El host '{}' no tiene IPv4 (solo IPv6). Usa Session pooler: en Supabase Dashboard → Connect → Session pooler, copia la URI y ponla en DATABASE_URL.",
+                host
+            )
+        })?;
+    parsed.set_host(Some(&ipv4)).map_err(|e| anyhow::anyhow!("set_host: {}", e))?;
+    Ok(parsed.to_string())
+}
 
 #[derive(Clone)]
 pub struct Database {
-    pool: SqlitePool,
+    pool: PgPool,
 }
 
 impl Database {
     pub async fn new(url: &str) -> anyhow::Result<Self> {
-        let options = SqliteConnectOptions::from_str(url)?.create_if_missing(true);
-        let pool = SqlitePoolOptions::new()
+        let url = database_url_force_ipv4(url).await?;
+        let options = PgConnectOptions::from_str(&url)?;
+        let pool = PgPoolOptions::new()
             .max_connections(5)
             .connect_with(options)
             .await?;
         Ok(Self { pool })
     }
 
-    pub fn pool(&self) -> &SqlitePool {
+    pub fn pool(&self) -> &PgPool {
         &self.pool
     }
 

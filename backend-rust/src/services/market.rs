@@ -25,7 +25,7 @@ impl MarketService {
         debug!("Listing markets: page={}, limit={}, status={:?}", page, limit, status);
 
         let total: i64 = if let Some(s) = status {
-            sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = ?")
+            sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = $1")
                 .bind(s)
                 .fetch_one(self.db.pool())
                 .await?
@@ -37,7 +37,7 @@ impl MarketService {
 
         let rows = if let Some(s) = status {
             sqlx::query_as::<_, Market>(
-                "SELECT * FROM markets WHERE status = ? ORDER BY id DESC LIMIT ? OFFSET ?"
+                "SELECT * FROM markets WHERE status = $1 ORDER BY id DESC LIMIT $2 OFFSET $3"
             )
             .bind(s)
             .bind(limit)
@@ -46,7 +46,7 @@ impl MarketService {
             .await?
         } else {
             sqlx::query_as::<_, Market>(
-                "SELECT * FROM markets ORDER BY id DESC LIMIT ? OFFSET ?"
+                "SELECT * FROM markets ORDER BY id DESC LIMIT $1 OFFSET $2"
             )
             .bind(limit)
             .bind(offset)
@@ -73,7 +73,7 @@ impl MarketService {
     pub async fn get_by_id(&self, id: i64) -> Result<MarketView> {
         debug!("Getting market by id: {}", id);
         let market = sqlx::query_as::<_, Market>(
-            "SELECT * FROM markets WHERE id = ?"
+            "SELECT * FROM markets WHERE id = $1"
         )
         .bind(id)
         .fetch_optional(self.db.pool())
@@ -84,6 +84,26 @@ impl MarketService {
             .ok_or(AppError::NotFound)?;
 
         if let Ok(Some(pred)) = self.get_latest_prediction(id).await {
+            market_view.latest_prediction = Some(pred);
+        }
+
+        Ok(market_view)
+    }
+
+    /// Returns the market that was synced from chain with this on_chain_market_id (for indexer).
+    pub async fn get_by_on_chain_market_id(&self, on_chain_market_id: i64) -> Result<MarketView> {
+        let market = sqlx::query_as::<_, Market>(
+            "SELECT * FROM markets WHERE on_chain_market_id = $1"
+        )
+        .bind(on_chain_market_id)
+        .fetch_optional(self.db.pool())
+        .await?;
+
+        let mut market_view = market
+            .map(MarketView::from)
+            .ok_or(AppError::NotFound)?;
+
+        if let Ok(Some(pred)) = self.get_latest_prediction(market_view.id).await {
             market_view.latest_prediction = Some(pred);
         }
 
@@ -108,9 +128,9 @@ impl MarketService {
 
         info!("Creating market: {}", req.question);
 
-        let id = sqlx::query(
+        let id: i64 = sqlx::query_scalar(
             "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata, details_hash, encrypted_uri)
-             VALUES (?, ?, ?, 'Open', ?, ?, ?, ?, ?, ?)"
+             VALUES ($1, $2, $3, 'Open', $4, $5, $6, $7, $8, $9) RETURNING id"
         )
         .bind(req.question.trim())
         .bind(req.close_time)
@@ -121,35 +141,45 @@ impl MarketService {
         .bind(req.metadata)
         .bind(req.details_hash)
         .bind(req.encrypted_uri)
-        .execute(self.db.pool())
-        .await?
-        .last_insert_rowid();
+        .fetch_one(self.db.pool())
+        .await?;
 
         self.get_by_id(id).await
     }
 
+    /// Upserts a market from on-chain indexer (by on_chain_market_id).
     pub async fn create_from_chain(
         &self,
-        market_id: i64,
+        on_chain_market_id: i64,
         question: &str,
         close_time: i64,
         resolve_time: i64,
+        creator: Option<String>,
     ) -> Result<MarketView> {
-        info!("Syncing market from chain: id={}", market_id);
+        info!("Syncing market from chain: on_chain_market_id={}", on_chain_market_id);
         let now = chrono::Utc::now().timestamp();
-        sqlx::query(
-            "INSERT OR REPLACE INTO markets (id, question, close_time, resolve_time, status, created_at, market_type)
-             VALUES (?, ?, ?, ?, 'Open', ?, 'base')"
+        let creator_str = creator.as_deref();
+        let id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO markets (question, close_time, resolve_time, status, created_at, market_type, on_chain_market_id, creator)
+             VALUES ($1, $2, $3, 'Open', $4, 'base', $5, $6)
+             ON CONFLICT (on_chain_market_id) DO UPDATE SET
+               question = EXCLUDED.question,
+               close_time = EXCLUDED.close_time,
+               resolve_time = EXCLUDED.resolve_time
+             RETURNING id
+            "#
         )
-        .bind(market_id)
         .bind(question.trim())
         .bind(close_time)
         .bind(resolve_time)
         .bind(now)
-        .execute(self.db.pool())
+        .bind(on_chain_market_id)
+        .bind(creator_str)
+        .fetch_one(self.db.pool())
         .await?;
 
-        self.get_by_id(market_id).await
+        self.get_by_id(id).await
     }
 
     pub async fn create_conditional(&self, req: CreateConditionalMarketRequest) -> Result<MarketView> {
@@ -167,9 +197,9 @@ impl MarketService {
             return Err(AppError::Validation("resolveTime must be after closeTime".to_string()));
         }
 
-        let id = sqlx::query(
+        let id: i64 = sqlx::query_scalar(
             "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata)
-             VALUES (?, ?, ?, 'Open', ?, ?, 'conditional', ?)"
+             VALUES ($1, $2, $3, 'Open', $4, $5, 'conditional', $6) RETURNING id"
         )
         .bind(req.question.trim())
         .bind(req.close_time)
@@ -177,9 +207,8 @@ impl MarketService {
         .bind(now)
         .bind(req.creator.clone())
         .bind(req.metadata.clone())
-        .execute(self.db.pool())
-        .await?
-        .last_insert_rowid();
+        .fetch_one(self.db.pool())
+        .await?;
 
         for c in req.conditions {
             if c.expected_outcome != "Yes" && c.expected_outcome != "No" {
@@ -187,7 +216,7 @@ impl MarketService {
             }
             sqlx::query(
                 "INSERT INTO conditional_conditions (market_id, condition_contract, condition_market_id, expected_outcome)
-                 VALUES (?, ?, ?, ?)"
+                 VALUES ($1, $2, $3, $4)"
             )
             .bind(id)
             .bind(c.condition_contract)
@@ -223,7 +252,7 @@ impl MarketService {
         info!("Updating market {} status to {}", id, req.status);
 
         sqlx::query(
-            "UPDATE markets SET status = ?, outcome = ? WHERE id = ?"
+            "UPDATE markets SET status = $1, outcome = $2 WHERE id = $3"
         )
         .bind(&req.status)
         .bind(&req.outcome)
@@ -256,7 +285,7 @@ impl MarketService {
 
         let timestamp = chrono::Utc::now().timestamp();
         sqlx::query(
-            "INSERT INTO predictions (market_id, probability, uncertainty, model_version, model_hash, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO predictions (market_id, probability, uncertainty, model_version, model_hash, timestamp) VALUES ($1, $2, $3, $4, $5, $6)"
         )
         .bind(market_id)
         .bind(probability)
@@ -272,7 +301,7 @@ impl MarketService {
 
     pub async fn get_latest_prediction(&self, market_id: i64) -> Result<Option<PredictionView>> {
         let pred = sqlx::query_as::<_, Prediction>(
-            "SELECT * FROM predictions WHERE market_id = ? ORDER BY timestamp DESC LIMIT 1"
+            "SELECT * FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
         )
         .bind(market_id)
         .fetch_optional(self.db.pool())
@@ -283,7 +312,7 @@ impl MarketService {
 
     pub async fn get_predictions(&self, market_id: i64, limit: i64) -> Result<Vec<PredictionView>> {
         let preds = sqlx::query_as::<_, Prediction>(
-            "SELECT * FROM predictions WHERE market_id = ? ORDER BY timestamp DESC LIMIT ?"
+            "SELECT * FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT $2"
         )
         .bind(market_id)
         .bind(limit)

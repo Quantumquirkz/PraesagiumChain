@@ -1,7 +1,9 @@
 //! Temperature scaling: p_calibrated = sigmoid(logit(p) / T).
 
+use serde::{Deserialize, Serialize};
+
 /// Calibration parameters (temperature only for now).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CalibrationParams {
     pub temperature: f32,
 }
@@ -19,4 +21,9 @@ pub fn apply(p: f32, params: &CalibrationParams) -> f32 {
     let t = params.temperature.max(1e-3);
     let scaled = logit / t;
     1.0 / (1.0 + (-scaled).exp())
+}
+
+/// Isotonic calibration placeholder (uses temperature scaling for now).
+pub fn isotonic_calibration(p: f32, params: &CalibrationParams) -> f32 {
+    apply(p, params)
 }

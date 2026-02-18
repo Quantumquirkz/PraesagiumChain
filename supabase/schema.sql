@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS markets (
     market_type TEXT NOT NULL DEFAULT 'base',
     metadata TEXT,
     details_hash TEXT,
-    encrypted_uri TEXT
+    encrypted_uri TEXT,
+    on_chain_market_id BIGINT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS predictions (

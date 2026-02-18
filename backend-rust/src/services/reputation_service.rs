@@ -35,7 +35,7 @@ impl ReputationService {
         }
 
         if let Some(row) = sqlx::query_as::<_, CreatorReputation>(
-            "SELECT creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at FROM creator_reputation WHERE creator_address = ?"
+            "SELECT creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at FROM creator_reputation WHERE creator_address = $1"
         )
         .bind(&normalized)
         .fetch_optional(self.db.pool())
@@ -58,7 +58,7 @@ impl ReputationService {
         let now = chrono::Utc::now().timestamp();
 
         let last_pred = sqlx::query_scalar::<_, Option<f32>>(
-            "SELECT probability FROM predictions WHERE market_id = ? ORDER BY timestamp DESC LIMIT 1"
+            "SELECT probability FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
         )
         .bind(market_id)
         .fetch_optional(self.db.pool())
@@ -70,7 +70,7 @@ impl ReputationService {
         let correct = predicted_yes == actual_yes;
 
         let existing = sqlx::query_as::<_, CreatorReputation>(
-            "SELECT creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at FROM creator_reputation WHERE creator_address = ?"
+            "SELECT creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at FROM creator_reputation WHERE creator_address = $1"
         )
         .bind(&normalized)
         .fetch_optional(self.db.pool())
@@ -81,7 +81,7 @@ impl ReputationService {
             let new_correct = cre.correct_predictions + if correct { 1 } else { 0 };
             let score = if new_resolved > 0 { (new_correct as f64) / (new_resolved as f64) } else { 0.0 };
             sqlx::query(
-                "UPDATE creator_reputation SET markets_resolved = ?, correct_predictions = ?, reputation_score = ?, updated_at = ? WHERE creator_address = ?"
+                "UPDATE creator_reputation SET markets_resolved = $1, correct_predictions = $2, reputation_score = $3, updated_at = $4 WHERE creator_address = $5"
             )
             .bind(new_resolved)
             .bind(new_correct)
@@ -92,7 +92,7 @@ impl ReputationService {
             .await?;
         } else {
             sqlx::query(
-                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES (?, 0, 1, ?, ?, ?)"
+                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES ($1, 0, 1, $2, $3, $4)"
             )
             .bind(&normalized)
             .bind(if correct { 1i64 } else { 0i64 })
@@ -111,7 +111,7 @@ impl ReputationService {
         let now = chrono::Utc::now().timestamp();
 
         let existing = sqlx::query_scalar::<_, Option<i64>>(
-            "SELECT markets_created FROM creator_reputation WHERE creator_address = ?"
+            "SELECT markets_created FROM creator_reputation WHERE creator_address = $1"
         )
         .bind(&normalized)
         .fetch_optional(self.db.pool())
@@ -120,7 +120,7 @@ impl ReputationService {
 
         if let Some(created) = existing {
             sqlx::query(
-                "UPDATE creator_reputation SET markets_created = ?, updated_at = ? WHERE creator_address = ?"
+                "UPDATE creator_reputation SET markets_created = $1, updated_at = $2 WHERE creator_address = $3"
             )
             .bind(created + 1)
             .bind(now)
@@ -129,7 +129,7 @@ impl ReputationService {
             .await?;
         } else {
             sqlx::query(
-                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES (?, 1, 0, 0, 0, ?)"
+                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES ($1, 1, 0, 0, 0, $2)"
             )
             .bind(&normalized)
             .bind(now)
@@ -142,14 +142,14 @@ impl ReputationService {
 
     async fn compute_and_upsert(&self, creator_address: &str) -> Result<CreatorReputation> {
         let created: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM markets WHERE creator = ?"
+            "SELECT COUNT(*) FROM markets WHERE creator = $1"
         )
         .bind(creator_address)
         .fetch_one(self.db.pool())
         .await?;
 
         let resolved: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM markets WHERE creator = ? AND status = 'Resolved'"
+            "SELECT COUNT(*) FROM markets WHERE creator = $1 AND status = 'Resolved'"
         )
         .bind(creator_address)
         .fetch_one(self.db.pool())
@@ -157,7 +157,7 @@ impl ReputationService {
 
         let mut correct = 0i64;
         let rows = sqlx::query_as::<_, (i64, Option<String>)>(
-            "SELECT id, outcome FROM markets WHERE creator = ? AND status = 'Resolved'"
+            "SELECT id, outcome FROM markets WHERE creator = $1 AND status = 'Resolved'"
         )
         .bind(creator_address)
         .fetch_all(self.db.pool())
@@ -166,7 +166,7 @@ impl ReputationService {
         for (market_id, outcome) in rows {
             if let Some(out) = outcome {
                 let pred: Option<f32> = sqlx::query_scalar(
-                    "SELECT probability FROM predictions WHERE market_id = ? ORDER BY timestamp DESC LIMIT 1"
+                    "SELECT probability FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
                 )
                 .bind(market_id)
                 .fetch_optional(self.db.pool())
@@ -188,7 +188,7 @@ impl ReputationService {
 
         let now = chrono::Utc::now().timestamp();
         let existing = sqlx::query_scalar::<_, Option<i64>>(
-            "SELECT 1 FROM creator_reputation WHERE creator_address = ?"
+            "SELECT 1 FROM creator_reputation WHERE creator_address = $1"
         )
         .bind(creator_address)
         .fetch_optional(self.db.pool())
@@ -196,7 +196,7 @@ impl ReputationService {
 
         if existing.is_some() {
             sqlx::query(
-                "UPDATE creator_reputation SET markets_created = ?, markets_resolved = ?, correct_predictions = ?, reputation_score = ?, updated_at = ? WHERE creator_address = ?"
+                "UPDATE creator_reputation SET markets_created = $1, markets_resolved = $2, correct_predictions = $3, reputation_score = $4, updated_at = $5 WHERE creator_address = $6"
             )
             .bind(created)
             .bind(resolved)
@@ -208,7 +208,7 @@ impl ReputationService {
             .await?;
         } else {
             sqlx::query(
-                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+                "INSERT INTO creator_reputation (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) VALUES ($1, $2, $3, $4, $5, $6)"
             )
             .bind(creator_address)
             .bind(created)
@@ -220,12 +220,19 @@ impl ReputationService {
             .await?;
         }
 
-        self.get_reputation(creator_address).await
+        Ok(CreatorReputation {
+            creator_address: creator_address.to_string(),
+            markets_created: created,
+            markets_resolved: resolved,
+            correct_predictions: correct,
+            reputation_score: score,
+            updated_at: now,
+        })
     }
 
     async fn recompute_score(&self, creator_address: &str) -> Result<CreatorReputation> {
         let row = sqlx::query_as::<_, (i64, i64)>(
-            "SELECT markets_resolved, correct_predictions FROM creator_reputation WHERE creator_address = ?"
+            "SELECT markets_resolved, correct_predictions FROM creator_reputation WHERE creator_address = $1"
         )
         .bind(creator_address)
         .fetch_optional(self.db.pool())
@@ -239,7 +246,7 @@ impl ReputationService {
             };
             let now = chrono::Utc::now().timestamp();
             sqlx::query(
-                "UPDATE creator_reputation SET reputation_score = ?, updated_at = ? WHERE creator_address = ?"
+                "UPDATE creator_reputation SET reputation_score = $1, updated_at = $2 WHERE creator_address = $3"
             )
             .bind(score)
             .bind(now)

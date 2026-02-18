@@ -32,13 +32,13 @@ pub fn predict(series: &TimeSeriesSample, ctx: &PredictionContext) -> Prediction
     let normalized = data::normalize(series, &ctx.normalization_params);
     let causal_state = causal::infer_latents(&normalized, &ctx.causal_graph);
     let embedding = temporal::encode(&normalized, &causal_state, &ctx.temporal_params);
-    let (p, uncertainty) = bayesian::bayesian_predict(&embedding, &ctx.bayesian_params);
+    let (p, uncertainty) = bayesian::predict(&embedding, &ctx.bayesian_params);
     let p_calibrated = calibration::calibrate(p, &ctx.calibration_params);
     let model_hash = integration::model_hash(&ctx.model_metadata);
 
     PredictionResult {
         probability: p_calibrated.clamp(0.0, 1.0),
-        uncertainty: uncertainty.clamp(0.0, 1.0),
+        uncertainty: uncertainty.clamp(0.0_f32, 1.0),
         model_version: ctx.model_metadata.version.clone(),
         model_hash,
     }

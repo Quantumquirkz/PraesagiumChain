@@ -12,6 +12,8 @@ pub struct Config {
     pub hf_model: Option<String>,
     pub gemini_api_key: Option<String>,
     pub gemini_model: Option<String>,
+    /// Comma-separated origins for CORS (e.g. "https://app.example.com,http://localhost:3000"). If unset, allows all.
+    pub cors_origins: Option<Vec<String>>,
 }
 
 impl Config {
@@ -21,8 +23,20 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(4000);
 
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite:./data/markets.db".to_string());
+        let database_url = std::env::var("DATABASE_URL").map_err(|_| {
+            anyhow::anyhow!(
+                "DATABASE_URL no está definida. Crea un .env en la raíz del repo o en backend-rust/ con:\n  DATABASE_URL=postgresql://postgres:PASSWORD@host:5432/postgres"
+            )
+        })?;
+        if database_url.starts_with("postgres://localhost") {
+            anyhow::bail!(
+                "DATABASE_URL no puede ser postgres://localhost (usa tu URI de Supabase en .env)"
+            );
+        }
+
+        let cors_origins = std::env::var("CORS_ORIGINS").ok().map(|s| {
+            s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()
+        });
 
         Ok(Config {
             port,
@@ -37,6 +51,7 @@ impl Config {
             hf_model: std::env::var("HF_MODEL").ok(),
             gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
+            cors_origins,
         })
     }
 }

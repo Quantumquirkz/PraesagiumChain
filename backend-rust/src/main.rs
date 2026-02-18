@@ -14,7 +14,7 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;
 
 use crate::config::Config;
@@ -27,16 +27,24 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter("praesagium_backend=debug,tower_http=debug")
         .init();
 
-    // Load .env from project root (backend-rust parent = root)
+    // Load .env: try repo root (manifest parent) and cwd; override so .env always wins
     let root_env = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .join(".env");
-    dotenv::from_path(&root_env).ok();
-    dotenv::dotenv().ok();
+    let cwd_env = std::env::current_dir().ok().map(|d| d.join(".env"));
+    dotenvy::from_path_override(&root_env).ok();
+    if let Some(ref p) = cwd_env {
+        dotenvy::from_path_override(p).ok();
+    }
+    dotenvy::dotenv().ok();
     let config = Config::from_env()?;
-    let db = Database::new(&config.database_url).await?;
-    db.migrate().await?;
+    let db = Database::new(&config.database_url)
+        .await
+        .map_err(|e| anyhow::anyhow!("Al conectar a la DB: {}", e))?;
+    db.migrate()
+        .await
+        .map_err(|e| anyhow::anyhow!("Al ejecutar migraciones: {}", e))?;
 
     let cache = Arc::new(Cache::new());
 
@@ -68,15 +76,23 @@ async fn main() -> anyhow::Result<()> {
     let hybrid_predictor = Arc::new(HybridPredictor::new(ai_service.clone(), cache.clone()));
 
     if let (Some(rpc_url), Some(contract_addr)) = (&config.rpc_url, &config.prediction_market_address) {
-        let contract_address: ethers::types::Address = contract_addr.parse()?;
-        let market_service_clone = market_service.clone();
-        
-        tokio::spawn(async move {
+        if !rpc_url.is_empty() && !contract_addr.trim().is_empty() {
+            let rpc_url = rpc_url.clone();
+            let contract_address: ethers::types::Address = contract_addr
+                .trim()
+                .parse()
+                .map_err(|_| anyhow::anyhow!("PREDICTION_MARKET_ADDRESS no es una dirección Ethereum válida (0x + 40 hex)"))?;
+            let market_service_clone = market_service.clone();
+            let reputation_service_clone = reputation_service.clone();
+            let start_block = config.start_block;
+
+            tokio::spawn(async move {
             if let Ok(mut indexer) = crate::services::indexer::EventIndexer::new(
-                rpc_url,
+                &rpc_url,
                 contract_address,
                 market_service_clone,
-                config.start_block,
+                reputation_service_clone,
+                start_block,
             )
             .await
             {
@@ -84,14 +100,15 @@ async fn main() -> anyhow::Result<()> {
                     tracing::error!("Indexer error: {}", e);
                 }
             }
-        });
+            });
+        }
     }
 
+    let cache_for_cleanup = cache.clone();
     tokio::spawn(async move {
-        let cache_clone = cache.clone();
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
-            cache_clone.cleanup_expired().await;
+            cache_for_cleanup.cleanup_expired().await;
         }
     });
 
@@ -119,7 +136,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(Extension(hybrid_predictor))
         .layer(Extension(reputation_service))
         .layer(Extension(cache))
-        .layer(CorsLayer::permissive());
+        .layer(cors_layer(&config));
 
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Backend listening on {}", addr);
@@ -129,8 +146,27 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn health() -> axum::Json<serde_json::Value> {
+fn cors_layer(config: &Config) -> CorsLayer {
+    match &config.cors_origins {
+        Some(origins) if !origins.is_empty() => {
+            let headers: Vec<_> = origins
+                .iter()
+                .filter_map(|s| axum::http::header::HeaderValue::try_from(s.as_str()).ok())
+                .collect();
+            if headers.is_empty() {
+                CorsLayer::permissive()
+            } else {
+                CorsLayer::new().allow_origin(AllowOrigin::list(headers))
+            }
+        }
+        _ => CorsLayer::permissive(),
+    }
+}
+
+/// Health check. Frontend may expect `ok: true`.
+pub async fn health() -> axum::Json<serde_json::Value> {
     axum::Json(serde_json::json!({
+        "ok": true,
         "status": "ok",
         "service": "praesagiumchain-backend",
         "language": "rust"

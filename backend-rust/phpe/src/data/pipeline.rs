@@ -1,9 +1,11 @@
 //! Normalization and preparation of time series.
 
+use serde::{Deserialize, Serialize};
+
 use crate::data::types::{EventFeatures, TimeSeriesSample};
 
 /// Normalization parameters (mean and std per feature; or min/max).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NormalizationParams {
     pub mean: Vec<f32>,
     pub std: Vec<f32>,
@@ -42,7 +44,7 @@ impl NormalizationParams {
             }
         }
         for s in &mut std {
-            *s = (s / count).max(1e-8).sqrt();
+            *s = (*s / count).max(1e-8).sqrt();
         }
 
         Self { mean, std }

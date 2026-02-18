@@ -3,9 +3,10 @@
 use ndarray::Array1;
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use serde::{Deserialize, Serialize};
 
 /// Parameters for the improved Bayesian head.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BayesianParams {
     pub weights: Vec<f32>,
     pub bias: f32,
@@ -37,10 +38,10 @@ impl BayesianParams {
         ensemble_size: usize,
         seed: Option<u64>,
     ) -> Self {
-        let mut rng: Box<dyn Rng> = if let Some(s) = seed {
-            Box::new(StdRng::seed_from_u64(s))
+        let mut rng: StdRng = if let Some(s) = seed {
+            StdRng::seed_from_u64(s)
         } else {
-            Box::new(rand::thread_rng())
+            StdRng::from_entropy()
         };
 
         let weights: Vec<f32> = (0..dim * ensemble_size)
