@@ -27,7 +27,7 @@ This directory is reserved for a **Chainlink CRE** (Compute-Report-Evaluate) wor
    cre workflow simulate <workflow-name> --target staging-settings
    ```
 
-Detailed documentation: [docs/CRE_CLI.md](../docs/CRE_CLI.md).
+Detailed documentation: [docs/development.md](../docs/development.md) (CRE flow simulation and deployment).
 
 ## Contracts and scripts in this repo
 
