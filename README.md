@@ -63,7 +63,7 @@ flowchart TB
 |-------|----------------|
 | **Smart contracts** | Solidity, OpenZeppelin, Chainlink (Functions, CRE) |
 | **Tooling** | Hardhat, Node.js |
-| **Backend** | Rust, Axum, PHPE engine, SQLite |
+| **Backend** | Rust, Axum, PHPE engine, PostgreSQL (Supabase) |
 | **AI / Data** | Gemini, Hugging Face; Binance, Chainlink price feeds |
 | **Frontend (optional)** | See [docs/development.md](docs/development.md) (Supabase, env in `config/frontend.env.example`) |
 
@@ -134,11 +134,16 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 **Backend**
 
 ```bash
-cp config/env.example .env   # fill values
+cp config/env.example .env   # fill DATABASE_URL (Supabase) and other values
 cd backend-rust && cargo run
 ```
 
-**Frontend & Supabase** — See [docs/development.md](docs/development.md) for env vars, Supabase schema, and API base URL.
+Use the **Session pooler** connection string from Supabase (Dashboard → Connect → Session pooler) if you are on an IPv4-only network (e.g. WSL). See [backend-rust/README.md](backend-rust/README.md) and [docs/development.md](docs/development.md) § 2.2.
+
+To apply the schema to Supabase from the terminal (with the project linked): `npm run db:push`.
+
+
+**Frontend & Supabase** — See [docs/development.md](docs/development.md) for env vars and [docs/frontend-project.md](docs/frontend-project.md) for the **frontend project brief** (tasks, stack, and API/contract integration for your teammate).
 
 ---
 
@@ -236,6 +241,7 @@ Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.ethers
 | **[docs/architecture.md](docs/architecture.md)** | System architecture, smart contracts, CRE workflow (Compute-Report-Evaluate), PHPE engine, data flows, security. |
 | **[docs/development.md](docs/development.md)** | API reference, configuration, setup, CRE simulation, testnet deploy and verify, demo vertical, Chainlink Automation, contributing. |
 | **[docs/submission.md](docs/submission.md)** | Hackathon checklist, deployed contracts table, testnet faucets, demo video, winning ideas summary. |
+| **[docs/frontend-project.md](docs/frontend-project.md)** | Frontend project brief: tasks, stack, env, and API/contract integration for the frontend developer. |
 
 ---
 
