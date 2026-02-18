@@ -16,14 +16,16 @@ pub async fn hybrid_predict(
     let symbol = req.binance_symbol.as_deref();
     let use_chainlink = req.use_chainlink_price.unwrap_or(false);
 
-    let prob = hybrid.predict_hybrid(series, text, social, symbol, use_chainlink).await?;
+    let (prob, uncertainty) = hybrid
+        .predict_hybrid(series, text, social, symbol, use_chainlink)
+        .await?;
 
     if let Some(market_id) = req.market_id {
         let _ = markets
             .set_prediction(
                 market_id,
                 prob,
-                Some(0.2),
+                uncertainty.or(Some(0.2)),
                 Some("hybrid".to_string()),
                 None,
             )
@@ -32,6 +34,7 @@ pub async fn hybrid_predict(
 
     Ok(Json(HybridPredictResponse {
         probability: prob,
+        uncertainty,
         market_id: req.market_id,
     }))
 }

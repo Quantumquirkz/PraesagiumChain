@@ -49,14 +49,19 @@ impl HybridPredictor {
         }
     }
 
-    /// Prediction from time series only (engine).
-    pub fn predict_series(&self, series: &TimeSeriesSample) -> f32 {
+    /// Prediction from time series only (engine). Returns (probability, uncertainty).
+    pub fn predict_series_with_uncertainty(&self, series: &TimeSeriesSample) -> (f32, f32) {
         if series.is_empty() {
-            return 0.5;
+            return (0.5, 0.25);
         }
         let ctx = default_context(series);
         let res = predict(series, &ctx);
-        res.probability
+        (res.probability, res.uncertainty)
+    }
+
+    /// Prediction from time series only (engine).
+    pub fn predict_series(&self, series: &TimeSeriesSample) -> f32 {
+        self.predict_series_with_uncertainty(series).0
     }
 
     /// Predict from sentiment text (AI).
@@ -88,6 +93,7 @@ impl HybridPredictor {
     }
 
     /// Hybrid: series + sentiment (single or multi) + Binance/Chainlink price.
+    /// Returns (probability, optional PHPE uncertainty when series was used).
     pub async fn predict_hybrid(
         &self,
         series: Option<&TimeSeriesSample>,
@@ -95,16 +101,18 @@ impl HybridPredictor {
         social_texts: Option<&[String]>,
         binance_symbol: Option<&str>,
         use_chainlink: bool,
-    ) -> Result<f32> {
+    ) -> Result<(f32, Option<f32>)> {
         let w = &self.weights;
         let mut total_weight = 0.0_f32;
         let mut weighted_sum = 0.0_f32;
+        let mut phpe_uncertainty: Option<f32> = None;
 
         if let Some(s) = series {
             if !s.is_empty() {
-                let p = self.predict_series(s);
+                let (p, u) = self.predict_series_with_uncertainty(s);
                 weighted_sum += w.series * p;
                 total_weight += w.series;
+                phpe_uncertainty = Some(u);
             }
         }
 
@@ -154,6 +162,6 @@ impl HybridPredictor {
             0.5
         };
 
-        Ok(prob)
+        Ok((prob, phpe_uncertainty))
     }
 }

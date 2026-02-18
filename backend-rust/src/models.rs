@@ -168,6 +168,8 @@ pub struct HybridPredictRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HybridPredictResponse {
     pub probability: f32,
+    /// Calibrated uncertainty from PHPE (0..1). Only set when prediction used PHPE/time-series.
+    pub uncertainty: Option<f32>,
     pub market_id: Option<i64>,
 }
 
