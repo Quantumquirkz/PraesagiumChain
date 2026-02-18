@@ -10,7 +10,7 @@ The backend is a **Rust (Axum)** REST API that:
 
 - Serves market CRUD, predictions, AI sentiment, and reputation.
 - Integrates the prediction engine in-process (no CLI subprocess).
-- Uses **SQLite** for markets, predictions, conditional conditions, and creator reputation.
+- Uses **PostgreSQL (Supabase)** for markets, predictions, conditional conditions, and creator reputation.
 - Can run an **event indexer** (optional) when `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set.
 
 ```mermaid
@@ -20,7 +20,7 @@ flowchart LR
     API --> Pred[PredictionService]
     API --> AI[AiService]
     API --> Rep[ReputationService]
-    Market --> DB[(SQLite)]
+    Market --> DB[(PostgreSQL/Supabase)]
     Pred --> engine[engine]
     Rep --> DB
 ```
@@ -36,19 +36,31 @@ Copy `config/env.example` to `.env` at the repo root.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | HTTP server port | `4000` |
-| `DATABASE_URL` | SQLite (or other) connection string | `sqlite:./data/markets.db` |
+| `DATABASE_URL` | **PostgreSQL** connection string (Supabase URI) | `postgres://localhost/praesagium` |
 | `RPC_URL` | Ethereum RPC (optional, for indexer) | — |
 | `PREDICTION_MARKET_ADDRESS` | PredictionMarket contract address (optional) | — |
 | `START_BLOCK` | Indexer start block (optional) | — |
+| `CORS_ORIGINS` | Comma-separated allowed origins (production). If unset, allows all. | — |
 | `AI_PROVIDER` | `mock`, `huggingface`, or `gemini` | `mock` |
 | `HF_API_KEY` | Hugging Face API key (for `huggingface`) | — |
 | `HF_MODEL` | Hugging Face model id | `cardiffnlp/twitter-roberta-base-sentiment-latest` |
 | `GEMINI_API_KEY` | Google Gemini API key (for `gemini`) | — |
 | `GEMINI_MODEL` | Gemini model id | `gemini-1.5-flash` |
 
-Run migrations so tables exist (markets, predictions, conditional_conditions, creator_reputation).
+**Migrations:** Tables are created automatically on startup (`db.migrate()`). No separate migration step is required.
 
-### 2.2 Backend build and run
+**Indexer:** The event indexer (on-chain market sync) runs only when **both** `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set and non-empty. Leave them unset or empty to run the backend without the indexer. Do not set them to empty strings if the backend is running—use valid values or omit the variables.
+
+### 2.2 Supabase and DATABASE_URL
+
+The backend connects to PostgreSQL via `DATABASE_URL`. With **Supabase**:
+
+- **Direct connection** (`db.PROJECT_REF.supabase.co:5432`) is **IPv6-only**. On IPv4-only networks (e.g. many WSL setups) you will see “Network is unreachable” or “no IPv4 address”. The backend tries to resolve the host to IPv4 when possible; if the host has no IPv4, use the Session pooler instead.
+- **Session pooler** (recommended for IPv4): In Supabase Dashboard → **Connect** → **Session pooler**, copy the URI. Format: `postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres`. The **region** in the host (e.g. `us-west-2`) must match your project (see Project Settings or the Connect dialog). Wrong region causes “Tenant or user not found”. In the URI, encode `#` in the password as `%23`.
+
+Schema: either run the backend once (migrations run on startup) or apply `supabase/schema.sql` via Dashboard SQL Editor or `npx supabase db push` (see [PENDIENTES.md](PENDIENTES.md)).
+
+### 2.3 Backend build and run
 
 ```bash
 cd backend-rust
@@ -173,7 +185,7 @@ interface PaginatedResponse<T> {
 ## 5. Frontend and Supabase setup
 
 - **Frontend env:** Create `frontend/.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`, `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`. Use `config/frontend.env.example` as reference.
-- **Supabase:** Run `supabase/schema.sql` (or migrations) in Supabase Dashboard → SQL Editor. Backend uses SQLite by default unless `DATABASE_URL` is set to Supabase Postgres.
+- **Supabase:** The backend uses **PostgreSQL only** (Supabase or any Postgres). Set `DATABASE_URL` to your Supabase connection URI. Prefer the **Session pooler** URI from Dashboard → Connect → Session pooler when on IPv4-only networks. See § 2.2 above. To apply the schema: run the backend (migrations on startup), or run `supabase/schema.sql` in Supabase Dashboard → SQL Editor, or `npx supabase db push`.
 - **Contracts:** Read state via RPC/ethers/viem; writes (create market, bet, resolve, claim) from user wallet. Deploy addresses and ABIs in env or `contracts/artifacts`. See [architecture.md](architecture.md) for contract roles.
 
 ---
@@ -314,7 +326,26 @@ Flow: resolveTime reached → Automation/Keeper → fetch outcome (backend or Fu
 
 ---
 
-## 12. Contributing
+## 12. Production and indexer
+
+### 12.1 CORS and rate limiting
+
+- **CORS:** Set `CORS_ORIGINS` to a comma-separated list of allowed origins (e.g. `https://yourapp.vercel.app,http://localhost:3000`). If unset, the backend allows all origins (suitable only for development).
+- **Rate limiting:** The backend does not implement rate limiting by default. For production, put the API behind a reverse proxy (e.g. nginx, Cloudflare) or a gateway that enforces rate limits, or add a rate-limiting middleware (e.g. `tower_governor` or similar) and document the chosen approach.
+
+### 12.2 Event indexer
+
+When `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set, the backend starts an **event indexer** that:
+
+- Listens for `MarketCreated` and `MarketResolved` events from the PredictionMarket contract.
+- Inserts or updates markets in the database (by `on_chain_market_id`).
+- Updates market status to Resolved and updates creator reputation when `MarketResolved` is seen.
+
+Optional `START_BLOCK` limits scanning to blocks ≥ that number; if unset, indexing starts from the current block (no backfill).
+
+---
+
+## 13. Contributing
 
 - **Setup:** Clone repo; `npm install` and `cd backend-rust && cargo build`. Copy `config/env.example` to `.env` and fill values. Run `npx hardhat compile` and `cargo run` as needed.
 - **Code style:** Solidity — OpenZeppelin conventions, one contract per file. Rust — `cargo fmt`, `cargo clippy`. Docs — English, Markdown.
@@ -322,7 +353,7 @@ Flow: resolveTime reached → Automation/Keeper → fetch outcome (backend or Fu
 
 ---
 
-## 13. External references
+## 14. External references
 
 - [Chainlink Functions](https://docs.chain.link/chainlink-functions) — Off-chain execution, return value to consumer.
 - [Chainlink Automation](https://docs.chain.link/chainlink-automation) — Scheduled tasks (e.g. resolve at resolveTime).
