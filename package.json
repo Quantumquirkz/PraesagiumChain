@@ -5,7 +5,8 @@
   "scripts": {
     "test": "hardhat test",
     "compile": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost"
+    "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
+    "backend": "cargo run -C backend-rust -p praesagium-backend"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

@@ -10,6 +10,8 @@ pub struct Config {
     pub ai_provider: String,
     pub hf_api_key: Option<String>,
     pub hf_model: Option<String>,
+    pub gemini_api_key: Option<String>,
+    pub gemini_model: Option<String>,
 }
 
 impl Config {
@@ -33,6 +35,8 @@ impl Config {
             ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "mock".to_string()),
             hf_api_key: std::env::var("HF_API_KEY").ok(),
             hf_model: std::env::var("HF_MODEL").ok(),
+            gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
+            gemini_model: std::env::var("GEMINI_MODEL").ok(),
         })
     }
 }

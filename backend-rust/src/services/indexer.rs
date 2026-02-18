@@ -1,5 +1,5 @@
 //! Indexador de eventos on-chain usando ethers-rs.
-//! Versión simplificada que puede extenderse con lógica específica de eventos.
+//! Simplified version that can be extended with event-specific logic.
 
 use crate::db::Database;
 use crate::error::Result;

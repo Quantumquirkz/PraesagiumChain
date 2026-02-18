@@ -1,6 +1,6 @@
 use crate::db::Database;
 use crate::services::Cache;
-use praesagium_phpe::{default_context, predict, PredictionContext, TimeSeriesSample};
+use predictor::{default_context, predict, PredictionContext, TimeSeriesSample};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
@@ -19,7 +19,7 @@ impl PredictionService {
         &self,
         time_series: &TimeSeriesSample,
         market_id: Option<i64>,
-    ) -> praesagium_phpe::PredictionResult {
+    ) -> predictor::PredictionResult {
         debug!("Running prediction with {} data points", time_series.len());
         
         if time_series.is_empty() {
@@ -54,7 +54,7 @@ impl PredictionService {
         time_series: &TimeSeriesSample,
         ctx: &PredictionContext,
         market_id: Option<i64>,
-    ) -> praesagium_phpe::PredictionResult {
+    ) -> predictor::PredictionResult {
         debug!("Running prediction with trained context: version={}", ctx.model_metadata.version);
         
         if time_series.is_empty() {
@@ -83,8 +83,8 @@ impl PredictionService {
     }
 
     /// Default prediction when there's insufficient data.
-    fn default_prediction(&self) -> praesagium_phpe::PredictionResult {
-        praesagium_phpe::PredictionResult {
+    fn default_prediction(&self) -> predictor::PredictionResult {
+        predictor::PredictionResult {
             probability: 0.5,
             uncertainty: 0.25,
             model_version: "default".to_string(),

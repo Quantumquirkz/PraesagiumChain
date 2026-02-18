@@ -1,5 +1,3 @@
--- Creator reputation (backend-computed from resolved markets and prediction accuracy).
-
 CREATE TABLE IF NOT EXISTS creator_reputation (
     creator_address TEXT PRIMARY KEY,
     markets_created INTEGER NOT NULL DEFAULT 0,

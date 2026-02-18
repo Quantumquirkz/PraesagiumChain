@@ -1,4 +1,4 @@
-//! Caché en memoria para predicciones y datos frecuentemente accedidos.
+//! In-memory cache for predictions and frequently accessed data.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,14 +28,14 @@ impl Cache {
         }
     }
 
-    /// Obtiene una predicción del caché si aún es válida.
-    pub async fn get_prediction(&self, market_id: i64) -> Option<praesagium_phpe::PredictionResult> {
+    /// Gets a prediction from cache if still valid.
+    pub async fn get_prediction(&self, market_id: i64) -> Option<predictor::PredictionResult> {
         let cache = self.predictions.read().await;
         if let Some(cached) = cache.get(&market_id) {
             let now = chrono::Utc::now().timestamp() as u64;
             if now < cached.timestamp + cached.ttl {
                 debug!("Cache hit for market {}", market_id);
-                return Some(praesagium_phpe::PredictionResult {
+                return Some(predictor::PredictionResult {
                     probability: cached.probability,
                     uncertainty: cached.uncertainty,
                     model_version: cached.model_version.clone(),
@@ -46,11 +46,11 @@ impl Cache {
         None
     }
 
-    /// Guarda una predicción en el caché.
+    /// Saves a prediction to the cache.
     pub async fn set_prediction(
         &self,
         market_id: i64,
-        prediction: &praesagium_phpe::PredictionResult,
+        prediction: &predictor::PredictionResult,
         ttl_seconds: u64,
     ) {
         let mut cache = self.predictions.write().await;
@@ -68,7 +68,7 @@ impl Cache {
         debug!("Cached prediction for market {} (TTL: {}s)", market_id, ttl_seconds);
     }
 
-    /// Invalida el caché de un mercado.
+    /// Invalidates the cache for a market.
     pub async fn invalidate_market(&self, market_id: i64) {
         let mut cache = self.predictions.write().await;
         cache.remove(&market_id);
@@ -82,7 +82,7 @@ impl Cache {
         cache.retain(|_, v| now < v.timestamp + v.ttl);
     }
 
-    /// Obtiene estadísticas del caché.
+    /// Gets cache statistics.
     pub async fn stats(&self) -> CacheStats {
         let predictions = self.predictions.read().await;
         CacheStats {

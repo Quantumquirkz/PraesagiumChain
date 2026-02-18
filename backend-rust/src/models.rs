@@ -142,13 +142,32 @@ pub struct SetPredictionRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunPredictRequest {
-    pub time_series: praesagium_phpe::TimeSeriesSample,
+    pub time_series: predictor::TimeSeriesSample,
     pub market_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunPredictResponse {
-    pub prediction: praesagium_phpe::PredictionResult,
+    pub prediction: predictor::PredictionResult,
+    pub market_id: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HybridPredictRequest {
+    pub time_series: Option<predictor::TimeSeriesSample>,
+    /// Single text (e.g. from X, Reddit, news).
+    pub sentiment_text: Option<String>,
+    /// Multiple texts from X, Reddit, etc. Sentiments are averaged.
+    pub social_texts: Option<Vec<String>>,
+    pub binance_symbol: Option<String>,
+    /// Usar precio Chainlink proxy (ETH/USD).
+    pub use_chainlink_price: Option<bool>,
+    pub market_id: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HybridPredictResponse {
+    pub probability: f32,
     pub market_id: Option<i64>,
 }
 
