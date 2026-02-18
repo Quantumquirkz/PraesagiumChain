@@ -76,7 +76,8 @@ sequenceDiagram
 |----------|------|
 | **PredictionMarket.sol** | Binary markets: create, placeBet (Yes/No), resolveMarket, claimPayout. Only the configured resolver can resolve. |
 | **CREWorkflow.sol** | Bridge: accepts resolution from the oracle and calls `PredictionMarket.resolveMarket()`. |
-| **OracleConsumer.sol** | Receives Chainlink Functions/Any API callback; decodes outcome and forwards to CREWorkflow. |
+| **OracleConsumer.sol** | Receives generic oracle callback (simulation or Any API); forwards to CREWorkflow. |
+| **PredictionMarketFunctionsConsumer.sol** | Chainlink Functions client: implements `fulfillRequest`; decodes response to (marketId, outcome) and calls CREWorkflow. |
 | **ConditionalMarket.sol** | If-then markets: resolution depends on other markets (condition_contract, condition_market_id, expected_outcome). |
 | **PrivateMarket.sol** | Access control: only `isParticipant(marketId, account)` can participate; private details via `detailsHash` / `encryptedURI`. |
 | **TokenizedMarket.sol** | ERC-721 “Praesagium Market”: one NFT per market (tokenId = marketId); creator owns NFT; tradeable (e.g. OpenSea). |
@@ -86,25 +87,53 @@ Features (AI, private, reputation, conditional, tokenized) are modular and can b
 
 ---
 
-## 4. Chainlink CRE Workflow
+## 4. Chainlink CRE Workflow (Compute – Report – Evaluate)
 
-Resolution uses Chainlink so that **off-chain data** drives on-chain outcome in a decentralized way.
+Resolution uses Chainlink so that **off-chain data** drives on-chain outcome in a decentralized way. The flow implements the **CRE (Compute-Report-Evaluate)** pattern required for prediction markets.
 
-### 4.1 Steps
+```mermaid
+flowchart LR
+    subgraph Compute["Compute"]
+        A[User creates market] --> B[PredictionMarket.createMarket]
+        B --> C[closeTime, resolveTime registered]
+    end
+    subgraph Report["Report"]
+        D[resolveTime reached] --> E[Chainlink Functions / API]
+        E --> F[Query API or AI]
+        F --> G[Result 0 or 1]
+    end
+    subgraph Evaluate["Evaluate"]
+        G --> H[OracleConsumer / FunctionsConsumer]
+        H --> I[CREWorkflow.resolveFromOracle]
+        I --> J[PredictionMarket.resolveMarket]
+        J --> K[Users claimPayout]
+    end
+    Compute --> Report --> Evaluate
+```
+
+### 4.1 Compute – Report – Evaluate flow
+
+| Phase | Description | Implementation in PraesagiumChain |
+|-------|-------------|-----------------------------------|
+| **Compute** | The user creates a market; the contract registers it and defines resolution conditions. | `PredictionMarket.createMarket(question, closeTime, resolveTime)`. The contract stores the question, `closeTime` (betting closes) and `resolveTime` (resolution time). |
+| **Report** | When it is time to resolve, the system queries an external source (API, AI) using **Chainlink Functions**. | Chainlink Functions runs off-chain logic (e.g. `backend-rust/scripts/ai/sentiment-analysis.js` or a weather/sports API call). The script returns a result (0 = No, 1 = Yes). For local simulation, `scripts/simulateCRE.js` calls the backend `/api/ai/sentiment` to get the outcome. |
+| **Evaluate** | Chainlink validates the data and sends it to the contract. The contract resolves the market and lets winners claim. | `OracleConsumer.oracleCallback(marketId, rawOutcome)` receives the result (signature compatible with Chainlink callback). Forwards to `CREWorkflow.resolveFromOracle(marketId, outcome)` → `PredictionMarket.resolveMarket(marketId, outcome)`. Users call `claimPayout(marketId)` to receive rewards. |
+
+### 4.2 Steps (detail)
 
 1. **Market created** — `PredictionMarket.createMarket()` sets `closeTime` and `resolveTime`.
 2. **Bets** — Users call `placeBet()`; stakes update `totalYesStake` / `totalNoStake`.
 3. **Lock** — Near `closeTime`, market is locked (no more bets).
 4. **Resolve** — At `resolveTime`, Chainlink Functions (or Any API) runs off-chain logic and obtains result (e.g. Yes=1 / No=0).
-5. **Callback** — Result is sent to `OracleConsumer.fulfillRequest(...)` (or equivalent).
+5. **Callback** — Result is sent to `OracleConsumer.oracleCallback(marketId, rawOutcome)` (in a full Chainlink deployment, this would be the Functions callback, e.g. `fulfillRequest`).
 6. **On-chain resolve** — OracleConsumer → CREWorkflow → `PredictionMarket.resolveMarket(marketId, outcome)`.
 7. **Payouts** — Users call `claimPayout()` to receive funds.
 
-### 4.2 Chainlink Components
+### 4.3 Chainlink components (key tools)
 
-- **Chainlink Functions** — Run off-chain code (e.g. call API, sentiment script); return a value to the consumer.
-- **Chainlink Automation** — Trigger at `resolveTime` (e.g. run AI analysis, then submit result).
-- **CCIP** (future) — Cross-chain sync for multi-chain markets.
+- **Chainlink Functions** — To connect to external APIs. In this project: [PredictionMarketFunctionsConsumer.sol](../contracts/PredictionMarketFunctionsConsumer.sol) sends the request; the script (e.g. [sentiment-analysis.js](../backend-rust/scripts/ai/sentiment-analysis.js) or one that calls a weather/sports/price API) runs off-chain and returns 0/1; the Router calls `fulfillRequest` and the Consumer forwards to CREWorkflow.
+- **Chainlink Automation** — For scheduled tasks (e.g. resolve markets after the event). The contract is already set up: when `resolveTime` is reached, a Chainlink Automation **Upkeep** can invoke (via an intermediary contract or off-chain) the resolution request (e.g. call Functions or the backend which then calls `OracleConsumer.oracleCallback`). Typical steps: (1) Register an Upkeep that runs at the desired date/time; (2) in `performUpkeep`, call the logic that obtains the outcome (API/AI) and sends the result on-chain. Documentation: [Chainlink Automation](https://docs.chain.link/chainlink-automation). The resolution itself (Evaluate) remains OracleConsumer / PredictionMarketFunctionsConsumer → CREWorkflow → PredictionMarket.
+- **Chainlink VRF** — If verifiable randomness were needed (lotteries, random markets), it would be integrated as another source in the Report step; not required for event-based binary markets (weather, sports, price).
 
 Only the configured **resolver** can resolve; resolution is final once set.
 

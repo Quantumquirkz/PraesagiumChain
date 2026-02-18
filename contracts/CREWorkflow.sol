@@ -8,7 +8,7 @@ import "./interfaces/IPredictionMarket.sol";
 contract CREWorkflow {
     IPredictionMarket public immutable predictionMarket;
     address public owner;
-    address public oracle; // contrato/oráculo autorizado (por ejemplo, OracleConsumer)
+    address public oracle; // authorized oracle contract (e.g. OracleConsumer)
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -30,12 +30,11 @@ contract CREWorkflow {
         oracle = _oracle;
     }
 
-    /// @notice Llamada desde el oráculo (off-chain / Chainlink) cuando haya un resultado definitivo.
-    /// @dev Aquí se podría añadir lógica adicional de validación o multi-firma si se desea.
+    /// @notice Called from the oracle (off-chain / Chainlink) when there is a final result.
+    /// @dev Additional validation or multi-sig logic could be added here if desired.
     function resolveFromOracle(uint256 marketId, IPredictionMarket.Outcome outcome) external onlyOracle {
-        // Encapsula la llamada de resolución en PredictionMarket.
-        // Usamos una interfaz extendida vía `address(predictionMarket).call` o
-        // exponiendo `resolveMarket` públicamente en PredictionMarket.
+        // Encapsulates the resolution call to PredictionMarket.
+        // We use a low-level call; PredictionMarket exposes resolveMarket publicly.
         // Para simplicidad asumimos que PredictionMarket expone `resolveMarket`.
 
         // ABI-encode y hacer low-level call para no acoplar interfaces adicionales.

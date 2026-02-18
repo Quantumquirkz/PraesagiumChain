@@ -5,7 +5,7 @@ import "./interfaces/IPredictionMarket.sol";
 import "./interfaces/IReputationSystem.sol";
 
 /// @title PredictionMarket
-/// @notice Contrato principal para mercados de predicción en PraesagiumChain.
+/// @notice Main contract for prediction markets in PraesagiumChain.
 contract PredictionMarket is IPredictionMarket {
     // ====== Almacenamiento interno ======
 
@@ -30,13 +30,13 @@ contract PredictionMarket is IPredictionMarket {
     mapping(uint256 => mapping(address => uint256)) private _yesStakes;
     mapping(uint256 => mapping(address => uint256)) private _noStakes;
 
-    /// @notice Marca de si un usuario ya reclamó su payout en un mercado resuelto.
+    /// @notice Whether a user has already claimed their payout for a resolved market.
     mapping(uint256 => mapping(address => bool)) private _claimed;
 
-    /// @notice Dirección autorizada para resolver mercados (por ejemplo, CREWorkflow u oráculo).
+    /// @notice Address authorized to resolve markets (e.g. CREWorkflow or oracle).
     address public resolver;
 
-    /// @notice Dirección del owner/admin.
+    /// @notice Owner/admin address.
     address public owner;
 
     /// @notice Optional reputation system contract.
@@ -59,7 +59,7 @@ contract PredictionMarket is IPredictionMarket {
         resolver = _resolver;
     }
 
-    // ====== Funciones de administración ======
+    // ====== Admin functions ======
 
     function setResolver(address _resolver) external onlyOwner {
         resolver = _resolver;
@@ -134,7 +134,7 @@ contract PredictionMarket is IPredictionMarket {
     }
 
     /// @notice Resuelve un mercado con el resultado definitivo.
-    /// @dev Pensado para ser llamado por el flujo CRE/oráculo autorizado.
+    /// @dev Intended to be called by the CRE flow or authorized oracle.
     function resolveMarket(uint256 marketId, Outcome outcome) external onlyResolver {
         if (outcome != Outcome.Yes && outcome != Outcome.No) revert InvalidOutcome();
 

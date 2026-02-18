@@ -83,13 +83,25 @@ Base URL is configurable (e.g. `http://localhost:4000`). Use `Content-Type: appl
 | GET | `/api/markets/:id/predictions` | List predictions for market. Query: `limit`. |
 | POST | `/api/markets/:id/ai/predict` | Run AI sentiment on body `{ "text" }` and store as prediction. |
 
-### 3.3 AI
+### 3.3 Report (external sources for CRE)
+
+These endpoints return a single **outcome** (0 or 1) for the Report step.
+
+| Method | Path | Query | Description |
+|--------|------|-------|-------------|
+| GET | `/api/weather/rained` | `lat`, `lon`, `date` (YYYY-MM-DD) | Open-Meteo: outcome = 1 if precipitation_sum > 0, else 0. |
+| GET | `/api/price/above` | `symbol` (e.g. BTCUSDT, bitcoin), `threshold`, optional `source=binance\|coingecko` | outcome = 1 if price ≥ threshold, else 0. |
+| GET | `/api/sports/winner` | `fixture_id`, `winner_team` (with `API_FOOTBALL_KEY`); or `winner_team`, `demo_outcome=0\|1` for testing | outcome = 1 if winner_team won, else 0. |
+
+All return `{ "outcome": 0 }` or `{ "outcome": 1 }`.
+
+### 3.4 AI
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/ai/sentiment` | Body: `{ "text" }`. Returns `provider`, `sentiment_score` (-1..1), `probability` (0..1). |
 
-### 3.4 Predict (Engine & Hybrid)
+### 3.5 Predict (Engine & Hybrid)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -98,7 +110,7 @@ Base URL is configurable (e.g. `http://localhost:4000`). Use `Content-Type: appl
 
 **TimeSeriesSample:** `{ "timestamps": number[], "features": [ { "values": number[] }, ... ] }` — each feature row length must equal `timestamps.length`.
 
-### 3.5 Reputation
+### 3.6 Reputation
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -236,10 +248,26 @@ Use `NEXT_PUBLIC_API_BASE_URL` for all backend API calls. CORS is enabled on the
 
 ---
 
-## 8. External References
+## 8. External data sources (Report)
+
+The CRE **Report** flow obtains the market result from off-chain sources:
+
+| Source | Use | Where |
+|--------|-----|--------|
+| **Backend `/api/ai/sentiment`** | Sentiment on text (Gemini/Hugging Face); returns probability → outcome 0/1. | `scripts/simulateCRE.js`; Chainlink Functions can call a similar API. |
+| **Backend `/api/predict/hybrid`** | Combines time series, Binance/Chainlink price and sentiment for an outcome. | Hybrid integration for price/sentiment markets. |
+| **Script `sentiment-analysis.js`** | Simple keyword-based sentiment for Chainlink Functions; returns 0 or 1. | `backend-rust/scripts/ai/sentiment-analysis.js`. |
+| **External APIs (e.g. weather, sports)** | For markets like "Will it rain in X?" or "Will team Y win?", the source would be a specific API called from Chainlink Functions. | To be implemented in the Functions script or in the backend exposed to Chainlink. |
+
+In production, Chainlink Functions runs the script or calls the API, validates the response and sends it to the contract (Evaluate).
+
+---
+
+## 9. External References
 
 - [Chainlink Functions](https://docs.chain.link/chainlink-functions) — Off-chain execution, return value to consumer.
 - [Chainlink Automation](https://docs.chain.link/chainlink-automation) — Scheduled tasks (e.g. resolve at resolveTime).
+- [Chainlink CRE – Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows) — CRE CLI simulation.
 - [Chainlink CCIP](https://docs.chain.link/ccip) — Cross-chain (future).
 - [Supabase Docs](https://supabase.com/docs) — Auth, Realtime, Database.
 - Hugging Face Inference and Google Gemini are used via backend env vars; see Configuration above.

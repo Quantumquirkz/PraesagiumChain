@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 /// @title IPredictionMarket
-/// @notice Interfaz para el contrato de mercado de predicción.
+/// @notice Interface for the prediction market contract.
 interface IPredictionMarket {
-    // ====== Tipos ======
+    // ====== Types ======
 
-    /// @notice Estado de un mercado de predicción.
+    /// @notice Status of a prediction market.
     enum MarketStatus {
         Open,
         Locked,
@@ -14,14 +14,14 @@ interface IPredictionMarket {
         Cancelled
     }
 
-    /// @notice Resultado binario del mercado.
+    /// @notice Binary outcome of the market.
     enum Outcome {
         Undecided,
         Yes,
         No
     }
 
-    /// @notice Información pública mínima de un mercado.
+    /// @notice Minimal public information for a market.
     struct MarketView {
         uint256 id;
         string question;
@@ -74,22 +74,22 @@ interface IPredictionMarket {
         uint256 amount
     );
 
-    // ====== Funciones de escritura ======
+    // ====== Write functions ======
 
-    /// @notice Crea un nuevo mercado de predicción binario.
+    /// @notice Creates a new binary prediction market.
     function createMarket(
         string calldata question,
         uint256 closeTime,
         uint256 resolveTime
     ) external returns (uint256 marketId);
 
-    /// @notice Coloca una apuesta en un mercado abierto.
+    /// @notice Places a bet on an open market.
     function placeBet(uint256 marketId, Outcome outcome) external payable;
 
-    /// @notice Reclama el pago de un mercado resuelto.
+    /// @notice Claims the payout for a resolved market.
     function claimPayout(uint256 marketId) external;
 
-    // ====== Funciones de lectura ======
+    // ====== Read functions ======
 
     function getMarket(uint256 marketId) external view returns (MarketView memory);
 

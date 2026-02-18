@@ -61,11 +61,20 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 | Component | Purpose |
 |-----------|---------|
 | `contracts/CREWorkflow.sol` | CRE orchestration; receives oracle outcome, resolves market |
-| `contracts/OracleConsumer.sol` | Chainlink callback → CREWorkflow |
+| `contracts/OracleConsumer.sol` | Generic callback → CREWorkflow (simulation / Any API) |
+| `contracts/PredictionMarketFunctionsConsumer.sol` | Chainlink Functions client; `fulfillRequest` → CREWorkflow |
 | `contracts/PredictionMarket.sol` | Binary markets (Yes/No), bets, payouts |
-| `scripts/deploy/deployLocal.js` | Deploy PM, CRE, OracleConsumer |
-| `scripts/simulateCRE.js` | CRE flow simulation |
+| `scripts/deploy/deployLocal.js` | Deploy PM, CRE, OracleConsumer (local) |
+| `scripts/deploy/deployWithFunctions.js` | Deploy with Functions Consumer when `FUNCTIONS_ROUTER` is set |
+| `scripts/simulateCRE.js` | CRE flow simulation (Node; optional: with backend for outcome) |
+| `scripts/inputs.json` | Example inputs for simulation (marketId, text_to_analyze, etc.) |
+| `backend-rust/scripts/ai/sentiment-analysis.js` | Sentiment script for Chainlink Functions (returns 0/1) |
 | `backend-rust/src/services/sources/chainlink.rs` | Chainlink price source (e.g. ETH/USD) |
+
+**CRE flow simulation**
+
+- **With Node (local):** `node scripts/simulateCRE.js`. Optional: `API_BASE_URL=http://localhost:4000` when the backend is running; the script calls `/api/ai/sentiment` to get the outcome and simulates the Report step.
+- **With Chainlink CRE CLI:** Define a workflow in a directory with `workflow.yaml` and run `cre workflow simulate <workflow-path>`. See [docs/CRE_CLI.md](docs/CRE_CLI.md) and [Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows). Example inputs in `scripts/inputs.json`.
 
 ---
 
@@ -82,13 +91,25 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 
 ## Quick Start
 
-**Contracts**
+**Contracts (local network)**
 
-```bash
-npm install && npx hardhat compile
-npx hardhat run scripts/deploy/deployLocal.js --network localhost
-node scripts/simulateCRE.js
-```
+1. In one terminal, start the Hardhat local node (keep it running):
+   ```bash
+   npm run node
+   ```
+   or `npx hardhat node`.
+
+2. In another terminal, compile and deploy:
+   ```bash
+   npm install && npx hardhat compile
+   npm run deploy
+   ```
+   or `npx hardhat run scripts/deploy/deployLocal.js --network localhost`.
+
+3. Simulate the CRE flow:
+   ```bash
+   node scripts/simulateCRE.js
+   ```
 
 **Backend**
 
@@ -127,12 +148,30 @@ curl -X POST http://localhost:4000/api/predict/hybrid \
 
 ---
 
+## Hackathon
+
+This project follows the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon) guidelines (CRE workflow, Chainlink Functions, simulation, documentation).
+
+## Deployed contracts
+
+When you deploy to a public network (Sepolia, Polygon, etc.), add explorer links here:
+
+| Contract | Network | Address | Explorer |
+|----------|---------|---------|----------|
+| PredictionMarket | — | — | [Etherscan](https://sepolia.etherscan.io/address/) / [Polygonscan](https://polygonscan.com/address/) |
+| CREWorkflow | — | — | — |
+| OracleConsumer | — | — | — |
+| PredictionMarketFunctionsConsumer | — | — | (only if using `deployWithFunctions.js`) |
+
+Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.etherscan.io/address/0x1234...)`.
+
 ## Documentation
 
 | Document | Contents |
 |----------|----------|
-| **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | System architecture, smart contracts, CRE workflow, PHPE engine, data flows, security. |
+| **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | System architecture, smart contracts, CRE workflow (Compute-Report-Evaluate), PHPE engine, data flows, security. |
 | **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | API reference, configuration, setup (backend, frontend, Supabase), contributing, feature guides. |
+| **[docs/CRE_CLI.md](docs/CRE_CLI.md)** | CRE flow simulation and deployment (Node, CRE CLI, Chainlink Functions). |
 
 ---
 

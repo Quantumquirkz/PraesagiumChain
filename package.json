@@ -5,6 +5,7 @@
   "scripts": {
     "test": "hardhat test",
     "compile": "hardhat compile",
+    "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
     "backend": "cargo run -C backend-rust -p praesagium-backend"
   },
