@@ -21,6 +21,7 @@ pub struct ModelMetadata {
 }
 
 /// Payload for on-chain submission (probability in basis points).
+#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OnChainPredictionPayload {
     pub market_id: u64,

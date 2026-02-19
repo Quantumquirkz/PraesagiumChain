@@ -4,7 +4,6 @@ use crate::db::Database;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct CreatorReputation {
@@ -230,6 +229,7 @@ impl ReputationService {
         })
     }
 
+    #[allow(dead_code)]
     async fn recompute_score(&self, creator_address: &str) -> Result<CreatorReputation> {
         let row = sqlx::query_as::<_, (i64, i64)>(
             "SELECT markets_resolved, correct_predictions FROM creator_reputation WHERE creator_address = $1"

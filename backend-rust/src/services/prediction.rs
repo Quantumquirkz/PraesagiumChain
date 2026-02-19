@@ -49,6 +49,7 @@ impl PredictionService {
     }
 
     /// Runs a prediction with a trained context (for production).
+    #[allow(dead_code)]
     pub async fn run_prediction_with_context(
         &self,
         time_series: &TimeSeriesSample,

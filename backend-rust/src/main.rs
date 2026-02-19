@@ -41,10 +41,10 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::from_env()?;
     let db = Database::new(&config.database_url)
         .await
-        .map_err(|e| anyhow::anyhow!("Al conectar a la DB: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("DB connection failed: {}", e))?;
     db.migrate()
         .await
-        .map_err(|e| anyhow::anyhow!("Al ejecutar migraciones: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Migration failed: {}", e))?;
 
     let cache = Arc::new(Cache::new());
 
@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
             let contract_address: ethers::types::Address = contract_addr
                 .trim()
                 .parse()
-                .map_err(|_| anyhow::anyhow!("PREDICTION_MARKET_ADDRESS no es una dirección Ethereum válida (0x + 40 hex)"))?;
+                .map_err(|_| anyhow::anyhow!("PREDICTION_MARKET_ADDRESS is not a valid Ethereum address (0x + 40 hex)"))?;
             let market_service_clone = market_service.clone();
             let reputation_service_clone = reputation_service.clone();
             let start_block = config.start_block;

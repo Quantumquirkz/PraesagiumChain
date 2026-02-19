@@ -34,6 +34,7 @@ pub struct HybridPredictor {
     ai: Arc<AiService>,
     binance: BinanceSource,
     chainlink: ChainlinkSource,
+    #[allow(dead_code)]
     cache: Arc<Cache>,
     weights: HybridWeights,
 }
@@ -60,6 +61,7 @@ impl HybridPredictor {
     }
 
     /// Prediction from time series only (engine).
+    #[allow(dead_code)]
     pub fn predict_series(&self, series: &TimeSeriesSample) -> f32 {
         self.predict_series_with_uncertainty(series).0
     }

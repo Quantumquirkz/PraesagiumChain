@@ -2,7 +2,7 @@
 //! Simula lectura de precio off-chain (Chainlink Data Streams / Functions).
 //! Production: Chainlink Functions fetches the feed; backend uses Binance as public proxy.
 
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::services::sources::binance::BinanceSource;
 use crate::services::sources::types::Signal;
 

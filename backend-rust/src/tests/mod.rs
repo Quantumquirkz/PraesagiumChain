@@ -6,7 +6,7 @@ mod health_tests {
     use axum::http::{Request, StatusCode};
     use axum::routing::get;
     use axum::Router;
-    use tower::ServiceExt;
+    use tower::util::ServiceExt;
 
     #[tokio::test]
     async fn health_returns_ok_and_ok_true() {
@@ -33,7 +33,7 @@ mod api_markets_tests {
     use axum::routing::get;
     use axum::{extract::Extension, Router};
     use std::sync::Arc;
-    use tower::ServiceExt;
+    use tower::util::ServiceExt;
 
     /// List markets without DB: we need a real Database to run this test.
     /// Skipped unless DATABASE_URL is set (integration test).

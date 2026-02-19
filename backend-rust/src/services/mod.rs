@@ -9,7 +9,7 @@ pub mod hybrid;
 
 pub use market::MarketService;
 pub use prediction::PredictionService;
-pub use cache::{Cache, CacheStats};
+pub use cache::Cache;
 pub use ai::{AiService, GeminiProvider, HuggingFaceProvider, MockAiProvider};
 pub use reputation_service::{CreatorReputation, ReputationService};
 pub use hybrid::HybridPredictor;

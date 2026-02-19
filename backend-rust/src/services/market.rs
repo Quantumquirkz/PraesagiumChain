@@ -4,7 +4,7 @@ use crate::models::{
     CreateConditionalMarketRequest, CreateMarketRequest, Market, MarketStats, MarketView,
     PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 pub struct MarketService {
     db: Database,

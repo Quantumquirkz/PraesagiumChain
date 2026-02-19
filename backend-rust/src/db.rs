@@ -26,7 +26,7 @@ pub async fn database_url_force_ipv4(url: &str) -> anyhow::Result<String> {
         .map(|a| a.ip().to_string())
         .ok_or_else(|| {
             anyhow::anyhow!(
-                "El host '{}' no tiene IPv4 (solo IPv6). Usa Session pooler: en Supabase Dashboard → Connect → Session pooler, copia la URI y ponla en DATABASE_URL.",
+                "Host '{}' has no IPv4 (IPv6 only). Use Session pooler: Supabase Dashboard → Connect → Session pooler, copy the URI into DATABASE_URL.",
                 host
             )
         })?;

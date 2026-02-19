@@ -6,9 +6,7 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use tracing::info;
-
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::models::{
     CreateConditionalMarketRequest, CreateMarketRequest, MarketStats, MarketView, PaginatedResponse,
     SetPredictionRequest, UpdateStatusRequest,

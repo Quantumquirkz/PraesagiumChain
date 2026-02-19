@@ -25,12 +25,12 @@ impl Config {
 
         let database_url = std::env::var("DATABASE_URL").map_err(|_| {
             anyhow::anyhow!(
-                "DATABASE_URL no está definida. Crea un .env en la raíz del repo o en backend-rust/ con:\n  DATABASE_URL=postgresql://postgres:PASSWORD@host:5432/postgres"
+                "DATABASE_URL is not set. Create .env in repo root or backend-rust/ with:\n  DATABASE_URL=postgresql://postgres:PASSWORD@host:5432/postgres"
             )
         })?;
         if database_url.starts_with("postgres://localhost") {
             anyhow::bail!(
-                "DATABASE_URL no puede ser postgres://localhost (usa tu URI de Supabase en .env)"
+                "DATABASE_URL cannot be postgres://localhost (use your Supabase URI in .env)"
             );
         }
 

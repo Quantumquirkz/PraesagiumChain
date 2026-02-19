@@ -145,6 +145,14 @@ mod tests {
     }
 
     #[test]
+    fn predict_empty_series_handled() {
+        let ts = TimeSeriesSample::new(vec![], vec![]);
+        let ctx = default_context(&ts);
+        let result = predict(&ts, &ctx);
+        assert!(result.probability >= 0.0 && result.probability <= 1.0);
+    }
+
+    #[test]
     fn sliding_window_encoding() {
         let ts = TimeSeriesSample::new(
             (0..20).collect(),
