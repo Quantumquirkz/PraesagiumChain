@@ -5,6 +5,9 @@ use std::sync::Arc;
 use crate::error::Result;
 use crate::services::{AiService, MarketService};
 
+/// Maximum allowed text length for sentiment analysis (mitigates abuse).
+const MAX_TEXT_LEN: usize = 32_768;
+
 #[derive(Debug, Deserialize)]
 pub struct SentimentRequest {
     pub text: String,
@@ -23,7 +26,17 @@ pub async fn sentiment(
     Extension(ai): Extension<Arc<AiService>>,
     Json(req): Json<SentimentRequest>,
 ) -> Result<Json<SentimentResponse>> {
-    let (score, prob) = ai.sentiment(&req.text).await?;
+    if req.text.len() > MAX_TEXT_LEN {
+        return Err(crate::error::AppError::Validation(format!(
+            "Text length exceeds max {} chars",
+            MAX_TEXT_LEN
+        )));
+    }
+    let text = req.text.trim();
+    if text.is_empty() {
+        return Err(crate::error::AppError::Validation("Text cannot be empty".into()));
+    }
+    let (score, prob) = ai.sentiment(text).await?;
     Ok(Json(SentimentResponse {
         provider: ai.provider_name().to_string(),
         sentiment_score: score,
@@ -38,7 +51,17 @@ pub async fn market_ai_predict(
     axum::extract::Path(market_id): axum::extract::Path<i64>,
     Json(req): Json<SentimentRequest>,
 ) -> Result<Json<serde_json::Value>> {
-    let (score, prob) = ai.sentiment(&req.text).await?;
+    if req.text.len() > MAX_TEXT_LEN {
+        return Err(crate::error::AppError::Validation(format!(
+            "Text length exceeds max {} chars",
+            MAX_TEXT_LEN
+        )));
+    }
+    let text = req.text.trim();
+    if text.is_empty() {
+        return Err(crate::error::AppError::Validation("Text cannot be empty".into()));
+    }
+    let (score, prob) = ai.sentiment(text).await?;
 
     // Store as a prediction record.
     let _ = markets
