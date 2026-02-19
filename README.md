@@ -65,7 +65,7 @@ flowchart TB
 | **Tooling** | Hardhat, Node.js |
 | **Backend** | Rust, Axum, PHPE engine, PostgreSQL (Supabase) |
 | **AI / Data** | Gemini, Hugging Face; Binance, Chainlink price feeds |
-| **Frontend (optional)** | See [docs/development.md](docs/development.md) (Supabase, env in `config/frontend.env.example`) |
+| **Frontend (optional)** | See [docs/development-and-deployment.md](docs/development-and-deployment.md) (Supabase, env in `config/frontend.env.example`) |
 
 ---
 
@@ -90,11 +90,12 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 | `scripts/inputs.json` | Example inputs for simulation (marketId, text_to_analyze, etc.) |
 | `backend-rust/scripts/ai/sentiment-analysis.js` | Sentiment script for Chainlink Functions (returns 0/1) |
 | `backend-rust/src/services/sources/chainlink.rs` | Chainlink price source (e.g. ETH/USD) |
+| `cre/praesagium-resolver/main.ts` | CRE workflow: CRON → HTTP `/api/ai/sentiment` → outcome |
 
 **CRE flow simulation**
 
 - **With Node (local):** `node scripts/simulateCRE.js`. Optional: `API_BASE_URL=http://localhost:4000` when the backend is running; the script calls `/api/ai/sentiment` to get the outcome and simulates the Report step.
-- **With Chainlink CRE CLI:** Define a workflow in a directory with `workflow.yaml` and run `cre workflow simulate <workflow-path>`. See [docs/development.md](docs/development.md) (CRE simulation) and [Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows). Example inputs in `scripts/inputs.json`.
+- **With Chainlink CRE CLI:** `cd cre/praesagium-resolver && bun install` then `cd .. && cre workflow simulate praesagium-resolver --target staging-settings`. The workflow calls `/api/ai/sentiment` and computes outcome 0/1. See [cre/README.md](cre/README.md) and [Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows). Example inputs in `scripts/inputs.json`.
 
 ---
 
@@ -135,15 +136,15 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 
 ```bash
 cp config/env.example .env   # fill DATABASE_URL (Supabase) and other values
-cd backend-rust && cargo run
+npm run backend
 ```
 
-Use the **Session pooler** connection string from Supabase (Dashboard → Connect → Session pooler) if you are on an IPv4-only network (e.g. WSL). See [backend-rust/README.md](backend-rust/README.md) and [docs/development.md](docs/development.md) § 2.2.
+Use the **Session pooler** connection string from Supabase (Dashboard → Connect → Session pooler) if you are on an IPv4-only network (e.g. WSL). See [backend-rust/README.md](backend-rust/README.md) and [docs/development-and-deployment.md](docs/development-and-deployment.md) § 1.2.
 
 To apply the schema to Supabase from the terminal (with the project linked): `npm run db:push`.
 
 
-**Frontend & Supabase** — See [docs/development.md](docs/development.md) for env vars and [docs/frontend-project.md](docs/frontend-project.md) for the **frontend project brief** (tasks, stack, and API/contract integration for your teammate).
+**Frontend & Supabase** — See [docs/development-and-deployment.md](docs/development-and-deployment.md) for env vars and [docs/frontend-project.md](docs/frontend-project.md) for the **frontend project brief** (tasks, stack, and API/contract integration for your teammate).
 
 ---
 
@@ -173,38 +174,45 @@ curl -X POST http://localhost:4000/api/predict/hybrid \
 
 ---
 
+## Environment files
+
+See [docs/architecture-and-design.md](docs/architecture-and-design.md) § 2.1 for env layout and folder structure.
+
+---
+
 ## Repository structure
 
-Aligned with common Web3 hackathon layout (see [web3-hackathon-starter](https://github.com/envoy1084/web3-hackathon-starter), [HackQuest best practices](https://www.hackquest.io/blog/Best-Practices-for-Successful-Web3-Hackathon-Project-Submissions)):
+See [docs/architecture-and-design.md](docs/architecture-and-design.md) for details. Summary:
 
 ```
 PraesagiumChain/
-├── config/                 # Env templates (backend + frontend)
-│   ├── env.example         # Backend: copy to .env
+├── config/                 # Env templates
+│   ├── env.example         # → root .env
 │   └── frontend.env.example
-├── contracts/              # Solidity (OpenZeppelin, Chainlink)
-│   ├── interfaces/
-│   ├── PredictionMarket.sol
-│   ├── CREWorkflow.sol
-│   ├── OracleConsumer.sol
-│   └── PredictionMarketFunctionsConsumer.sol
+├── contracts/              # Solidity source
+│   ├── PredictionMarket.sol, CREWorkflow.sol, OracleConsumer.sol...
+│   └── interfaces/
 ├── scripts/
-│   ├── deploy/            # Hardhat deploy (local + testnet)
+│   ├── deploy/            # Deploy (local, Sepolia, Polygon)
+│   ├── demo/              # E2E demo
 │   ├── test/              # Contract tests
-│   ├── simulateCRE.js     # CRE flow simulation
-│   └── inputs.json        # Example inputs
-├── backend-rust/          # REST API (Rust, Axum), PHPE engine, AI
+│   ├── verify/            # Etherscan verification
+│   ├── run-backend.js     # Backend launcher
+│   ├── simulateCRE.js     # CRE simulation (Node)
+│   ├── resolveFromBackend.js
+│   ├── syncCreAbi.js      # Sync ABI to cre/ after compile
+│   └── inputs.json
+├── backend-rust/          # REST API (Rust, Axum)
 │   ├── phpe/              # Prediction engine
 │   ├── scripts/ai/        # Chainlink Functions scripts
 │   └── src/
-├── cre/                   # Chainlink CRE workflow (CRE CLI)
+├── cre/                   # Chainlink CRE workflow
+│   ├── praesagium-resolver/   # Workflow code
+│   ├── contracts/evm/src/abi/ # ABI (synced from compile)
+│   └── project.yaml
 ├── docs/
-│   ├── architecture.md    # System design, contracts, CRE, PHPE, security
-│   ├── development.md    # API, setup, CRE simulation, testnet deploy, demo, automation
-│   └── submission.md     # Hackathon checklist, deployed contracts, winning ideas
 ├── supabase/              # Schema & migrations
-├── package.json           # Hardhat, scripts
-└── README.md
+└── package.json
 ```
 
 ---
@@ -213,17 +221,19 @@ PraesagiumChain/
 
 This project follows the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon) guidelines (CRE workflow, Chainlink Functions, simulation, documentation).
 
-For a **submission-ready checklist** (contract address, testnet, Scan URL, demo video, live link), see **[docs/submission.md](docs/submission.md)**. References:
+For a **submission-ready checklist** (contract address, testnet, Scan URL, demo video, live link), see **[docs/development-and-deployment.md](docs/development-and-deployment.md) § 6**. References:
 
 - [HackQuest – Best practices for Web3 hackathon submissions](https://www.hackquest.io/blog/Best-Practices-for-Successful-Web3-Hackathon-Project-Submissions) — documentation, testnet deployment, Scan URL, demo video, GitHub.
 - [Hackathon 101 – Survival guide (Medium)](https://medium.com/@BizthonOfficial/hackathon-101-the-ultimate-survival-guide-for-first-time-web3-developers-4f3d51fbab0d) — MVP, deploy frontend (Vercel/Netlify), clear README, demo script.
 - [web3-hackathon-starter](https://github.com/envoy1084/web3-hackathon-starter) — repo structure, env setup, tech stack.
 
-**Before submitting:** deploy contracts on the **correct testnet** (see [docs/development.md](docs/development.md) § Deploy and verify on testnet), add contract addresses and Scan URLs to [README](#deployed-contracts) and [docs/submission.md](docs/submission.md), and record a short **demo video** (2–5 min). For a scriptable E2E demo without UI, see [docs/development.md](docs/development.md) § Demo vertical. Testnet ETH: [Sepolia faucets](https://sepoliafaucet.com) · [Polygon Amoy](https://faucet.polygon.technology).
+**Demo (no UI):** `npm run demo` runs create market → bet → resolve (AI) → claim. See [docs/development-and-deployment.md](docs/development-and-deployment.md) § 5.
+
+**Before submitting:** deploy contracts on the **correct testnet** (see [docs/development-and-deployment.md](docs/development-and-deployment.md) § 3.2), add contract addresses and Scan URLs to [README](#deployed-contracts) and the submission checklist, and record a short **demo video** (2–5 min). Testnet ETH: [Sepolia faucets](https://sepoliafaucet.com) · [Polygon Amoy](https://faucet.polygon.technology).
 
 ## Deployed contracts
 
-When you deploy to a public network (Sepolia, Polygon, etc.), add addresses and **Scan URLs** here and in [docs/submission.md](docs/submission.md):
+When you deploy to a public network (Sepolia, Polygon, etc.), add addresses and **Scan URLs** here and in [docs/development-and-deployment.md](docs/development-and-deployment.md) § 6:
 
 | Contract | Network | Address | Explorer |
 |----------|---------|---------|----------|
@@ -238,10 +248,10 @@ Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.ethers
 
 | Document | Contents |
 |----------|----------|
-| **[docs/architecture.md](docs/architecture.md)** | System architecture, smart contracts, CRE workflow (Compute-Report-Evaluate), PHPE engine, data flows, security. |
-| **[docs/development.md](docs/development.md)** | API reference, configuration, setup, CRE simulation, testnet deploy and verify, demo vertical, Chainlink Automation, contributing. |
-| **[docs/submission.md](docs/submission.md)** | Hackathon checklist, deployed contracts table, testnet faucets, demo video, winning ideas summary. |
-| **[docs/frontend-project.md](docs/frontend-project.md)** | Frontend project brief: tasks, stack, env, and API/contract integration for the frontend developer. |
+| **[docs/architecture-and-design.md](docs/architecture-and-design.md)** | Arquitectura, contratos, CRE workflow, motor PHPE, estructura del repo, propiedad intelectual. |
+| **[docs/development-and-deployment.md](docs/development-and-deployment.md)** | API, configuración, despliegue, simulación CRE, demo, checklist de submission, contribución. |
+| **[docs/security-and-operations.md](docs/security-and-operations.md)** | Seguridad, optimización para producción, monitoreo, CI/CD. |
+| **[docs/frontend-project.md](docs/frontend-project.md)** | Frontend project brief: tasks, stack, env, API y contratos para el desarrollador frontend. |
 
 ---
 

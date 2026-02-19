@@ -394,9 +394,9 @@ frontend/
 
 ## 13. References
 
-- **API and data shapes:** [development.md](development.md) §§ 3–4.
-- **Contract roles and CRE flow:** [architecture.md](architecture.md).
-- **Submission and testnet:** [submission.md](submission.md).
+- **API and data shapes:** [development-and-deployment.md](development-and-deployment.md) §§ 2–3.
+- **Contract roles and CRE flow:** [architecture-and-design.md](architecture-and-design.md).
+- **Submission and testnet:** [development-and-deployment.md](development-and-deployment.md) § 6.
 - **Env example:** `config/frontend.env.example`.
 - **ABIs:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`.
 

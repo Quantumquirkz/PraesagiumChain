@@ -142,5 +142,5 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 
 ## 7. Documentation
 
-- **API and environment variables:** [docs/development.md](../docs/development.md)
-- **Architecture:** [docs/architecture.md](../docs/architecture.md)
+- **API and environment variables:** [docs/development-and-deployment.md](../docs/development-and-deployment.md)
+- **Architecture:** [docs/architecture-and-design.md](../docs/architecture-and-design.md)
