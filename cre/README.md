@@ -1,35 +1,87 @@
-# CRE Workflow for PraesagiumChain
+# CRE Workflow — PraesagiumChain
 
-This directory is reserved for a **Chainlink CRE** (Compute-Report-Evaluate) workflow that runs with the CRE CLI.
+This directory contains the **Chainlink CRE** (Compute-Report-Evaluate) workflow for PraesagiumChain, used as the orchestration layer that integrates blockchain with external API (LLM-powered sentiment).
 
-## How to add a CRE workflow
+## Structure
 
-1. Install the [CRE CLI](https://docs.chain.link/cre/getting-started/cli-installation) and run `cre login`.
+```
+cre/
+├── project.yaml                    # Global config (RPC, chains)
+├── secrets.yaml                    # Secret declarations (optional)
+├── .env.example                    # Copy to .env, add CRE_ETH_PRIVATE_KEY
+├── contracts/evm/src/abi/          # ABI for workflow (synced via npm run compile)
+├── praesagium-resolver/            # Workflow directory (TypeScript)
+│   ├── main.ts                     # Workflow code (CRON → HTTP API → outcome)
+│   ├── package.json                # Dependencies (@chainlink/cre-sdk, zod)
+│   ├── tsconfig.json
+│   ├── workflow.yaml               # Workflow config per target
+│   ├── config.staging.json         # Staging params
+│   └── config.production.json      # Production params
+└── README.md
+```
 
-2. From the repo root, initialize a CRE project (or use a temporary directory):
-   ```bash
-   cre init
+## What the workflow does
+
+1. **CRON trigger** — Runs on schedule (configurable in config).
+2. **HTTP POST** — Calls backend `/api/ai/sentiment` with `text_to_analyze`.
+3. **Outcome** — Maps `probability >= 0.5` → outcome `1` (Yes), else `0` (No).
+4. **Production** — When `oracle_consumer_address` is set, logs that it would call `OracleConsumer.oracleCallback(marketId, outcome)`.
+
+## Prerequisites
+
+- **Bun 1.2.21+** or **Node.js** — [Install Bun](https://bun.sh) (recommended) or use npm
+- **CRE CLI** — [Install CRE CLI](https://docs.chain.link/cre/getting-started/cli-installation)
+- **CRE account** — `cre login`
+- **Funded Sepolia account** — For simulation (optional)
+
+## Setup
+
+1. Copy `.env.example` to `.env` and set:
    ```
-   Choose the Golang template and a name such as `praesagium-resolver`.
-
-3. In the generated workflow:
-   - Configure a trigger (cron at `resolveTime` or HTTP for testing).
-   - In the handler: call the backend API (`/api/ai/sentiment` or similar) or replicate the logic of `backend-rust/scripts/ai/sentiment-analysis.js`.
-   - Obtain an outcome 0 or 1 and send a transaction to the contract (e.g. `OracleConsumer.oracleCallback(marketId, outcome)` or the Functions Consumer).
-
-4. Use the example inputs from the repo:
-   ```bash
-   cp scripts/inputs.json cre/<your-workflow>/inputs.json
+   CRE_ETH_PRIVATE_KEY=your_64_char_hex_private_key
    ```
 
-5. Simulate:
+2. From repo root, run `npm run compile` to sync OracleConsumer ABI to `cre/contracts/evm/src/abi/` (or `npm run sync:cre-abi` if already compiled).
+
+3. Install workflow dependencies:
    ```bash
-   cre workflow simulate <workflow-name> --target staging-settings
+   cd cre/praesagium-resolver && (bun install || npm install)
    ```
 
-Detailed documentation: [docs/development.md](../docs/development.md) (CRE flow simulation and deployment).
+4. Ensure the backend is running (for full flow):
+   ```bash
+   npm run backend
+   ```
 
-## Contracts and scripts in this repo
+5. Optionally adjust `config.staging.json`:
+   - `api_base_url`: backend URL (default `http://localhost:4000`)
+   - `text_to_analyze`: text for sentiment analysis
+   - `market_id`: market to resolve
 
-- Contracts: `contracts/CREWorkflow.sol`, `contracts/OracleConsumer.sol`, `contracts/PredictionMarketFunctionsConsumer.sol`.
-- Simulation without CRE CLI: `node scripts/simulateCRE.js` (uses `scripts/inputs.json` if present).
+## Simulate with CRE CLI
+
+From the **cre/** directory:
+
+```bash
+cd cre
+cre workflow simulate praesagium-resolver --target staging-settings
+```
+
+At the prompt, select the **cron-trigger** (option 1). The workflow will:
+
+1. Call the backend `/api/ai/sentiment` with the configured text.
+2. Compute outcome 0 or 1.
+3. Log the result. Start the backend first for a successful run.
+
+## Files that use Chainlink
+
+| File | Purpose |
+|------|---------|
+| `praesagium-resolver/main.ts` | CRE workflow: CRON trigger, HTTP client, consensus |
+| `project.yaml` | RPC config for Sepolia |
+
+## References
+
+- [CRE — Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows)
+- [CRE — Part 1: Project Setup (TypeScript)](https://docs.chain.link/cre/getting-started/part-1-project-setup-ts)
+- [CRE — Making POST Requests (TypeScript)](https://docs.chain.link/cre/guides/workflow/using-http-client/post-request-ts)

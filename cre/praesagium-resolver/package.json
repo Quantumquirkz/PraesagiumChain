@@ -1,0 +1,12 @@
+{
+  "name": "praesagium-resolver",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "postinstall": "npx --yes cre-setup"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.7",
+    "zod": "^3.23.0"
+  }
+}

@@ -1,0 +1,6 @@
+# CRE subdir. Root .gitignore also covers most of these.
+.env
+*.log
+node_modules/
+bun.lock
+tmp.js
