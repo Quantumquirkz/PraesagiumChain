@@ -1,117 +1,117 @@
-# PraesagiumChain — Seguridad y Operaciones
+# PraesagiumChain — Security and Operations
 
-Documento unificado de seguridad (contratos y backend), optimización para producción, monitoreo, CI/CD y reporte de vulnerabilidades.
+Unified document for security (contracts and backend), production optimization, monitoring, CI/CD, and vulnerability reporting.
 
 ---
 
-## 1. Seguridad
+## 1. Security
 
-### 1.1 Contratos inteligentes
+### 1.1 Smart Contracts
 
-| Contrato | Medidas |
-|----------|---------|
-| **PredictionMarket.sol** | Checks-Effects-Interactions; reentrancy mitigado actualizando estado antes de llamadas externas. |
-| **OracleConsumer.sol** | `oracleCallback` restringido vía `authorizedCallback`. En producción: Router de Chainlink Functions o ejecutor CRE. |
-| **CREWorkflow.sol** | `resolveFromOracle` restringido a `onlyOracle` (dirección OracleConsumer). |
-| **ReputationSystem.sol** | `onlyAuthorized` para callbacks; comprobación de creador en resolución. |
+| Contract | Measures |
+|----------|----------|
+| **PredictionMarket.sol** | Checks-Effects-Interactions; reentrancy mitigated by updating state before external calls. |
+| **OracleConsumer.sol** | `oracleCallback` restricted via `authorizedCallback`. In production: Chainlink Functions Router or CRE executor. |
+| **CREWorkflow.sol** | `resolveFromOracle` restricted to `onlyOracle` (OracleConsumer address). |
+| **ReputationSystem.sol** | `onlyAuthorized` for callbacks; creator check on resolution. |
 
-**Recomendaciones:**
-- Ejecutar Slither: `slither . --exclude-dependencies` (`pip install slither-analyzer`).
-- Considerar MythX u otras herramientas de análisis.
-- Antes de mainnet: `authorizedCallback` al Router de Chainlink Functions, no a una EOA.
-- Considerar `ReentrancyGuard` de OpenZeppelin en `claimPayout` para defensa en profundidad.
+**Recommendations:**
+- Run Slither: `slither . --exclude-dependencies` (`pip install slither-analyzer`).
+- Consider MythX or similar analysis tools.
+- Before mainnet: set `authorizedCallback` to Chainlink Functions Router, not an EOA.
+- Consider OpenZeppelin `ReentrancyGuard` on `claimPayout` for defense in depth.
 
 ### 1.2 Backend (Rust)
 
-- Validación de inputs en endpoints (ej. longitud máxima de texto en sentiment).
-- Acceso a DB con consultas parametrizadas (SQLx) para evitar inyección.
-- Sin secrets en logs; manejo estructurado de errores.
-- Revisar dependencias: `cargo install cargo-audit && cargo audit`.
+- Input validation on endpoints (e.g. max text length for sentiment).
+- DB access via parameterized queries (SQLx) to prevent injection.
+- No secrets in logs; structured error handling.
+- Check dependencies: `cargo install cargo-audit && cargo audit`.
 
-**Próximos pasos:**
-- Rate limiting en endpoints públicos (ej. `tower_governor`).
-- Autenticación JWT en rutas sensibles si hay clientes no confiables.
-- Ejecutar `cargo clippy` y resolver avisos.
+**Next steps:**
+- Rate limiting on public endpoints (e.g. `tower_governor`).
+- JWT authentication on sensitive routes if exposing to untrusted clients.
+- Run `cargo clippy` and fix warnings.
 
-### 1.3 Chainlink y CRE
+### 1.3 Chainlink and CRE
 
-- Resolución determinista: mismos inputs → mismo resultado.
-- Workflow CRE con agregación por consenso donde aplique.
-- Garantizar que `api_base_url` apunte a un backend de confianza.
+- Deterministic resolution: same inputs → same outcome.
+- CRE workflow with consensus aggregation where applicable.
+- Ensure `api_base_url` points to a trusted backend.
 
-### 1.4 Reporte de vulnerabilidades
+### 1.4 Vulnerability Reporting
 
-No abrir issues públicos para vulnerabilidades de seguridad.
+Do not open public issues for security vulnerabilities.
 
-**Contacto:** Crear un advisory privado en el repositorio (Security → Advisories → New draft).
+**Contact:** Create a private security advisory in the repository (Security → Advisories → New draft).
 
 ---
 
-## 2. Optimización para producción
+## 2. Production Optimization
 
-### 2.1 Implementado
+### 2.1 Implemented
 
-| Área | Cambios |
+| Area | Changes |
 |------|---------|
-| Seguridad contratos | OracleConsumer: `authorizedCallback`. Scripts de deploy lo configuran. |
-| Validación backend | `/api/ai/sentiment`, `/api/predict/hybrid`: límites de texto, arrays, checks de vacío. |
-| CI/CD | `npm audit`, `cargo audit` en GitHub Actions. |
-| Documentación | CONTRIBUTING.md, plantillas de issues. |
-| Protección IP | Documentación PHPE, términos en CONTRIBUTING. |
+| Contract security | OracleConsumer: `authorizedCallback`. Deploy scripts configure it. |
+| Backend validation | `/api/ai/sentiment`, `/api/predict/hybrid`: text limits, array limits, empty checks. |
+| CI/CD | `npm audit`, `cargo audit` in GitHub Actions. |
+| Documentation | CONTRIBUTING.md, issue templates. |
+| IP protection | PHPE documentation, terms in CONTRIBUTING. |
 
-### 2.2 Próximos pasos recomendados
+### 2.2 Recommended Next Steps
 
-1. **Rate limiting** — P. ej. `tower_governor` en `/api/ai/sentiment`.
-2. **JWT** — Rutas sensibles si se exponen a clientes no confiables.
-3. **Slither** — Correr sobre contratos y corregir hallazgos.
-4. **Layer 2** — Valorar Arbitrum/Optimism para reducir gas.
-5. **Índices DB** — En `markets.close_time`, `predictions.market_id` para consultas intensivas.
-6. **Cumplimiento** — Documentar consideraciones MiCA/SEC si se ofrecen servicios en jurisdicciones reguladas.
+1. **Rate limiting** — e.g. `tower_governor` on `/api/ai/sentiment`.
+2. **JWT** — Sensitive routes if exposing to untrusted clients.
+3. **Slither** — Run on contracts and fix findings.
+4. **Layer 2** — Evaluate Arbitrum/Optimism for lower gas.
+5. **DB indexes** — On `markets.close_time`, `predictions.market_id` for heavy queries.
+6. **Compliance** — Document MiCA/SEC considerations if offering services in regulated jurisdictions.
 
 ---
 
-## 3. Monitoreo y operaciones
+## 3. Monitoring and Operations
 
 ### 3.1 Logging
 
-El backend usa **tracing**. Filtrar con:
+The backend uses **tracing**. Filter with:
 
 ```bash
 RUST_LOG=praesagium_backend=debug,tower_http=debug npm run backend
 ```
 
-Niveles: `error`, `warn`, `info`, `debug`, `trace`.
+Levels: `error`, `warn`, `info`, `debug`, `trace`.
 
-### 3.2 Producción
+### 3.2 Production
 
-| Componente | Recomendación |
-|------------|---------------|
-| **Prometheus/Grafana** | Exportar métricas (request count, latencia, errores). Endpoint `/api/metrics`. |
-| **Alertas** | Errores repetidos, fallos de conexión DB, timeouts de oráculo. |
-| **Health check** | `/health` devuelve `{"ok": true}`; usar en load balancer. |
-| **Chainlink** | Vigilar ejecuciones del workflow CRE y éxito/fallo de callbacks. |
+| Component | Recommendation |
+|-----------|----------------|
+| **Prometheus/Grafana** | Export metrics (request count, latency, errors). Endpoint `/api/metrics`. |
+| **Alerts** | Repeated errors, DB connection failures, oracle timeouts. |
+| **Health check** | `/health` returns `{"ok": true}`; use for load balancer. |
+| **Chainlink** | Monitor CRE workflow runs and callback success/failure. |
 
-### 3.3 CORS y rate limiting
+### 3.3 CORS and Rate Limiting
 
-- **CORS:** Definir `CORS_ORIGINS` con orígenes permitidos en producción. Si está vacío, se permiten todos (solo desarrollo).
-- **Rate limiting:** Si no está implementado en el backend, usar proxy inverso (nginx, Cloudflare) o gateway con límites.
+- **CORS:** Set `CORS_ORIGINS` with allowed origins in production. If empty, all are allowed (development only).
+- **Rate limiting:** If not implemented in backend, use reverse proxy (nginx, Cloudflare) or gateway with limits.
 
-### 3.4 Reporte de bugs
+### 3.4 Bug Reporting
 
-Usar la plantilla [Bug report](.github/ISSUE_TEMPLATE/bug_report.md): incluir entorno, pasos para reproducir y logs.
+Use the [Bug report](.github/ISSUE_TEMPLATE/bug_report.md) template: include environment, steps to reproduce, and logs.
 
 ---
 
 ## 4. CI/CD
 
-El workflow `.github/workflows/deploy.yml` incluye:
+The `.github/workflows/deploy.yml` workflow includes:
 
-- Tests de contratos (Hardhat).
+- Contract tests (Hardhat).
 - `npm audit --audit-level=high`.
-- Tests del backend (Rust).
-- `cargo audit` para dependencias.
+- Backend tests (Rust).
+- `cargo audit` for dependencies.
 
-Comando local para auditorías:
+Local command for audits:
 ```bash
 npm run audit
 ```

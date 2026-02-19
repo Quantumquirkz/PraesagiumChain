@@ -1,137 +1,137 @@
-# PraesagiumChain — Desarrollo y Despliegue
+# PraesagiumChain — Development and Deployment
 
-Guía unificada de configuración, API, despliegue, simulación CRE, demo, checklist de submission y contribución.
+Unified guide for configuration, API, deployment, CRE simulation, demo, submission checklist, and contribution.
 
 ---
 
 ## 1. Backend
 
-### 1.1 Descripción
+### 1.1 Overview
 
-El backend es una API REST en **Rust (Axum)** que:
+The backend is a **Rust (Axum)** REST API that:
 
-- Sirve CRUD de mercados, predicciones, sentiment AI y reputación.
-- Integra el motor PHPE en proceso (sin subproceso CLI).
-- Usa **PostgreSQL (Supabase)** para mercados, predicciones y reputación.
-- Ejecuta un **indexador de eventos** (opcional) cuando están configurados `RPC_URL` y `PREDICTION_MARKET_ADDRESS`.
+- Serves CRUD for markets, predictions, AI sentiment, and reputation.
+- Integrates the PHPE engine in-process (no CLI subprocess).
+- Uses **PostgreSQL (Supabase)** for markets, predictions, and reputation.
+- Runs an **event indexer** (optional) when `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set.
 
 ```mermaid
 flowchart LR
-    Client[Cliente] --> API[API Axum]
+    Client[Client] --> API[Axum API]
     API --> Market[MarketService]
     API --> Pred[PredictionService]
     API --> AI[AiService]
     Market --> DB[(PostgreSQL/Supabase)]
-    Pred --> engine[Motor]
+    Pred --> engine[Engine]
     AI --> DB
 ```
 
-### 1.2 Variables de entorno
+### 1.2 Environment variables
 
-Copiar `config/env.example` a `.env` en la raíz. Para simulación CRE, copiar `cre/.env.example` a `cre/.env`.
+Copy `config/env.example` to `.env` at repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.
 
-| Variable | Descripción | Default |
+| Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Puerto HTTP | `4000` |
-| `DATABASE_URL` | Conexión PostgreSQL (Supabase) | — |
-| `RPC_URL` | RPC Ethereum (opcional, para indexador) | — |
-| `PREDICTION_MARKET_ADDRESS` | Dirección contrato (opcional) | — |
-| `START_BLOCK` | Bloque inicial indexador | — |
-| `CORS_ORIGINS` | Orígenes permitidos (producción) | — |
+| `PORT` | HTTP port | `4000` |
+| `DATABASE_URL` | PostgreSQL connection (Supabase) | — |
+| `RPC_URL` | Ethereum RPC (optional, for indexer) | — |
+| `PREDICTION_MARKET_ADDRESS` | Contract address (optional) | — |
+| `START_BLOCK` | Indexer start block | — |
+| `CORS_ORIGINS` | Allowed origins (production) | — |
 | `AI_PROVIDER` | `mock`, `huggingface`, `gemini` | `mock` |
-| `HF_API_KEY`, `GEMINI_API_KEY` | Claves API AI | — |
-| `GEMINI_MODEL`, `HF_MODEL` | Modelos | `gemini-1.5-flash` / `cardiffnlp/...` |
+| `HF_API_KEY`, `GEMINI_API_KEY` | AI API keys | — |
+| `GEMINI_MODEL`, `HF_MODEL` | Models | `gemini-1.5-flash` / `cardiffnlp/...` |
 
-**Supabase:** Preferir el URI del **Session pooler** (Dashboard → Connect). En redes IPv4-only, el directo puede fallar. Codificar `#` en la contraseña como `%23`.
+**Supabase:** Prefer the **Session pooler** URI (Dashboard → Connect). On IPv4-only networks, direct connection may fail. Encode `#` in password as `%23`.
 
-### 1.3 Build y ejecución
+### 1.3 Build and run
 
 ```bash
 cd backend-rust
 cargo build --release
 cargo run --release
-# o desde root: npm run backend
+# or from root: npm run backend
 ```
 
 ---
 
-## 2. Referencia de API
+## 2. API Reference
 
-Base URL configurable (ej. `http://localhost:4000`). `Content-Type: application/json` en POST/PATCH.
+Base URL configurable (e.g. `http://localhost:4000`). Use `Content-Type: application/json` for POST/PATCH.
 
-### 2.1 Health y métricas
+### 2.1 Health and metrics
 
-| Método | Ruta | Descripción |
+| Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness |
-| GET | `/api/metrics` | Métricas Prometheus-style |
+| GET | `/api/metrics` | Prometheus-style metrics |
 
-### 2.2 Mercados
+### 2.2 Markets
 
-| Método | Ruta | Descripción |
+| Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/markets` | Listar mercados. Query: `page`, `limit`, `status`. |
-| GET | `/api/markets/:id` | Mercado por id |
-| POST | `/api/markets` | Crear mercado |
-| PATCH | `/api/markets/:id/status` | Actualizar status |
-| POST | `/api/markets/:id/ai/predict` | Predicción AI (body: `{ "text" }`) |
+| GET | `/api/markets` | List markets. Query: `page`, `limit`, `status`. |
+| GET | `/api/markets/:id` | Single market by id |
+| POST | `/api/markets` | Create market |
+| PATCH | `/api/markets/:id/status` | Update status |
+| POST | `/api/markets/:id/ai/predict` | AI prediction (body: `{ "text" }`) |
 
-### 2.3 Report (fuentes externas CRE)
+### 2.3 Report (external sources for CRE)
 
-Devuelven outcome 0 o 1:
+Return outcome 0 or 1:
 
-| Método | Ruta | Query | Descripción |
+| Method | Path | Query | Description |
 |--------|------|-------|-------------|
-| GET | `/api/weather/rained` | `lat`, `lon`, `date` | Precipitación Open-Meteo |
-| GET | `/api/price/above` | `symbol`, `threshold`, `source` | Precio ≥ umbral |
-| GET | `/api/sports/winner` | `fixture_id`, `winner_team` | Ganador partido |
+| GET | `/api/weather/rained` | `lat`, `lon`, `date` | Open-Meteo precipitation |
+| GET | `/api/price/above` | `symbol`, `threshold`, `source` | Price ≥ threshold |
+| GET | `/api/sports/winner` | `fixture_id`, `winner_team` | Match winner |
 
-### 2.4 AI y predicción
+### 2.4 AI and prediction
 
-| Método | Ruta | Descripción |
+| Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/ai/sentiment` | Body: `{ "text" }`. Devuelve `sentiment_score`, `probability`. |
-| POST | `/api/predict/hybrid` | Híbrido: `time_series`, `sentiment_text`, `binance_symbol`, etc. |
+| POST | `/api/ai/sentiment` | Body: `{ "text" }`. Returns `sentiment_score`, `probability`. |
+| POST | `/api/predict/hybrid` | Hybrid: `time_series`, `sentiment_text`, `binance_symbol`, etc. |
 
 ---
 
-## 3. Despliegue de contratos
+## 3. Contract Deployment
 
 ### 3.1 Local (Hardhat)
 
 ```bash
 npm run node          # Terminal 1: Hardhat node
-npm run deploy        # Terminal 2: Despliegue local
+npm run deploy        # Terminal 2: Local deployment
 ```
 
-Copiar direcciones a `.env`: `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS`, `CRE_WORKFLOW_ADDRESS`. Tras deploy local, el script llama `setAuthorizedCallback(deployer)`.
+Copy addresses to `.env`: `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS`, `CRE_WORKFLOW_ADDRESS`. After local deploy, the script calls `setAuthorizedCallback(deployer)`.
 
 ### 3.2 Testnet (Sepolia / Polygon Amoy)
 
-1. Configurar `.env`: `PRIVATE_KEY`, `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY` (o equivalente Polygon).
-2. Obtener ETH de testnet: [sepoliafaucet.com](https://sepoliafaucet.com), [faucet.polygon.technology](https://faucet.polygon.technology).
-3. Desplegar:
+1. Configure `.env`: `PRIVATE_KEY`, `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY` (or Polygon equivalent).
+2. Get testnet ETH: [sepoliafaucet.com](https://sepoliafaucet.com), [faucet.polygon.technology](https://faucet.polygon.technology).
+3. Deploy:
    ```bash
-   npm run deploy:sepolia   # o deploy:polygon
+   npm run deploy:sepolia   # or deploy:polygon
    ```
-4. Verificar:
+4. Verify:
    ```bash
    npm run verify:sepolia
    ```
-5. Añadir direcciones a README y `docs/submission-checklist` (ver sección 8).
+5. Add addresses to README and submission checklist (section 7).
 
-### 3.3 Chainlink Functions (resolución on-chain)
+### 3.3 Chainlink Functions (on-chain resolution)
 
 1. `export FUNCTIONS_ROUTER=<Router address>`
 2. `npx hardhat run scripts/deploy/deployWithFunctions.js --network sepolia`
-3. Crear suscripción en [Chainlink Functions](https://docs.chain.link/chainlink-functions) y fondear con LINK.
-4. Llamar `setAuthorizedCallback(functionsRouterAddress)` tras deploy.
+3. Create subscription at [Chainlink Functions](https://docs.chain.link/chainlink-functions) and fund with LINK.
+4. Call `setAuthorizedCallback(functionsRouterAddress)` after deploy.
 
 ---
 
-## 4. Simulación CRE
+## 4. CRE Simulation
 
-### 4.1 Node (rápido)
+### 4.1 Node (quick)
 
 ```bash
 npm run node
@@ -140,98 +140,163 @@ npm run backend
 node scripts/simulateCRE.js
 ```
 
-### 4.2 CRE CLI oficial
+### 4.2 Official CRE CLI
 
 ```bash
 cd cre/praesagium-resolver && bun install
 cd .. && cre workflow simulate praesagium-resolver --target staging-settings
 ```
 
-Seleccionar el trigger cron (opción 1). Backend debe estar en marcha.
+Select the cron trigger (option 1). Backend must be running.
 
-### 4.3 Scripts relevantes
+### 4.3 Relevant scripts
 
-| Script | Propósito |
-|--------|-----------|
-| `scripts/simulateCRE.js` | Simulación flujo CRE (Report vía backend) |
-| `scripts/resolveFromBackend.js` | Obtiene outcome del backend y llama `oracleCallback` |
-| `scripts/deploy/deployLocal.js` | Despliegue local (OracleConsumer como oráculo) |
-| `scripts/deploy/deployWithFunctions.js` | Despliegue con Functions Consumer |
+| Script | Purpose |
+|--------|---------|
+| `npm run demo` / `scripts/demo/demoE2E.js` | Full E2E: create market → bet → advance time → resolve (AI) → claim |
+| `scripts/simulateCRE.js` | CRE flow simulation (Report via backend) |
+| `scripts/resolveFromBackend.js` | Fetches outcome from backend and calls `oracleCallback` |
+| `scripts/deploy/deployLocal.js` | Local deployment (OracleConsumer as oracle) |
+| `scripts/deploy/deployWithFunctions.js` | Deployment with Functions Consumer |
 
 ---
 
-## 5. Demo E2E y vídeo
+## 5. Project Verification
 
-### 5.1 Comando rápido
+### 5.1 Automated tests
 
 ```bash
+npm test              # Contracts (Hardhat): 5 tests
+npm run test:backend  # Backend (Rust): 2 tests
+npm run test:all      # Both
+```
+
+If they pass, the base code works.
+
+### 5.2 Database
+
+```bash
+npm run db:push   # Requires: npx supabase link --project-ref <ref>
+```
+
+Or run `supabase/schema.sql` in Supabase SQL Editor.
+
+---
+
+## 6. E2E Demo and Video
+
+### 6.1 Demo requirements
+
+| Variable in `.env` | Purpose |
+|-------------------|---------|
+| `PREDICTION_MARKET_ADDRESS` | PredictionMarket contract (after deploy) |
+| `ORACLE_CONSUMER_ADDRESS` | OracleConsumer contract (after deploy) |
+| `CRE_WORKFLOW_ADDRESS` | Optional; deploy uses it internally |
+| `RPC_URL` | `http://127.0.0.1:8545` (Hardhat local) |
+| `API_BASE_URL` | `http://localhost:4000` (backend) |
+| `PRIVATE_KEY` | Hardhat local key or your testnet wallet |
+| `DATABASE_URL` | Supabase (backend) |
+
+### 6.2 Steps to run the demo
+
+**Terminal 1 — Hardhat node**
+```bash
+npm run node
+```
+Keep it running. If you see `EADDRINUSE: address already in use 127.0.0.1:8545`, the node is already active; do not start another.
+
+**Terminal 2 — Backend**
+```bash
+npm run backend
+```
+
+**Terminal 3 — Deploy and demo**
+```bash
+npm run deploy
+# Copy printed addresses to .env (or they may already be configured)
 npm run demo
 ```
 
-Crea mercado → apuesta → resuelve (vía `/api/ai/sentiment`) → claim. Requiere `.env` con `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS`, `PRIVATE_KEY`, `API_BASE_URL`.
+### 6.3 What the demo does
 
-### 5.2 Estructura del vídeo (3–5 min)
+1. **Create market** — `createMarket(question, closeTime, resolveTime)`
+2. **Place bet** — `placeBet(marketId, Yes, 0.001 ETH)`
+3. **Advance time** — `evm_increaseTime` until past `resolveTime` (required so `resolveMarket` does not revert with `MarketNotClosed`)
+4. **Get outcome** — Call backend `/api/ai/sentiment`
+5. **Resolve on-chain** — `OracleConsumer.oracleCallback(marketId, outcome)` → CREWorkflow → `PredictionMarket.resolveMarket`
+6. **Claim** — `claimPayout(marketId)`
 
-| Sección | Duración | Contenido |
-|---------|----------|-----------|
-| Intro | ~30s | Problema: resolución confiable. Solución: Chainlink CRE + AI. |
-| Arquitectura | ~30s | Diagrama: Cliente → Backend → CRE → Contratos |
-| Simulación CRE | ~1 min | `cre workflow simulate` con backend activo |
-| Demo E2E | ~1.5 min | `npm run demo` |
-| Componentes Chainlink | ~30s | CREWorkflow, OracleConsumer, workflow CRE, script sentiment |
-| Cierre | ~20s | Repo, diferenciadores (incertidumbre PHPE, CRE multi-fuente) |
+### 6.4 Troubleshooting
 
-### 5.3 Ejemplos de API para vídeo
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `EADDRINUSE 127.0.0.1:8545` | Hardhat node already running | Do not start another; use the existing one |
+| `Set in .env: PREDICTION_MARKET_ADDRESS...` | Missing variables | Add deploy addresses to `.env` |
+| `CRE callback failed` | `block.timestamp < resolveTime` | Script advances time with `evm_increaseTime`; ensure you have the current version |
+| Backend not responding | Backend not started | Run `npm run backend` in another terminal |
+
+### 6.5 Video structure (3–5 min)
+
+| Section | Duration | Content |
+|---------|----------|---------|
+| Intro | ~30s | Problem: trusted resolution. Solution: Chainlink CRE + AI. |
+| Architecture | ~30s | Diagram: Client → Backend → CRE → Contracts |
+| CRE simulation | ~1 min | `cre workflow simulate` with backend active |
+| E2E demo | ~1.5 min | `npm run demo` |
+| Chainlink components | ~30s | CREWorkflow, OracleConsumer, CRE workflow, sentiment script |
+| Closing | ~20s | Repo, differentiators (PHPE uncertainty, multi-source CRE) |
+
+### 6.6 API examples for video
 
 ```bash
 # Sentiment
 curl -X POST http://localhost:4000/api/ai/sentiment -H "Content-Type: application/json" \
   -d '{"text":"Bitcoin bullish"}'
 
-# Híbrido
+# Hybrid
 curl -X POST http://localhost:4000/api/predict/hybrid -H "Content-Type: application/json" \
-  -d '{"sentiment_text":"ETH sube","use_chainlink_price":true}'
+  -d '{"sentiment_text":"ETH going up","use_chainlink_price":true}'
 ```
 
 ---
 
-## 6. Checklist de submission (hackathon)
+## 7. Submission Checklist (hackathon)
 
 | Item | Estado |
 |------|--------|
 | README.md | ✅ |
 | CRE workflow | ✅ |
-| Direcciones de contratos | ⬜ Rellenar tras deploy testnet |
+| Contract addresses | ⬜ Fill after testnet deploy |
 | Red blockchain | ⬜ Sepolia / Polygon Amoy |
 | Scan URL (Etherscan, etc.) | ⬜ |
-| Vídeo demo 2–5 min | ⬜ |
-| Repo público | ✅ |
+| Demo video 2–5 min | ⬜ |
+| Public repo | ✅ |
 
-**Ideas ganadoras:** Incertidumbre calibrada PHPE, CRE multi-fuente, vertical único claro (p. ej. “ETH > X$”), testnet + verificación + enlaces Explorer.
+**Winning ideas:** PHPE calibrated uncertainty, multi-source CRE, one clear vertical (e.g. “ETH > X$”), testnet + verification + Explorer links.
 
 ---
 
-## 7. Pendientes y siguientes pasos
+## 8. Pending and Next Steps
 
-| Item | Estado |
+| Item | Status |
 |------|--------|
-| Backend, esquema, migraciones, tests | ✅ |
-| Base de datos en Supabase | ✅ `npx supabase db push` |
-| Despliegue testnet | ⬜ Requiere tu wallet y ETH de testnet |
-| Vídeo demo / live link | ⬜ |
-| Frontend | Fuera de alcance |
+| Backend, schema, migrations, tests | ✅ |
+| Database on Supabase | ✅ `npx supabase db push` |
+| Testnet deploy | ⬜ Requires your wallet and testnet ETH |
+| Demo video / live link | ⬜ |
+| Frontend | Out of scope |
 
-**Para aplicar el esquema en otro proyecto:** `npx supabase link --project-ref <ref>` y `npx supabase db push`, o ejecutar `supabase/schema.sql` en el SQL Editor del Dashboard.
+**To apply schema to another project:** `npx supabase link --project-ref <ref>` and `npx supabase db push`, or run `supabase/schema.sql` in Supabase SQL Editor.
 
 ---
 
-## 8. Contribución
+## 9. Contributing
 
-- **Setup:** `npm install`, `cd backend-rust && cargo build`. Copiar `config/env.example` a `.env`.
-- **Estilo:** Solidity — convenciones OpenZeppelin. Rust — `cargo fmt`, `cargo clippy`. Docs en inglés.
-- **PRs:** Ramificar desde `main`, cambios acotados, tests pasando. No commitear `.env`.
+- **Setup:** `npm install`, `cd backend-rust && cargo build`. Copy `config/env.example` to `.env`.
+- **Style:** Solidity — OpenZeppelin conventions. Rust — `cargo fmt`, `cargo clippy`. Docs in English.
+- **PRs:** Branch from `main`, focused changes, tests passing. Do not commit `.env`.
 
-### Referencias externas
+### External references
 
 - [Chainlink Functions](https://docs.chain.link/chainlink-functions)
 - [Chainlink Automation](https://docs.chain.link/chainlink-automation)

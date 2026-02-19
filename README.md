@@ -125,12 +125,11 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
    npm install && npx hardhat compile
    npm run deploy
    ```
-   or `npx hardhat run scripts/deploy/deployLocal.js --network localhost`.
+   Add deploy addresses to `.env`: `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS`, `CRE_WORKFLOW_ADDRESS`, `RPC_URL`, `API_BASE_URL`, `PRIVATE_KEY`.
 
-3. Simulate the CRE flow:
-   ```bash
-   node scripts/simulateCRE.js
-   ```
+3. **E2E demo** (with backend running): `npm run demo` — create market → bet → resolve (AI) → claim. See [docs/development-and-deployment.md](docs/development-and-deployment.md) § 6.
+
+4. Simulate the CRE flow: `node scripts/simulateCRE.js`
 
 **Backend**
 
@@ -248,10 +247,10 @@ Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.ethers
 
 | Document | Contents |
 |----------|----------|
-| **[docs/architecture-and-design.md](docs/architecture-and-design.md)** | Arquitectura, contratos, CRE workflow, motor PHPE, estructura del repo, propiedad intelectual. |
-| **[docs/development-and-deployment.md](docs/development-and-deployment.md)** | API, configuración, despliegue, simulación CRE, demo, checklist de submission, contribución. |
-| **[docs/security-and-operations.md](docs/security-and-operations.md)** | Seguridad, optimización para producción, monitoreo, CI/CD. |
-| **[docs/frontend-project.md](docs/frontend-project.md)** | Frontend project brief: tasks, stack, env, API y contratos para el desarrollador frontend. |
+| **[docs/architecture-and-design.md](docs/architecture-and-design.md)** | Architecture, contracts, CRE workflow, PHPE engine, repo structure, intellectual property. |
+| **[docs/development-and-deployment.md](docs/development-and-deployment.md)** | API, configuration, deployment, **verification (tests, E2E demo)**, CRE simulation, troubleshooting, submission checklist, contribution. |
+| **[docs/security-and-operations.md](docs/security-and-operations.md)** | Security, production optimization, monitoring, CI/CD. |
+| **[docs/frontend-project.md](docs/frontend-project.md)** | Frontend project brief: tasks, stack, env, API and contracts for the frontend developer. |
 
 ---
 

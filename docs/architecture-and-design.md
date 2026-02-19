@@ -1,78 +1,90 @@
-# PraesagiumChain — Arquitectura y Diseño
+# PraesagiumChain — Architecture and Design
 
-Documento unificado de arquitectura del sistema, contratos inteligentes, flujos CRE, motor PHPE, estructura del repositorio, propiedad intelectual y convenciones.
+Unified document for system architecture, smart contracts, CRE flows, PHPE engine, repository structure, intellectual property, and conventions.
 
 ---
 
-## 1. Visión general del sistema
+## 1. System Overview
 
-PraesagiumChain es un sistema descentralizado de mercados de predicción que combina:
+PraesagiumChain is a decentralized prediction market system that combines:
 
-- **Contratos inteligentes (Solidity)** — Ciclo de vida de mercados, apuestas y pagos on-chain.
-- **Chainlink CRE** — Resolución sin confianza desde datos off-chain y AI.
-- **PHPE (Praesagium Hybrid Predictive Engine)** — Probabilidades calibradas e incertidumbre en Rust.
-- **Backend (Rust, Axum)** — API REST, integración del motor, AI, fuentes Binance/Chainlink; **PostgreSQL (Supabase)** para persistencia.
+- **Smart contracts (Solidity)** — Market lifecycle, bets, and payouts on-chain.
+- **Chainlink CRE** — Trustless resolution from off-chain data and AI.
+- **PHPE (Praesagium Hybrid Predictive Engine)** — Calibrated probabilities and uncertainty in Rust.
+- **Backend (Rust, Axum)** — REST API, engine integration, AI, Binance/Chainlink sources; **PostgreSQL (Supabase)** for persistence.
 
 ```mermaid
 flowchart LR
-    A[Usuario / Frontend] --> B[Backend API]
-    A --> C[Contratos]
+    A[User / Frontend] --> B[Backend API]
+    A --> C[Contracts]
     B --> D[PHPE / AI / DB]
-    B --> E[Indexador]
-    C --> F[Oraculo Chainlink]
+    B --> E[Indexer]
+    C --> F[Chainlink Oracle]
     F --> C
 ```
 
 ---
 
-## 2. Estructura del repositorio
+## 2. Repository Structure
 
 ```
 PraesagiumChain/
-├── .github/workflows/    # CI (tests contratos, backend)
-├── config/               # Plantillas env (root, frontend)
+├── .github/workflows/    # CI (contract tests, backend)
+├── config/               # Env templates (root, frontend)
 ├── contracts/            # Solidity (PredictionMarket, CREWorkflow, etc.)
-├── backend-rust/         # API REST (Rust, Axum), motor PHPE
-│   ├── phpe/             # Motor de predicción
-│   ├── scripts/ai/       # Scripts Chainlink Functions
-│   └── src/services/    # AI, fuentes, hybrid
-├── cre/                  # Workflow CRE Chainlink
-├── scripts/              # Deploy, demo, test, utilidades CRE
-├── supabase/             # Esquema DB y migraciones
-├── .env                  # Env principal (gitignored)
+├── backend-rust/         # REST API (Rust, Axum), PHPE engine
+│   ├── phpe/             # Prediction engine
+│   ├── scripts/ai/       # Chainlink Functions scripts
+│   └── src/services/    # AI, sources, hybrid
+├── cre/                  # Chainlink CRE workflow
+├── scripts/              # Deploy, demo, test, CRE utilities
+├── supabase/             # DB schema and migrations
+├── .env                  # Main env (gitignored)
 └── README.md
 ```
 
-| Directorio | Propósito |
-|-----------|-----------|
-| **contracts/** | Código Solidity. Hardhat compila en `artifacts/`. |
-| **cre/** | Proyecto CRE: `project.yaml`, workflow `praesagium-resolver/`, ABIs. |
+| Directory | Purpose |
+|-----------|---------|
+| **contracts/** | Solidity source. Hardhat compiles to `artifacts/`. |
+| **cre/** | CRE project: `project.yaml`, workflow `praesagium-resolver/`, ABIs. |
 | **scripts/** | `deploy/`, `demo/`, `test/`, `verify/`, `simulateCRE.js`, `resolveFromBackend.js`. |
 | **config/** | `env.example` → root `.env`, `frontend.env.example`. |
 
-**Convenciones:** Documentación y comentarios en inglés; directorios en minúsculas con guiones; un contrato principal por archivo. Configuración en `config/`; `.env` en root está en `.gitignore`.
+**Conventions:** Documentation and comments in English; lowercase directories with hyphens; one main contract per file. Configuration in `config/`; root `.env` is in `.gitignore`.
 
-### 2.1 Archivos de entorno
+### 2.1 Environment variables (for E2E demo)
 
-| Ubicación | Propósito | Usado por |
-|-----------|-----------|-----------|
-| **config/env.example** | Plantilla principal → copiar a **root .env** | Backend, Hardhat, deploy, demo |
-| **root .env** | Env principal (gitignored) | `npm run backend`, `deploy`, `demo` |
-| **cre/.env.example** | Solo CRE → copiar a **cre/.env** | Simulación workflow CRE |
-| **cre/.env** | Clave privada CRE (gitignored) | `cre workflow simulate` |
-| **config/frontend.env.example** | Plantilla frontend | Next.js (si se usa) |
+| Variable | Purpose |
+|----------|---------|
+| `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS` | Addresses after `npm run deploy` |
+| `RPC_URL` | `http://127.0.0.1:8545` (Hardhat local) |
+| `API_BASE_URL` | `http://localhost:4000` (backend) |
+| `PRIVATE_KEY` | Deployer key (Hardhat default or wallet) |
+| `DATABASE_URL` | Supabase (backend) |
+
+For full list, see [development-and-deployment.md](development-and-deployment.md) § 1.2 and § 6.1.
+
+### 2.2 Env file locations
+
+| Location | Purpose | Used by |
+|----------|---------|---------|
+| **config/env.example** | Main template → copy to **root .env** | Backend, Hardhat, deploy, demo |
+| **root .env** | Main env (gitignored) | `npm run backend`, `deploy`, `demo` |
+| **cre/.env.example** | CRE only → copy to **cre/.env** | CRE workflow simulation |
+| **cre/.env** | CRE private key (gitignored) | `cre workflow simulate` |
+| **config/frontend.env.example** | Frontend template | Next.js (if used) |
 
 ---
 
-## 3. Contratos inteligentes
+## 3. Smart Contracts
 
-### 3.1 Flujo de resolución
+### 3.1 Resolution Flow
 
-La resolución es impulsada por el oráculo: Chainlink entrega un resultado (Yes=1 / No=0) al consumer, que lo reenvía a CRE, que llama al contrato del mercado.
+Resolution is oracle-driven: Chainlink delivers an outcome (Yes=1 / No=0) to the consumer, which forwards it to CRE, which calls the market contract.
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuario
+    participant U as User
     participant PM as PredictionMarket
     participant CRE as CREWorkflow
     participant OC as OracleConsumer
@@ -80,21 +92,21 @@ sequenceDiagram
 
     U->>PM: createMarket / placeBet
     Note over PM: closeTime → lock
-    CL->>OC: fulfillRequest(resultado)
+    CL->>OC: fulfillRequest(result)
     OC->>CRE: resolveFromOracle(marketId, outcome)
     CRE->>PM: resolveMarket(marketId, outcome)
     U->>PM: claimPayout
 ```
 
-### 3.2 Roles de contratos
+### 3.2 Contract Roles
 
-| Contrato | Rol |
-|----------|-----|
-| **PredictionMarket.sol** | Mercados binarios: crear, placeBet (Yes/No), resolveMarket, claimPayout. Solo el resolver configurado puede resolver. |
-| **CREWorkflow.sol** | Puente: recibe resolución del oráculo y llama `PredictionMarket.resolveMarket()`. |
-| **OracleConsumer.sol** | Recibe callback del oráculo; reenvía a CREWorkflow. `oracleCallback` restringido a `authorizedCallback`. |
-| **PredictionMarketFunctionsConsumer.sol** | Cliente Chainlink Functions: `fulfillRequest`; decodifica a (marketId, outcome) y llama CREWorkflow. |
-| **ReputationSystem.sol** | Estadísticas de creadores; hooks `onMarketCreated` / `onMarketResolved`; solo callers autorizados. |
+| Contract | Role |
+|----------|------|
+| **PredictionMarket.sol** | Binary markets: create, placeBet (Yes/No), resolveMarket, claimPayout. Only the configured resolver can resolve. |
+| **CREWorkflow.sol** | Bridge: receives resolution from oracle and calls `PredictionMarket.resolveMarket()`. |
+| **OracleConsumer.sol** | Receives oracle callback; forwards to CREWorkflow. `oracleCallback` restricted to `authorizedCallback`. |
+| **PredictionMarketFunctionsConsumer.sol** | Chainlink Functions client: `fulfillRequest`; decodes to (marketId, outcome) and calls CREWorkflow. |
+| **ReputationSystem.sol** | Creator stats; hooks `onMarketCreated` / `onMarketResolved`; authorized callers only. |
 
 ---
 
@@ -103,100 +115,100 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     subgraph Compute["Compute"]
-        A[Usuario crea mercado] --> B[PredictionMarket.createMarket]
-        B --> C[closeTime, resolveTime registrados]
+        A[User creates market] --> B[PredictionMarket.createMarket]
+        B --> C[closeTime, resolveTime registered]
     end
     subgraph Report["Report"]
-        D[resolveTime alcanzado] --> E[Chainlink Functions / API]
-        E --> F[Consulta API o AI]
-        F --> G[Resultado 0 o 1]
+        D[resolveTime reached] --> E[Chainlink Functions / API]
+        E --> F[Query API or AI]
+        F --> G[Result 0 or 1]
     end
     subgraph Evaluate["Evaluate"]
         G --> H[OracleConsumer / FunctionsConsumer]
         H --> I[CREWorkflow.resolveFromOracle]
         I --> J[PredictionMarket.resolveMarket]
-        J --> K[Usuarios claimPayout]
+        J --> K[Users claimPayout]
     end
     Compute --> Report --> Evaluate
 ```
 
-| Fase | Descripción |
-|------|-------------|
-| **Compute** | El usuario crea el mercado; el contrato registra closeTime y resolveTime. |
-| **Report** | Chainlink Functions consulta API/AI y devuelve 0 o 1. |
-| **Evaluate** | El resultado se envía al contrato; se resuelve el mercado y se permiten claims. |
+| Phase | Description |
+|-------|-------------|
+| **Compute** | User creates market; contract registers closeTime and resolveTime. |
+| **Report** | Chainlink Functions queries API/AI and returns 0 or 1. |
+| **Evaluate** | Result is sent to contract; market is resolved and claims are allowed. |
 
 ---
 
-## 5. Motor PHPE (Praesagium Hybrid Predictive Engine)
+## 5. PHPE Engine (Praesagium Hybrid Predictive Engine)
 
-### 5.1 Salidas
+### 5.1 Outputs
 
 - `probability` ∈ [0, 1]
-- `uncertainty` ∈ [0, 1] (proxy epistémico)
-- `model_version`, `model_hash` (auditabilidad)
+- `uncertainty` ∈ [0, 1] (epistemic proxy)
+- `model_version`, `model_hash` (auditability)
 
 ### 5.2 Pipeline
 
 ```mermaid
 flowchart LR
-    A[Serie temporal] --> B[Normalizar]
-    B --> C[Causal / latente]
-    C --> D[Encoder temporal]
-    D --> E[Cabeza bayesiana]
-    E --> F[Calibrar]
+    A[Time series] --> B[Normalize]
+    B --> C[Causal / latent]
+    C --> D[Temporal encoder]
+    D --> E[Bayesian head]
+    E --> F[Calibrate]
     F --> G[Probability + uncertainty]
 ```
 
-- **Capa de datos** — Normalización y preparación de features.
-- **Capa causal** — DAG opcional para estructura de dominio.
-- **Encoder temporal** — Embedding de series temporales.
-- **Cabeza bayesiana** — Ensemble de probabilidad e incertidumbre.
-- **Calibración** — Temperature scaling para probabilidades fiables.
+- **Data layer** — Normalization and feature preparation.
+- **Causal layer** — Optional DAG for domain structure.
+- **Temporal encoder** — Time-series embedding.
+- **Bayesian head** — Ensemble for probability and uncertainty.
+- **Calibration** — Temperature scaling for reliable probabilities.
 
-PHPE corre **off-chain** y se usa en proceso por el backend.
+PHPE runs **off-chain** and is used in-process by the backend.
 
-### 5.3 Propiedad intelectual y patentes
+### 5.3 Intellectual Property and Patents
 
-El PHPE combina técnicas propias:
+PHPE combines proprietary techniques:
 
-- **Fusión híbrida** — Sentiment (Gemini/HuggingFace), precios (Binance, Chainlink) y salida PHPE en una probabilidad calibrada.
-- **Incertidumbre calibrada** — Estimación epistémica junto a la probabilidad puntual.
-- **Pipeline modular** — Cada etapa es testeable y reemplazable.
-- **Frontera on-chain / off-chain** — Resolución vía Chainlink CRE; PHPE off-chain alimenta la API.
+- **Hybrid fusion** — Sentiment (Gemini/HuggingFace), prices (Binance, Chainlink), and PHPE output into a single calibrated probability.
+- **Calibrated uncertainty** — Epistemic estimation alongside point probability.
+- **Modular pipeline** — Each stage is testable and replaceable.
+- **On-chain / off-chain boundary** — Resolution via Chainlink CRE; PHPE off-chain feeds the API.
 
-**Consideraciones de patente:** La combinación de técnicas en contexto de mercados de predicción puede ser patentable. Consultar abogado de patentes. Mantener documentación de diseño, métricas y comparaciones con métodos base.
+**Patent considerations:** The combination of techniques in a prediction-market context may be patentable. Consult a patent attorney. Maintain design documentation, metrics, and comparisons with baseline methods.
 
 ---
 
-## 6. Flujos de datos
+## 6. Data Flows
 
-### 6.1 Ciclo de vida del mercado
+### 6.1 Market Lifecycle
 
 ```mermaid
 flowchart TD
-    Create[Crear mercado] --> Open[Abierto]
+    Create[Create market] --> Open[Open]
     Open --> Bets[Place bets]
-    Bets --> Lock[Lock cerca de closeTime]
-    Lock --> Resolve[Resolver en resolveTime]
+    Bets --> Lock[Lock near closeTime]
+    Lock --> Resolve[Resolve at resolveTime]
     Resolve --> Payout[Claim payouts]
 ```
 
-### 6.2 On-chain vs off-chain
+### 6.2 On-chain vs Off-chain
 
 | On-chain | Off-chain |
 |----------|-----------|
-| Creación, apuestas, resolución, pagos | Predicciones PHPE, sentiment AI, agregación reputación |
-| Estado y eventos del contrato | API backend, PostgreSQL, indexador de eventos |
-| Callback oráculo para resolución | Chainlink Functions / Automation, Gemini / Hugging Face |
+| Creation, bets, resolution, payouts | PHPE predictions, AI sentiment, reputation aggregation |
+| Contract state and events | Backend API, PostgreSQL, event indexer |
+| Oracle callback for resolution | Chainlink Functions / Automation, Gemini / Hugging Face |
 
 ---
 
-## 7. Resumen de seguridad
+## 7. Security Summary
 
-- **Contratos** — Resolver con permisos; resolución inmutable. `OracleConsumer.oracleCallback` restringido a `authorizedCallback`.
-- **PHPE** — Determinista, versionado, hash para trazabilidad.
-- **Backend** — Tipado Rust, validación de inputs, secrets en env.
-- **AI** — Claves en env; tratar la salida de AI como un input, no autoridad única.
+- **Contracts** — Permissioned resolver; resolution immutable. `OracleConsumer.oracleCallback` restricted to `authorizedCallback`.
+- **PHPE** — Deterministic, versioned, hash for traceability.
+- **Backend** — Rust type safety, input validation, secrets in env.
+- **AI** — Keys in env; treat AI output as one input, not sole authority.
 
-Para API, configuración y despliegue, ver [development-and-deployment.md](development-and-deployment.md).
+For API, configuration, and deployment, see [development-and-deployment.md](development-and-deployment.md).

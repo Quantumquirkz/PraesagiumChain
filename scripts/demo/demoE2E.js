@@ -101,7 +101,10 @@ async function main() {
   await (await pm.placeBet(marketId, 1, { value: hre.ethers.parseEther("0.001") })).wait();
   console.log("   Bet placed.");
 
-  console.log("3. Resolving (fetching outcome from backend /api/ai/sentiment)...");
+  console.log("3. Advancing time to resolveTime and resolving...");
+  await hre.network.provider.send("evm_increaseTime", [resolveTime - now + 1]);
+  await hre.network.provider.send("evm_mine");
+
   let outcome;
   try {
     outcome = await fetchOutcome(apiBase, textToAnalyze);
