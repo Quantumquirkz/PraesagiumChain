@@ -25,9 +25,12 @@ async function main() {
 
   await cre.setOracle(oracleAddr);
   await pm.setResolver(creAddr);
+  await oracle.setAuthorizedCallback(deployer.address);
 
   console.log("\nDeployment complete. Add to .env:");
   console.log(`PREDICTION_MARKET_ADDRESS=${pmAddr}`);
+  console.log(`CRE_WORKFLOW_ADDRESS=${creAddr}`);
+  console.log(`ORACLE_CONSUMER_ADDRESS=${oracleAddr}`);
   console.log(`RPC_URL=http://127.0.0.1:8545`);
 }
 

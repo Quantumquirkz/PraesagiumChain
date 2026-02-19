@@ -24,6 +24,7 @@ describe("CREWorkflow", function () {
 
     await creWorkflow.setOracle(await oracleConsumer.getAddress());
     await predictionMarket.setResolver(await creWorkflow.getAddress());
+    await oracleConsumer.setAuthorizedCallback(owner.address);
   });
 
   it("should create a market and allow bets", async function () {
@@ -60,8 +61,8 @@ describe("CREWorkflow", function () {
   });
 
   it("should resolve the market when the oracle calls oracleCallback", async function () {
-    // OracleConsumer.oracleCallback can be called by anyone in this contract;
-    // in production only the Chainlink Router should be able to call it.
+    // oracleCallback restricted to authorizedCallback (set to owner in setup).
+    // In production, set to Chainlink Functions Router.
     await expect(
       oracleConsumer.connect(owner).oracleCallback(marketId, 1)
     ).to.be.reverted; // fails because resolveTime has not been reached yet

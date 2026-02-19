@@ -7,7 +7,7 @@ import "./interfaces/IReputationSystem.sol";
 /// @title PredictionMarket
 /// @notice Main contract for prediction markets in PraesagiumChain.
 contract PredictionMarket is IPredictionMarket {
-    // ====== Almacenamiento interno ======
+    // ====== Internal storage ======
 
     struct MarketInternal {
         string question;
@@ -20,7 +20,7 @@ contract PredictionMarket is IPredictionMarket {
         address creator;
     }
 
-    /// @notice Siguiente ID de mercado a asignar.
+    /// @notice Next market ID to assign.
     uint256 private _nextMarketId = 1;
 
     /// @notice Mercados por ID.
@@ -123,7 +123,7 @@ contract PredictionMarket is IPredictionMarket {
         emit BetPlaced(marketId, msg.sender, outcome, msg.value);
     }
 
-    /// @notice Bloquea un mercado para evitar nuevas apuestas (normalmente llamado cerca de `closeTime`).
+    /// @notice Locks a market to prevent new bets (typically called near `closeTime`).
     function lockMarket(uint256 marketId) external onlyResolver {
         MarketInternal storage m = _markets[marketId];
         if (bytes(m.question).length == 0) revert MarketDoesNotExist(marketId);

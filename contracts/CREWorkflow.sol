@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "./interfaces/IPredictionMarket.sol";
 
 /// @title CREWorkflow
-/// @notice Puente simplificado entre el flujo CRE/Oracle externo y el contrato PredictionMarket.
+/// @notice Simplified bridge between external CRE/Oracle flow and PredictionMarket contract.
 contract CREWorkflow {
     IPredictionMarket public immutable predictionMarket;
     address public owner;
@@ -37,7 +37,7 @@ contract CREWorkflow {
         // We use a low-level call; PredictionMarket exposes resolveMarket publicly.
         // Para simplicidad asumimos que PredictionMarket expone `resolveMarket`.
 
-        // ABI-encode y hacer low-level call para no acoplar interfaces adicionales.
+        // ABI-encode and low-level call to avoid extra interface coupling.
         (bool ok, ) = address(predictionMarket).call(
             abi.encodeWithSignature("resolveMarket(uint256,uint8)", marketId, uint8(outcome))
         );

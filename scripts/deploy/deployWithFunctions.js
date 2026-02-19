@@ -55,12 +55,14 @@ async function main() {
     console.log("CREWorkflow oracle set to Functions Consumer.");
   } else {
     await cre.setOracle(oracleAddr);
+    await oracle.setAuthorizedCallback(deployer.address);
     console.log("CREWorkflow oracle set to OracleConsumer (local).");
   }
 
   console.log("\nDeployment complete. Add to .env:");
   console.log(`PREDICTION_MARKET_ADDRESS=${pmAddr}`);
   console.log(`CRE_WORKFLOW_ADDRESS=${await cre.getAddress()}`);
+  console.log(`ORACLE_CONSUMER_ADDRESS=${oracleAddr}`);
   if (process.env.RPC_URL) console.log(`RPC_URL=${process.env.RPC_URL}`);
 }
 
