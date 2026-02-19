@@ -10,11 +10,12 @@ artifacts/
 dist/
 build/
 
-# Environment
+# Environment (templates config/env.example, cre/.env.example are committed)
 .env
 .env.*
 **/.env
 **/.env.*
+!**/.env.example
 
 # IDE
 .DS_Store
@@ -35,6 +36,11 @@ backend-rust/data/
 # Temporary files
 *.tmp
 *.bak
+tmp.js
+**/tmp.js
+
+# CRE build artifacts
+cre/**/tmp.js
 
 # Supabase CLI
 supabase/.temp/
