@@ -15,8 +15,34 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         run: npm install
-      - name: Run tests
+      - name: Run contract tests
         run: npm test
+      - name: Security audit (npm)
+        run: npm audit --audit-level=high || true
 
-  # TODO: Add deploy job to target network (mainnet/Polygon/etc.)
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run backend tests
+        run: npm run test:backend
+      - name: Security audit (cargo)
+        run: |
+          cargo install cargo-audit 2>/dev/null || true
+          cd backend-rust && cargo audit || true
 

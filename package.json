@@ -4,15 +4,20 @@
   "private": true,
   "scripts": {
     "test": "hardhat test",
-    "compile": "hardhat compile",
+    "compile": "hardhat compile && npm run sync:cre-abi",
     "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy/deployWithFunctions.js --network sepolia",
     "deploy:polygon": "hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
     "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
     "verify:polygon": "hardhat run scripts/verify/verify.js --network polygonAmoy",
-    "backend": "cargo run -C backend-rust -p praesagium-backend",
-    "db:push": "npx supabase db push"
+    "backend": "node scripts/run-backend.js",
+    "db:push": "npx supabase db push",
+    "demo": "hardhat run scripts/demo/demoE2E.js --network localhost",
+    "test:backend": "cd backend-rust && cargo test",
+    "test:all": "npm test && npm run test:backend",
+    "sync:cre-abi": "node scripts/syncCreAbi.js",
+    "audit": "npm audit && cd backend-rust && cargo audit 2>/dev/null || true"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
