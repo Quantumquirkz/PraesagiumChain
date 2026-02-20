@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+**/.venv/
 **/target/
 **/Cargo.lock
 
@@ -16,6 +17,9 @@ build/
 **/.env
 **/.env.*
 !**/.env.example
+
+# CRE secrets (never commit)
+cre/secrets.yaml
 
 # IDE
 .DS_Store

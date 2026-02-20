@@ -8,5 +8,8 @@
   "dependencies": {
     "@chainlink/cre-sdk": "^1.0.7",
     "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/minimatch": "^5.1.2"
   }
 }

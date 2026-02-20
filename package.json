@@ -7,6 +7,7 @@
     "compile": "hardhat compile && npm run sync:cre-abi",
     "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
+    "deploy:private": "hardhat run scripts/deploy/deployPrivateMarket.js --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy/deployWithFunctions.js --network sepolia",
     "deploy:polygon": "hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
     "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/minimatch": "^5.1.2",
     "hardhat": "^2.22.0"
   },
   "dependencies": {
