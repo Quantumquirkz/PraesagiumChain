@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
     let ai_provider: Arc<dyn crate::services::ai::AiProvider> = match config.ai_provider.as_str() {
         "gemini" => {
             if let Some(key) = config.gemini_api_key.clone() {
-                let model = config.gemini_model.clone().unwrap_or_else(|| "gemini-1.5-flash".to_string());
+                let model = config.gemini_model.clone().unwrap_or_else(|| "gemini-2.0-flash".to_string());
                 Arc::new(GeminiProvider::new(key, model))
             } else {
                 Arc::new(MockAiProvider)
@@ -74,8 +74,9 @@ async fn main() -> anyhow::Result<()> {
     };
     let ai_service = Arc::new(AiService::new(ai_provider));
     let hybrid_predictor = Arc::new(HybridPredictor::new(ai_service.clone(), cache.clone()));
+    let config_arc: Arc<Config> = Arc::new(config);
 
-    if let (Some(rpc_url), Some(contract_addr)) = (&config.rpc_url, &config.prediction_market_address) {
+    if let (Some(rpc_url), Some(contract_addr)) = (&config_arc.rpc_url, &config_arc.prediction_market_address) {
         if !rpc_url.is_empty() && !contract_addr.trim().is_empty() {
             let rpc_url = rpc_url.clone();
             let contract_address: ethers::types::Address = contract_addr
@@ -84,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
                 .map_err(|_| anyhow::anyhow!("PREDICTION_MARKET_ADDRESS is not a valid Ethereum address (0x + 40 hex)"))?;
             let market_service_clone = market_service.clone();
             let reputation_service_clone = reputation_service.clone();
-            let start_block = config.start_block;
+            let start_block = config_arc.start_block;
 
             tokio::spawn(async move {
             if let Ok(mut indexer) = crate::services::indexer::EventIndexer::new(
@@ -130,15 +131,18 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/sports/winner", get(api::report::sports_winner))
         .route("/api/reputation/:address", get(api::reputation::get_reputation))
         .route("/api/metrics", get(api::metrics::get_metrics))
+        .route("/api/sources", get(api::sources::list_sources))
+        .route("/api/sources/fetch", get(api::sources::fetch))
+        .layer(Extension(config_arc.clone()))
         .layer(Extension(market_service))
         .layer(Extension(prediction_service))
         .layer(Extension(ai_service))
         .layer(Extension(hybrid_predictor))
         .layer(Extension(reputation_service))
         .layer(Extension(cache))
-        .layer(cors_layer(&config));
+        .layer(cors_layer(config_arc.as_ref()));
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    let addr = format!("0.0.0.0:{}", config_arc.port);
     info!("Backend listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;

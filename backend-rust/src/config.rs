@@ -12,6 +12,8 @@ pub struct Config {
     pub hf_model: Option<String>,
     pub gemini_api_key: Option<String>,
     pub gemini_model: Option<String>,
+    pub finnhub_api_key: Option<String>,
+    pub newsapi_key: Option<String>,
     /// Comma-separated origins for CORS (e.g. "https://app.example.com,http://localhost:3000"). If unset, allows all.
     pub cors_origins: Option<Vec<String>>,
 }
@@ -51,6 +53,8 @@ impl Config {
             hf_model: std::env::var("HF_MODEL").ok(),
             gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
+            finnhub_api_key: std::env::var("FINNHUB_API_KEY").ok(),
+            newsapi_key: std::env::var("NEWSAPI_KEY").ok(),
             cors_origins,
         })
     }
