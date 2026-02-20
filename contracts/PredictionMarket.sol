@@ -23,7 +23,7 @@ contract PredictionMarket is IPredictionMarket {
     /// @notice Next market ID to assign.
     uint256 private _nextMarketId = 1;
 
-    /// @notice Mercados por ID.
+    /// @notice Markets by ID.
     mapping(uint256 => MarketInternal) private _markets;
 
     /// @notice Stake de cada usuario por mercado y resultado.
@@ -42,7 +42,7 @@ contract PredictionMarket is IPredictionMarket {
     /// @notice Optional reputation system contract.
     IReputationSystem public reputationSystem;
 
-    // ====== Modificadores ======
+    // ====== Modifiers ======
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -69,7 +69,7 @@ contract PredictionMarket is IPredictionMarket {
         reputationSystem = IReputationSystem(rep);
     }
 
-    // ====== Funciones IPredictionMarket ======
+    // ====== IPredictionMarket functions ======
 
     /// @inheritdoc IPredictionMarket
     function createMarket(
@@ -133,7 +133,7 @@ contract PredictionMarket is IPredictionMarket {
         emit MarketLocked(marketId);
     }
 
-    /// @notice Resuelve un mercado con el resultado definitivo.
+    /// @notice Resolves a market with the final outcome.
     /// @dev Intended to be called by the CRE flow or authorized oracle.
     function resolveMarket(uint256 marketId, Outcome outcome) external onlyResolver {
         if (outcome != Outcome.Yes && outcome != Outcome.No) revert InvalidOutcome();
