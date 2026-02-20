@@ -77,25 +77,33 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 - **Event-driven resolution** — OracleConsumer → CREWorkflow → `resolveMarket`.
 - **CRE Workflow** as the on-chain orchestration layer.
 - **Blockchain + external API + LLM** — Backend calls Binance, Chainlink proxy, and AI services.
+- **Private Prediction Markets (Confidential Compute)** — Commit-reveal bets; CRE workflow for confidential resolution. See [docs/private-prediction-markets.md](docs/private-prediction-markets.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `contracts/CREWorkflow.sol` | CRE orchestration; receives oracle outcome, resolves market |
-| `contracts/OracleConsumer.sol` | Generic callback → CREWorkflow (simulation / Any API) |
-| `contracts/PredictionMarketFunctionsConsumer.sol` | Chainlink Functions client; `fulfillRequest` → CREWorkflow |
-| `contracts/PredictionMarket.sol` | Binary markets (Yes/No), bets, payouts |
-| `scripts/deploy/deployLocal.js` | Deploy PM, CRE, OracleConsumer (local) |
-| `scripts/deploy/deployWithFunctions.js` | Deploy with Functions Consumer when `FUNCTIONS_ROUTER` is set |
-| `scripts/simulateCRE.js` | CRE flow simulation (Node; optional: with backend for outcome) |
-| `scripts/inputs.json` | Example inputs for simulation (marketId, text_to_analyze, etc.) |
-| `backend-rust/scripts/ai/sentiment-analysis.js` | Sentiment script for Chainlink Functions (returns 0/1) |
-| `backend-rust/src/services/sources/chainlink.rs` | Chainlink price source (e.g. ETH/USD) |
-| `cre/praesagium-resolver/main.ts` | CRE workflow: CRON → HTTP `/api/ai/sentiment` → outcome |
+| [contracts/CREWorkflow.sol](contracts/CREWorkflow.sol) | CRE orchestration; receives oracle outcome, resolves market |
+| [contracts/OracleConsumer.sol](contracts/OracleConsumer.sol) | Generic callback → CREWorkflow (simulation / Any API) |
+| [contracts/PredictionMarketFunctionsConsumer.sol](contracts/PredictionMarketFunctionsConsumer.sol) | Chainlink Functions client; `fulfillRequest` → CREWorkflow |
+| [contracts/PredictionMarket.sol](contracts/PredictionMarket.sol) | Binary markets (Yes/No), bets, payouts |
+| [contracts/PrivatePredictionMarket.sol](contracts/PrivatePredictionMarket.sol) | Commit-reveal private markets (Confidential Compute) |
+| [scripts/deploy/deployLocal.js](scripts/deploy/deployLocal.js) | Deploy PM, CRE, OracleConsumer (local) |
+| [scripts/deploy/deployPrivateMarket.js](scripts/deploy/deployPrivateMarket.js) | Deploy PrivatePredictionMarket (local) |
+| [scripts/deploy/deployWithFunctions.js](scripts/deploy/deployWithFunctions.js) | Deploy with Functions Consumer when `FUNCTIONS_ROUTER` is set |
+| [scripts/simulateCRE.js](scripts/simulateCRE.js) | CRE flow simulation (Node; optional: with backend for outcome) |
+| [scripts/inputs.json](scripts/inputs.json) | Example inputs for simulation (marketId, text_to_analyze, etc.) |
+| [backend-rust/scripts/ai/sentiment-analysis.js](backend-rust/scripts/ai/sentiment-analysis.js) | Sentiment script for Chainlink Functions (returns 0/1) |
+| [backend-rust/src/services/sources/chainlink.rs](backend-rust/src/services/sources/chainlink.rs) | Chainlink price source (e.g. ETH/USD) |
+| [cre/praesagium-resolver/main.ts](cre/praesagium-resolver/main.ts) | CRE workflow: CRON → HTTP `/api/ai/sentiment` → outcome |
+| [cre/praesagium-resolver-confidential/main.ts](cre/praesagium-resolver-confidential/main.ts) | CRE workflow for Private markets (Confidential Compute) |
 
 **CRE flow simulation**
 
 - **With Node (local):** `node scripts/simulateCRE.js`. Optional: `API_BASE_URL=http://localhost:4000` when the backend is running; the script calls `/api/ai/sentiment` to get the outcome and simulates the Report step.
 - **With Chainlink CRE CLI:** `cd cre/praesagium-resolver && bun install` then `cd .. && cre workflow simulate praesagium-resolver --target staging-settings`. The workflow calls `/api/ai/sentiment` and computes outcome 0/1. See [cre/README.md](cre/README.md) and [Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows). Example inputs in `scripts/inputs.json`.
+
+- **Private Prediction Markets (Confidential Compute):** `npm run deploy:private` deploys PrivatePredictionMarket. Simulate: `cre workflow simulate praesagium-resolver-confidential --target staging-settings`. See [docs/private-prediction-markets.md](docs/private-prediction-markets.md).
+
+**Files that use Chainlink** — All components listed in the table above. Full list: [contracts/CREWorkflow.sol](contracts/CREWorkflow.sol), [contracts/OracleConsumer.sol](contracts/OracleConsumer.sol), [contracts/PredictionMarket.sol](contracts/PredictionMarket.sol), [contracts/PrivatePredictionMarket.sol](contracts/PrivatePredictionMarket.sol), [contracts/PredictionMarketFunctionsConsumer.sol](contracts/PredictionMarketFunctionsConsumer.sol), [cre/praesagium-resolver/main.ts](cre/praesagium-resolver/main.ts), [cre/praesagium-resolver-confidential/main.ts](cre/praesagium-resolver-confidential/main.ts), [backend-rust/scripts/ai/sentiment-analysis.js](backend-rust/scripts/ai/sentiment-analysis.js), [backend-rust/src/services/sources/chainlink.rs](backend-rust/src/services/sources/chainlink.rs).
 
 ---
 
@@ -105,6 +113,14 @@ This project follows [Chainlink Prediction Markets](https://chain.link/community
 |--------|------|
 | **Binance** | 24h price (BTCUSDT, ETHUSDT, etc.) |
 | **Chainlink** | ETH/USD proxy (production Data Feed) |
+| **Cryptocompare** | Crypto prices, 24h change |
+| **Kraken** | Crypto prices (public API) |
+| **Exchange Rate API** | Forex EUR/USD |
+| **Finnhub** | Stocks/crypto (requires FINNHUB_API_KEY) |
+| **NewsAPI** | News headlines (requires NEWSAPI_KEY) |
+| **CoinGecko** | Prices (price-above resolution) |
+| **Open-Meteo** | Weather (weather-rained resolution) |
+| **API-Football** | Sports (sports-winner resolution) |
 | **X / Reddit** | Text → AI sentiment (Gemini) |
 | **PHPE** | Time-series prediction engine |
 
@@ -154,6 +170,13 @@ To apply the schema to Supabase from the terminal (with the project linked): `np
 | POST | `/api/ai/sentiment` | Sentiment (Gemini) |
 | POST | `/api/predict` | PHPE prediction from time series |
 | POST | `/api/predict/hybrid` | Hybrid: series + sentiment + Binance/Chainlink |
+| GET | `/api/sources` | List available data sources |
+| GET | `/api/sources/fetch?source=X&...` | Fetch from source (binance, cryptocompare, kraken, exchangerate, finnhub, newsapi) |
+
+**Example — fetch from Cryptocompare**
+```bash
+curl "http://localhost:4000/api/sources/fetch?source=cryptocompare&fsym=BTC&tsym=USD"
+```
 
 **Example — hybrid (sentiment + Binance)**
 
