@@ -67,7 +67,7 @@ describe("CREWorkflow", function () {
       oracleConsumer.connect(owner).oracleCallback(marketId, 1)
     ).to.be.reverted; // fails because resolveTime has not been reached yet
 
-    // Avanzar tiempo (Hardhat)
+    // Advance time (Hardhat)
     await hre.network.provider.send("evm_increaseTime", [7200]);
     await hre.network.provider.send("evm_mine", []);
 

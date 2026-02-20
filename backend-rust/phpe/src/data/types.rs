@@ -18,7 +18,7 @@ impl EventFeatures {
     }
 }
 
-/// Secuencia temporal de features (ordenada por tiempo).
+/// Temporal sequence of features (ordered by time).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TimeSeriesSample {
     pub timestamps: Vec<u64>,

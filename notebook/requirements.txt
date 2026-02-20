@@ -1,0 +1,5 @@
+# Dependencies for the simulation and efficiency notebook
+# Use within a venv: python3 -m venv .venv && source .venv/bin/activate
+requests>=2.28.0
+matplotlib>=3.6.0
+ipykernel>=6.25.0
