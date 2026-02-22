@@ -255,16 +255,16 @@ For a **submission-ready checklist** (contract address, testnet, Scan URL, demo 
 
 ## Deployed contracts
 
-When you deploy to a public network (Sepolia, Polygon, etc.), add addresses and **Scan URLs** here and in [docs/development-and-deployment.md](docs/development-and-deployment.md) § 6:
+When you deploy to a public network, add addresses and **Scan URLs** here. See [docs/deploy-testnet.md](docs/deploy-testnet.md) for step-by-step instructions.
 
 | Contract | Network | Address | Explorer |
 |----------|---------|---------|----------|
-| PredictionMarket | — | — | [Etherscan](https://sepolia.etherscan.io/address/) / [Polygonscan](https://polygonscan.com/address/) |
-| CREWorkflow | — | — | — |
-| OracleConsumer | — | — | — |
+| PredictionMarket | Sepolia | `0xf2397b5827860b361427240d1D1F6F89e9bF197f` | [View](https://sepolia.etherscan.io/address/0xf2397b5827860b361427240d1D1F6F89e9bF197f) |
+| CREWorkflow | Sepolia | `0x3724BD048C11f50e01900061D8D50022A7c890c7` | [View](https://sepolia.etherscan.io/address/0x3724BD048C11f50e01900061D8D50022A7c890c7) |
+| OracleConsumer | Sepolia | `0x153D088Eabb57b021503Aa1192F511B14e8819D8` | [View](https://sepolia.etherscan.io/address/0x153D088Eabb57b021503Aa1192F511B14e8819D8) |
 | PredictionMarketFunctionsConsumer | — | — | (only if using `deployWithFunctions.js`) |
 
-Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.etherscan.io/address/0x1234...)`.
+**Deploy:** `npm run deploy:sepolia` (requires `PRIVATE_KEY` with Sepolia ETH, `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY`). **Verify:** `npm run verify:sepolia`.
 
 ## Documentation
 
@@ -279,7 +279,6 @@ Example: `PredictionMarket | Sepolia | 0x1234... | [View](https://sepolia.ethers
 
 ## Authors
 
-- **Jhuomar Boskoll Quintero**
 - **Querube Yuneth Ariza Ríos**
 
 ## License
