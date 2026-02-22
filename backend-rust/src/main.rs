@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod constants;
 mod db;
 mod error;
 mod models;
@@ -13,13 +14,15 @@ use axum::{
     routing::{get, post, patch},
     Router,
 };
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tracing::info;
 
 use crate::config::Config;
 use crate::db::Database;
-use crate::services::{AiService, Cache, GeminiProvider, HuggingFaceProvider, HybridPredictor, MarketService, MockAiProvider, PredictionService, ReputationService};
+use crate::services::{AiService, Cache, GeminiProvider, HuggingFaceProvider, HybridPredictor, MarketService, MockAiProvider, PredictionService, ReputationService, SourcesRegistry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -39,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
     }
     dotenvy::dotenv().ok();
     let config = Config::from_env()?;
-    let db = Database::new(&config.database_url)
+    let db = Database::new(&config.database_url, config.db_pool_size)
         .await
         .map_err(|e| anyhow::anyhow!("DB connection failed: {}", e))?;
     db.migrate()
@@ -51,7 +54,11 @@ async fn main() -> anyhow::Result<()> {
     let db_clone = db.clone();
     let db_rep = db.clone();
     let market_service = Arc::new(MarketService::new(db));
-    let prediction_service = Arc::new(PredictionService::new(db_clone, cache.clone()));
+    let prediction_service = Arc::new(PredictionService::new(
+        db_clone,
+        cache.clone(),
+        config.prediction_cache_ttl,
+    ));
     let reputation_service = Arc::new(ReputationService::new(db_rep));
 
     let ai_provider: Arc<dyn crate::services::ai::AiProvider> = match config.ai_provider.as_str() {
@@ -74,7 +81,20 @@ async fn main() -> anyhow::Result<()> {
     };
     let ai_service = Arc::new(AiService::new(ai_provider));
     let hybrid_predictor = Arc::new(HybridPredictor::new(ai_service.clone(), cache.clone()));
-    let config_arc: Arc<Config> = Arc::new(config);
+    let config_arc: Arc<Config> = Arc::new(config.clone());
+
+    let http_client: Arc<reqwest::Client> = Arc::new(
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("reqwest client"),
+    );
+
+    let sources_registry = Arc::new(SourcesRegistry::new(
+        (*http_client).clone(),
+        config_arc.finnhub_api_key.clone(),
+        config_arc.newsapi_key.clone(),
+    ));
 
     if let (Some(rpc_url), Some(contract_addr)) = (&config_arc.rpc_url, &config_arc.prediction_market_address) {
         if !rpc_url.is_empty() && !contract_addr.trim().is_empty() {
@@ -113,6 +133,14 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(config_arc.rate_limit_per_second)
+            .burst_size(config_arc.rate_limit_burst)
+            .finish()
+            .expect("invalid rate limit config"),
+    );
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/markets", get(api::markets::list).post(api::markets::create))
@@ -133,6 +161,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/metrics", get(api::metrics::get_metrics))
         .route("/api/sources", get(api::sources::list_sources))
         .route("/api/sources/fetch", get(api::sources::fetch))
+        .layer(Extension(sources_registry))
+        .layer(Extension(http_client.clone()))
         .layer(Extension(config_arc.clone()))
         .layer(Extension(market_service))
         .layer(Extension(prediction_service))
@@ -140,12 +170,13 @@ async fn main() -> anyhow::Result<()> {
         .layer(Extension(hybrid_predictor))
         .layer(Extension(reputation_service))
         .layer(Extension(cache))
+        .layer(GovernorLayer { config: governor_conf })
         .layer(cors_layer(config_arc.as_ref()));
 
     let addr = format!("0.0.0.0:{}", config_arc.port);
     info!("Backend listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
 
     Ok(())
 }

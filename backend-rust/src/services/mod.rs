@@ -5,6 +5,7 @@ pub mod indexer;
 pub mod ai;
 pub mod reputation_service;
 pub mod sources;
+mod sources_registry;
 pub mod hybrid;
 
 pub use market::MarketService;
@@ -13,3 +14,4 @@ pub use cache::Cache;
 pub use ai::{AiService, GeminiProvider, HuggingFaceProvider, MockAiProvider};
 pub use reputation_service::{CreatorReputation, ReputationService};
 pub use hybrid::HybridPredictor;
+pub use sources_registry::SourcesRegistry;

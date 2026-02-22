@@ -4,10 +4,6 @@ use axum::{extract::Query, Extension, Json};
 use std::sync::Arc;
 
 use crate::error::Result;
-use crate::services::sources::{
-    BinanceSource, ChainlinkSource, CryptocompareSource, ExchangeRateSource,
-    FinnhubSource, KrakenSource, NewsApiSource,
-};
 
 pub async fn list_sources() -> Json<Vec<SourceInfo>> {
     Json(vec![
@@ -85,14 +81,13 @@ pub struct FetchResponse {
 
 pub async fn fetch(
     Query(q): Query<FetchQuery>,
-    Extension(config): Extension<Arc<crate::config::Config>>,
+    Extension(registry): Extension<Arc<crate::services::SourcesRegistry>>,
 ) -> Result<Json<FetchResponse>> {
     let source = q.source.to_lowercase();
     let resp = match source.as_str() {
         "binance" => {
             let sym = q.symbol.as_deref().unwrap_or("BTCUSDT");
-            let s = BinanceSource::new();
-            let sig = s.fetch_ticker(sym).await?;
+            let sig = registry.binance.fetch_ticker(sym).await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -101,8 +96,7 @@ pub async fn fetch(
             }
         }
         "chainlink" => {
-            let s = ChainlinkSource::new();
-            let sig = s.fetch_eth_usd().await?;
+            let sig = registry.chainlink.fetch_eth_usd().await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -113,8 +107,7 @@ pub async fn fetch(
         "cryptocompare" => {
             let fsym = q.fsym.as_deref().unwrap_or("BTC");
             let tsym = q.tsym.as_deref().unwrap_or("USD");
-            let s = CryptocompareSource::new();
-            let sig = s.fetch_ticker(fsym, tsym).await?;
+            let sig = registry.cryptocompare.fetch_ticker(fsym, tsym).await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -124,8 +117,7 @@ pub async fn fetch(
         }
         "kraken" => {
             let pair = q.pair.as_deref().unwrap_or("XBTUSD");
-            let s = KrakenSource::new();
-            let sig = s.fetch_ticker(pair).await?;
+            let sig = registry.kraken.fetch_ticker(pair).await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -134,8 +126,7 @@ pub async fn fetch(
             }
         }
         "exchangerate" => {
-            let s = ExchangeRateSource::new();
-            let sig = s.fetch_eur_usd().await?;
+            let sig = registry.exchangerate.fetch_eur_usd().await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -145,8 +136,7 @@ pub async fn fetch(
         }
         "finnhub" => {
             let sym = q.symbol.as_deref().unwrap_or("AAPL");
-            let s = FinnhubSource::new(config.finnhub_api_key.clone());
-            let sig = s.fetch_quote(sym).await?;
+            let sig = registry.finnhub.fetch_quote(sym).await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
@@ -157,8 +147,7 @@ pub async fn fetch(
         "newsapi" => {
             let query = q.query.as_deref().unwrap_or("bitcoin");
             let country = q.country.as_deref().unwrap_or("us");
-            let s = NewsApiSource::new(config.newsapi_key.clone());
-            let sig = s.fetch_headlines(query, country).await?;
+            let sig = registry.newsapi.fetch_headlines(query, country).await?;
             FetchResponse {
                 source: sig.source,
                 price_change_24h: sig.price_change_24h,
