@@ -108,7 +108,9 @@ Copy addresses to `.env`: `PREDICTION_MARKET_ADDRESS`, `ORACLE_CONSUMER_ADDRESS`
 
 ### 3.2 Testnet (Sepolia / Polygon Amoy)
 
-1. Configure `.env`: `PRIVATE_KEY`, `SEPOLIA_RPC_URL`, `ETHERSCAN_API_KEY` (or Polygon equivalent).
+See **[docs/deploy-testnet.md](deploy-testnet.md)** for a full step-by-step guide.
+
+1. Configure `.env`: `PRIVATE_KEY` (wallet with testnet ETH), `SEPOLIA_RPC_URL` (Alchemy recommended), `ETHERSCAN_API_KEY`.
 2. Get testnet ETH: [sepoliafaucet.com](https://sepoliafaucet.com), [faucet.polygon.technology](https://faucet.polygon.technology).
 3. Deploy:
    ```bash
@@ -262,12 +264,12 @@ curl -X POST http://localhost:4000/api/predict/hybrid -H "Content-Type: applicat
 
 ## 7. Submission Checklist (hackathon)
 
-| Item | Estado |
+| Item | Status |
 |------|--------|
 | README.md | ✅ |
 | CRE workflow | ✅ |
 | Contract addresses | ⬜ Fill after testnet deploy |
-| Red blockchain | ⬜ Sepolia / Polygon Amoy |
+| Blockchain network | ⬜ Sepolia / Polygon Amoy |
 | Scan URL (Etherscan, etc.) | ⬜ |
 | Demo video 2–5 min | ⬜ |
 | Public repo | ✅ |
