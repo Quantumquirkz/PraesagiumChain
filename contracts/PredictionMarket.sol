@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IPredictionMarket.sol";
 import "./interfaces/IReputationSystem.sol";
 
 /// @title PredictionMarket
 /// @notice Main contract for prediction markets in PraesagiumChain.
-contract PredictionMarket is IPredictionMarket {
+contract PredictionMarket is IPredictionMarket, ReentrancyGuard {
     // ====== Internal storage ======
 
     struct MarketInternal {
@@ -26,7 +27,7 @@ contract PredictionMarket is IPredictionMarket {
     /// @notice Markets by ID.
     mapping(uint256 => MarketInternal) private _markets;
 
-    /// @notice Stake de cada usuario por mercado y resultado.
+    /// @notice Stake per user per market and outcome.
     mapping(uint256 => mapping(address => uint256)) private _yesStakes;
     mapping(uint256 => mapping(address => uint256)) private _noStakes;
 
@@ -154,13 +155,11 @@ contract PredictionMarket is IPredictionMarket {
     }
 
     /// @inheritdoc IPredictionMarket
-    function claimPayout(uint256 marketId) external override {
+    function claimPayout(uint256 marketId) external override nonReentrant {
         MarketInternal storage m = _markets[marketId];
         if (bytes(m.question).length == 0) revert MarketDoesNotExist(marketId);
         if (m.status != MarketStatus.Resolved) revert MarketNotClosed(marketId);
-        if (_claimed[marketId][msg.sender]) {
-            revert("Already claimed");
-        }
+        if (_claimed[marketId][msg.sender]) revert AlreadyClaimed();
 
         uint256 userYes = _yesStakes[marketId][msg.sender];
         uint256 userNo = _noStakes[marketId][msg.sender];
@@ -176,7 +175,7 @@ contract PredictionMarket is IPredictionMarket {
 
         if (payout > 0) {
             (bool sent, ) = msg.sender.call{value: payout}("");
-            require(sent, "Transfer failed");
+            if (!sent) revert TransferFailed();
         }
 
         emit PayoutClaimed(marketId, msg.sender, payout);

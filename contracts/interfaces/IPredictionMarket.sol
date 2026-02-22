@@ -41,6 +41,8 @@ interface IPredictionMarket {
     error MarketNotClosed(uint256 marketId);
     error InvalidOutcome();
     error ZeroStake();
+    error AlreadyClaimed();
+    error TransferFailed();
 
     // ====== Eventos ======
 
