@@ -1,37 +1,59 @@
 # Frontend specification — PraesagiumChain
 
-Extremely detailed specification for the PraesagiumChain dApp frontend. It aligns with the existing backend API, smart contracts, and data models, and adds new features for a complete product.
+**Audience:** Frontend developer building the PraesagiumChain dApp. This document is the single source of truth for requirements, APIs, contracts, UI/UX, and creative enhancements.
+
+---
+
+## Quick start for the frontend developer
+
+1. **Read this document end-to-end** — every API, contract call, type, and page is specified here.
+2. **Copy** `config/frontend.env.example` to `frontend/.env.local` and fill with backend URL, chain ID, RPC, and contract address.
+3. **Copy** the PredictionMarket ABI from `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`.
+4. **Start backend** — `npm run backend` (port 4000) and **Hardhat node** — `npm run node` (port 8545) if using local chain.
+5. **Follow the implementation checklist** (§ 12) in order.
+6. **Prioritize:** Layout → Dashboard → Market detail → Create → Bet/Claim → Reputation → My positions → Creative features.
 
 ---
 
 ## 1. Objective and scope
 
-**Goal:** A production-ready frontend that allows users to:
+### 1.1 Goal
 
-- Connect a wallet (EVM), switch networks, and see balance.
-- View a **dashboard** with global stats and a **paginated list of markets** (with filters).
-- Open **market detail** with question, status, stakes, countdowns, predictions (including PHPE uncertainty), and user position.
-- **Create** a new prediction market (on-chain) and optionally sync it to the backend.
-- **Place bets** (Yes/No) with a chosen amount (ETH).
-- See **resolution** status and **claim payouts** for resolved markets where the user won.
-- Use **extra features:** reputation profile, sentiment/hybrid preview, “My positions”, theme toggle, and accessibility.
+Build a production-ready, visually polished frontend that lets users:
 
-**Out of scope for v1:** Private markets participant management, conditional market creation UI, tokenized (NFT) market trading. These can be added later following the same patterns.
+- Connect an EVM wallet, switch networks, and see their balance
+- Browse a **dashboard** with global stats and a **paginated, filterable list of prediction markets**
+- View **market detail** with question, status, stakes, countdowns, predictions (including PHPE uncertainty), and their position
+- **Create** new prediction markets on-chain and optionally sync them to the backend
+- **Place bets** (Yes/No) with a chosen amount in ETH
+- See **resolution** status and **claim payouts** for resolved markets where they won
+- Use **advanced features:** reputation profiles, AI sentiment/hybrid preview, "My positions," live data sources, theme toggle, and full accessibility
+
+### 1.2 Out of scope for v1
+
+- Private markets participant management (commit-reveal UI)
+- Conditional market creation UI
+- Tokenized (NFT) market trading
+- Mobile native apps
+
+These can be added later using the same patterns described here.
 
 ---
 
 ## 2. Tech stack (recommended)
 
 | Layer | Technology | Purpose |
-|-------|------------|--------|
-| **Framework** | Next.js 14+ (App Router) | SSR/SSG optional, API routes for proxy if needed, env for `NEXT_PUBLIC_*`. |
-| **Language** | TypeScript (strict) | Types below must be used for API and contract data. |
-| **Web3** | wagmi v2 + viem | Wallet connection, chain switch, read/write contracts. |
-| **Styling** | Tailwind CSS | Utility-first; design tokens for colors/spacing. |
-| **Components** | shadcn/ui or Radix + Tailwind | Accessible primitives (Dialog, Select, Toast). |
-| **State** | React Query (TanStack Query) | Server state (API + chain reads), cache, refetch. |
-| **Forms** | React Hook Form + Zod | Create market form, bet form, validation. |
-| **Notifications** | sonner or react-hot-toast | Success/error for tx and API. |
+|-------|------------|---------|
+| **Framework** | Next.js 14+ (App Router) | SSR/SSG optional, API routes for proxy if needed, env for `NEXT_PUBLIC_*` |
+| **Language** | TypeScript (strict mode) | Types below must be used for API and contract data |
+| **Web3** | wagmi v2 + viem | Wallet connection, chain switch, contract read/write |
+| **Styling** | Tailwind CSS | Utility-first; design tokens for colors, spacing, typography |
+| **Components** | shadcn/ui or Radix + Tailwind | Accessible primitives (Dialog, Select, Toast, Tabs) |
+| **State** | React Query (TanStack Query) | Server state (API + chain reads), cache, refetch, optimistic updates |
+| **Forms** | React Hook Form + Zod | Create market form, bet form, validation with clear error messages |
+| **Notifications** | sonner or react-hot-toast | Success/error for tx and API; persistent for tx confirmation |
+| **Charts** | Recharts or lightweight-charts | Stakes visualization, prediction history, price context |
+| **Animations** | Framer Motion (optional) | Smooth transitions, page load, list animations |
 
 **Reference:** [web3-hackathon-starter](https://github.com/envoy1084/web3-hackathon-starter) (Next.js + thirdweb + Tailwind).
 
@@ -42,36 +64,36 @@ Extremely detailed specification for the PraesagiumChain dApp frontend. It align
 ### 3.1 Location
 
 - Create a **`frontend/`** directory at the repo root (sibling to `backend-rust/`, `contracts/`, `scripts/`).
-- Frontend runs on its own port (e.g. `3000`). Backend runs on `4000` (see env).
+- Frontend runs on port **3000**. Backend runs on **4000**. Ensure CORS allows `http://localhost:3000` (backend uses `CORS_ORIGINS`).
 
 ### 3.2 Environment variables
 
-Copy `config/frontend.env.example` to **`frontend/.env.local`**. Define every variable used by the app.
+Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. Define every variable used by the app.
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Yes | Backend REST API base URL (no trailing slash). | `http://localhost:4000` |
-| `NEXT_PUBLIC_CHAIN_ID` | Yes | Chain ID for the app (EVM). | `11155111` (Sepolia), `31337` (Hardhat) |
-| `NEXT_PUBLIC_RPC_URL` | Yes | RPC URL for that chain. | `https://rpc.sepolia.org` or `http://127.0.0.1:8545` |
-| `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` | Yes | PredictionMarket contract address. | `0x...` |
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL (if using Auth/Realtime). | `https://xxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | No | Supabase anon key. | From Supabase Dashboard → API |
-| `NEXT_PUBLIC_BLOCK_EXPLORER_URL` | No | Base URL for block explorer (tx and address links). | `https://sepolia.etherscan.io` |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Backend REST API base URL (no trailing slash) | `http://localhost:4000` |
+| `NEXT_PUBLIC_CHAIN_ID` | Yes | EVM Chain ID for the app | `11155111` (Sepolia), `31337` (Hardhat local) |
+| `NEXT_PUBLIC_RPC_URL` | Yes | RPC URL for that chain | `https://rpc.sepolia.org` or `http://127.0.0.1:8545` |
+| `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` | Yes | PredictionMarket contract address | `0xf2397b5827860b361427240d1D1F6F89e9bF197f` (Sepolia) |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL (if using Auth/Realtime) | `https://xxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | No | Supabase anon/publishable key | From Supabase Dashboard → API |
+| `NEXT_PUBLIC_BLOCK_EXPLORER_URL` | No | Base URL for block explorer (tx and address links) | `https://sepolia.etherscan.io` |
 
-**Contract ABIs:** Use the compiled artifacts from this repo:
+**Contract ABIs:** Use compiled artifacts from this repo:
 
 - **PredictionMarket:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json` → copy the `abi` array into the frontend (e.g. `frontend/lib/abis/prediction-market.ts` or `frontend/public/abis/PredictionMarket.json`).
 
 **Contract enum mapping (Solidity → frontend):**
 
-- **MarketStatus:** `0` = Open, `1` = Locked, `2` = Resolved, `3` = Cancelled.
-- **Outcome:** `0` = Undecided, `1` = Yes, `2` = No. When calling `placeBet(marketId, outcome, { value })` use `1` (Yes) or `2` (No). When displaying outcome from backend use `outcome` string: `"Yes"` | `"No"` | `undefined`.
+- **MarketStatus:** `0` = Open, `1` = Locked, `2` = Resolved, `3` = Cancelled
+- **Outcome:** `0` = Undecided, `1` = Yes, `2` = No. Use `1` (Yes) or `2` (No) when calling `placeBet(marketId, outcome, { value })`. Display outcome from backend as string: `"Yes"` | `"No"` | `undefined`.
 
 ---
 
-## 4. TypeScript types (exact match with backend and contract)
+## 4. TypeScript types (exact match with backend and contracts)
 
-Define these in the frontend (e.g. `frontend/types/api.ts` and `frontend/types/contracts.ts`). They must match the backend and contract interfaces.
+Define these in `frontend/types/api.ts` and `frontend/types/contracts.ts`. They must match the backend and contract interfaces.
 
 ```ts
 // ---------- API (backend) ----------
@@ -86,7 +108,7 @@ export interface MarketView {
   total_yes_stake: number;
   total_no_stake: number;
   creator?: string;
-  market_type: string; // "base" | "conditional" | "private" | etc.
+  market_type: string; // "base" | "conditional" | "private"
   metadata?: string;
   details_hash?: string;
   encrypted_uri?: string;
@@ -134,8 +156,46 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
+export interface SentimentResponse {
+  provider?: string;
+  sentiment_score?: number;
+  probability: number;
+}
+
+export interface HybridPredictRequest {
+  time_series?: Array<{ timestamp: number; value: number }>;
+  sentiment_text?: string;
+  social_texts?: string[];
+  binance_symbol?: string;
+  use_chainlink_price?: boolean;
+  market_id?: number;
+}
+
+export interface HybridPredictResponse {
+  probability: number;
+  uncertainty?: number;
+  market_id?: number;
+}
+
+export interface SourceInfo {
+  id: string;
+  name: string;
+  desc: string;
+  params: string[];
+}
+
+export interface SourceFetchResponse {
+  source: string;
+  price_change_24h?: number;
+  volume_24h?: number;
+  sentiment?: number;
+}
+
+export interface OutcomeResponse {
+  outcome: 0 | 1; // 0 = No, 1 = Yes
+}
+
 // ---------- Contract (on-chain) ----------
-// Use these for contract read/write. Outcome enum: 0 Undecided, 1 Yes, 2 No.
 
 export type OutcomeEnum = 0 | 1 | 2; // Undecided | Yes | No
 export type MarketStatusEnum = 0 | 1 | 2 | 3; // Open | Locked | Resolved | Cancelled
@@ -156,55 +216,92 @@ export interface MarketViewOnChain {
 
 ## 5. API reference (every endpoint used by the frontend)
 
-Base URL: `process.env.NEXT_PUBLIC_API_BASE_URL`. All requests that send a body must use `Content-Type: application/json`.
+Base URL: `process.env.NEXT_PUBLIC_API_BASE_URL`. All requests with a body must use `Content-Type: application/json`.
 
 ### 5.1 Health and stats
 
 | Method | Path | Query | Response | Use in UI |
 |--------|------|-------|----------|-----------|
-| GET | `/health` | — | `{ "ok": true }` or similar | Footer “API status” or debug. |
-| GET | `/api/markets/stats` | — | `MarketStats` | Dashboard stats cards. |
+| GET | `/health` | — | `{ "ok": true }` or similar | Footer "API status," debug panel |
+| GET | `/api/metrics` | — | Prometheus-style metrics | Optional: admin/debug |
+| GET | `/api/markets/stats` | — | `MarketStats` | Dashboard stats cards |
 
 ### 5.2 Markets (list and detail)
 
 | Method | Path | Query | Response | Use in UI |
 |--------|------|-------|----------|-----------|
-| GET | `/api/markets` | `page` (default 1), `limit` (default 10), `status` (optional: open, locked, resolved, cancelled) | `PaginatedResponse<MarketView>` | Market list page with pagination and status filter. |
-| GET | `/api/markets/:id` | — | `MarketView` | Market detail page. |
+| GET | `/api/markets` | `page` (default 1), `limit` (default 10), `status` (open, locked, resolved, cancelled) | `PaginatedResponse<MarketView>` | Market list with pagination and status filter |
+| GET | `/api/markets/:id` | — | `MarketView` | Market detail page |
+| POST | `/api/markets` | — | 201 + `MarketView` | Optional: mirror on-chain market to backend after create |
 
-### 5.3 Predictions (for a market)
+### 5.3 Predictions
 
 | Method | Path | Query | Response | Use in UI |
 |--------|------|-------|----------|-----------|
-| GET | `/api/markets/:id/predictions` | `limit` (optional) | `PredictionView[]` or `{ items: PredictionView[] }` | Market detail: “Predictions” section and PHPE uncertainty display. |
+| GET | `/api/markets/:id/predictions` | `limit` (optional) | `PredictionView[]` or `{ items: PredictionView[] }` | Predictions section; show probability and uncertainty (PHPE) |
 
-### 5.4 Create market (backend mirror, optional)
-
-| Method | Path | Body | Response | Use in UI |
-|--------|------|------|----------|-----------|
-| POST | `/api/markets` | `CreateMarketRequest` | 201 + `MarketView` | After on-chain create, optionally POST same data so backend list includes the market. |
-
-### 5.5 AI and hybrid (new feature: preview before bet)
+### 5.4 AI and hybrid (preview before bet)
 
 | Method | Path | Body | Response | Use in UI |
 |--------|------|------|----------|-----------|
-| POST | `/api/ai/sentiment` | `{ text: string }` | `{ provider, sentiment_score, probability }` | “Preview sentiment” on market detail or create form: user pastes text, show probability. |
-| POST | `/api/predict/hybrid` | `{ sentiment_text?: string, social_texts?: string[], binance_symbol?: string, use_chainlink_price?: boolean, market_id?: number }` | `{ probability, uncertainty?, market_id? }` | “Hybrid prediction” widget: show probability and **uncertainty** (PHPE) when time series or hybrid inputs are used. |
+| POST | `/api/ai/sentiment` | `{ "text": string }` | `{ provider?, sentiment_score?, probability }` | "Preview sentiment" widget: user pastes text, show probability |
+| POST | `/api/markets/:id/ai/predict` | `{ "text": string }` | Same shape | Market-specific sentiment |
+| POST | `/api/predict/hybrid` | See below | `{ probability, uncertainty?, market_id? }` | "Hybrid prediction" widget: combine sentiment, Binance symbol, Chainlink price |
 
-### 5.6 Reputation (new feature: creator profile)
+**Hybrid body (all fields optional):**
+
+```json
+{
+  "time_series": [{ "timestamp": 1234567890, "value": 50000.5 }],
+  "sentiment_text": "Bitcoin bullish",
+  "social_texts": ["Tweet 1", "Tweet 2"],
+  "binance_symbol": "BTCUSDT",
+  "use_chainlink_price": true,
+  "market_id": 1
+}
+```
+
+- `time_series`: array of `{ timestamp, value }` for PHPE; max ~10k points
+- `sentiment_text`: single text (e.g. news, tweet); max length enforced by backend
+- `social_texts`: multiple texts; sentiments averaged; max 20 items
+- `binance_symbol`: e.g. BTCUSDT, ETHUSDT
+- `use_chainlink_price`: include ETH/USD Chainlink proxy
+- `market_id`: if provided, prediction is stored for that market
+
+### 5.5 Reputation
 
 | Method | Path | Response | Use in UI |
 |--------|------|----------|-----------|
-| GET | `/api/reputation/:address` | `CreatorReputation` | Reputation page or creator badge on market card. |
+| GET | `/api/reputation/:address` | `CreatorReputation` | Reputation page, creator badge on market card |
 
-### 5.7 Report endpoints (optional: for “resolution source” display)
+### 5.6 Data sources (live data for hybrid preview)
 
 | Method | Path | Query | Response | Use in UI |
 |--------|------|-------|----------|-----------|
-| GET | `/api/price/above` | `symbol`, `threshold`, `source?` | `{ outcome: 0 \| 1 }` | Market detail: show “Resolution source: price” and outcome. |
-| GET | `/api/weather/rained` | `lat`, `lon`, `date` | `{ outcome: 0 \| 1 }` | Idem for weather markets. |
+| GET | `/api/sources` | — | `SourceInfo[]` | List available sources for hybrid widget |
+| GET | `/api/sources/fetch` | `source`, `symbol?`, `fsym?`, `tsym?`, `pair?`, `query?`, `country?` | `SourceFetchResponse` | Fetch live data (Binance, Chainlink, Cryptocompare, Kraken, ExchangeRate, Finnhub, NewsAPI) |
 
-**Error handling:** All API errors can return 4xx/5xx with optional JSON body `{ message?: string, error?: string }`. Show a toast and optionally set error state; do not crash the app.
+**Sources and params:**
+
+| source | Params | Example |
+|--------|--------|---------|
+| binance | symbol | `symbol=BTCUSDT` |
+| chainlink | — | — |
+| cryptocompare | fsym, tsym | `fsym=BTC&tsym=USD` |
+| kraken | pair | `pair=XBTUSD` |
+| exchangerate | — | — |
+| finnhub | symbol | `symbol=AAPL` or `symbol=BTC` |
+| newsapi | query, country | `query=bitcoin&country=us` |
+
+### 5.7 Report endpoints (resolution source display)
+
+| Method | Path | Query | Response | Use in UI |
+|--------|------|-------|----------|-----------|
+| GET | `/api/price/above` | `symbol`, `threshold`, `source?` (binance, coingecko) | `{ outcome: 0 \| 1 }` | "Resolution source: price" for price markets |
+| GET | `/api/weather/rained` | `lat`, `lon`, `date` (YYYY-MM-DD) | `{ outcome: 0 \| 1 }` | "Resolution source: weather" |
+| GET | `/api/sports/winner` | `fixture_id`, `winner_team`, `demo_outcome?` | `{ outcome: 0 \| 1 }` | "Resolution source: sports" |
+
+**Error handling:** 4xx/5xx can return JSON `{ message?: string, error?: string }`. Show toast and set error state; do not crash the app.
 
 ---
 
@@ -216,87 +313,165 @@ Contract: **PredictionMarket** at `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. Use v
 
 | Function | Params | Returns | Use in UI |
 |----------|--------|---------|-----------|
-| `getMarket(marketId)` | `marketId: bigint` | `MarketView` (struct: id, question, closeTime, resolveTime, status, outcome, totalYesStake, totalNoStake) | Market detail: on-chain state (can be primary or fallback if backend is down). |
-| `getUserStake(marketId, userAddress)` | `marketId: bigint`, `user: address` | `(yesStake: bigint, noStake: bigint)` | Market detail and “My positions”: show user’s Yes/No stakes and whether they can claim. |
+| `getMarket(marketId)` | `marketId: bigint` | `MarketView` struct | Market detail: on-chain state (primary or fallback if backend down) |
+| `getUserStake(marketId, userAddress)` | `marketId`, `user` | `(yesStake, noStake): bigint` | User position, claimable amount |
 
-### 6.2 Write functions (user must sign tx)
+### 6.2 Write functions (user signs tx)
 
 | Function | Params | Use in UI |
 |----------|--------|-----------|
-| `createMarket(question, closeTime, resolveTime)` | `question: string`, `closeTime: bigint` (Unix s), `resolveTime: bigint` (Unix s) | Create market form: on submit open wallet, then optionally POST to `/api/markets` with same data. |
-| `placeBet(marketId, outcome, { value })` | `marketId: bigint`, `outcome: 1 \| 2` (1=Yes, 2=No), `value` in wei | Market detail: “Bet Yes” / “Bet No” with amount input; send tx with `value`. |
-| `claimPayout(marketId)` | `marketId: bigint` | Market detail (and “My positions”): “Claim” button when market is resolved and user has winning stake and has not yet claimed. |
+| `createMarket(question, closeTime, resolveTime)` | strings and Unix timestamps | Create market form; optionally POST to `/api/markets` |
+| `placeBet(marketId, outcome, { value })` | `outcome: 1 \| 2`, `value` in wei | Bet Yes/No with amount input |
+| `claimPayout(marketId)` | `marketId` | Claim button when resolved and user has winning stake |
 
-### 6.3 Events (optional: for real-time updates)
+### 6.3 Events (for real-time or post-tx refresh)
 
-- `MarketCreated(marketId, question, closeTime, resolveTime, creator)` — refresh list or stats after new market.
-- `BetPlaced(marketId, user, outcome, amount)` — refresh market totals and user stake.
-- `MarketResolved(marketId, outcome, totalYesStake, totalNoStake)` — refresh market status and show “Claim” where applicable.
-- `PayoutClaimed(marketId, user, amount)` — refresh user stake (e.g. hide claim button).
+- `MarketCreated` — refresh list or stats
+- `BetPlaced` — refresh market totals and user stake
+- `MarketResolved` — refresh status, show Claim
+- `PayoutClaimed` — refresh user stake, hide claim button
 
 ---
 
-## 7. Pages and routes (detailed)
+## 7. Pages and routes (detailed specification)
 
 ### 7.1 Layout and global elements
 
-- **Layout:** Persistent header and optional footer.
-- **Header:** Logo, nav links (Markets, Create, My positions, Reputation), wallet button (connect / disconnect, address short, chain name, wrong-network warning).
-- **Footer:** “API status” (from `/health`), link to block explorer, optional “Powered by Chainlink CRE”.
-- **Wrong network:** If `chainId !== NEXT_PUBLIC_CHAIN_ID`, show banner: “Switch to Sepolia” (or current chain name) and a button that triggers chain switch via wagmi.
+- **Layout:** Persistent header and footer.
+- **Header:**
+  - Logo and app name ("PraesagiumChain" or similar)
+  - Nav links: Markets, Create Market, My Positions, Reputation, (optional) Data Sources
+  - Wallet button: Connect / Disconnect; when connected: short address (e.g. `0x1234...5678`), chain name, balance (optional)
+  - Wrong-network banner: if `chainId !== NEXT_PUBLIC_CHAIN_ID`, show "Switch to Sepolia" (or current chain) with button to switch via wagmi
+- **Footer:**
+  - API status indicator (from `/health`): green dot if ok, red if error
+  - Link to block explorer
+  - "Powered by Chainlink CRE"
+  - Optional: version, docs link
 
 ### 7.2 Home / Dashboard (`/` or `/markets`)
 
-- **Purpose:** Entry point and market list.
-- **Data:** `GET /api/markets/stats` and `GET /api/markets?page=1&limit=12` (or 20).
-- **UI:**
-  - **Stats row:** 4 cards: Total markets, Open markets, Resolved markets, Total predictions (from `MarketStats`).
-  - **Filters:** Status dropdown (All, Open, Locked, Resolved, Cancelled); optional search by question text (client-side or backend if you add a query param later).
-  - **Pagination:** Page 1, 2, … with `page` and `limit`; show “Total: N”.
-  - **Market cards:** Each card shows: question (truncated), status badge, total Yes/No stakes (formatted in ETH), close time and resolve time (relative or countdown), “View” link to `/markets/[id]`. Optional: creator address (short) and “Reputation” link to `/reputation/[address]`.
-- **Empty state:** “No markets yet. Create the first one.”
-- **Loading:** Skeleton cards or spinner.
+**Purpose:** Entry point and market list.
+
+**Data:**
+
+- `GET /api/markets/stats`
+- `GET /api/markets?page=1&limit=12&status=...`
+
+**UI:**
+
+- **Stats row:** 4 cards: Total markets, Open markets, Resolved markets, Total predictions.
+- **Filters:**
+  - Status: All, Open, Locked, Resolved, Cancelled
+  - Optional: search by question (client-side filter or backend query param if added)
+  - Optional: sort by close time, total stake, newest first
+- **Pagination:** Page 1, 2, … with "Total: N" and prev/next.
+- **Market cards (each):**
+  - Question (truncated to ~80 chars with ellipsis)
+  - Status badge (color-coded: green Open, yellow Locked, blue Resolved, gray Cancelled)
+  - Total Yes / No stakes (formatted in ETH, e.g. "0.5 ETH")
+  - Close time and resolve time (relative: "Closes in 2 days" or absolute)
+  - Countdown for close/resolve if in future
+  - "View" link to `/markets/[id]`
+  - Creator address (short) with link to `/reputation/[address]`
+  - Optional: latest prediction probability (e.g. "65%")
+- **Empty state:** "No markets yet. Create the first one." with CTA to Create.
+- **Loading:** Skeleton cards (shimmer effect) or spinner.
 
 ### 7.3 Market detail (`/markets/[id]`)
 
-- **Purpose:** Full info for one market, bet form, claim, and predictions (PHPE).
-- **Data:** `GET /api/markets/:id`, `GET /api/markets/:id/predictions`, and on-chain `getMarket(id)`, `getUserStake(id, userAddress)` when wallet connected.
-- **UI:**
-  - **Question:** Full text.
-  - **Status and outcome:** Badge (Open / Locked / Resolved / Cancelled). If Resolved: “Result: Yes” or “Result: No”.
-  - **Times:** Close time and resolve time (human-readable + countdown if still in future). Countdown: “Closes in X days/hours” or “Resolves in X days/hours”.
-  - **Stakes:** Total Yes stake, total No stake (ETH). Optional: simple chart (e.g. two bars).
-  - **User position (when connected):** “Your Yes: X ETH”, “Your No: X ETH”, “Claimable: X ETH” (computed from contract and resolution). **Claim** button: only if resolved, user has winning stake, and not yet claimed; on click call `claimPayout(marketId)`.
-  - **Bet form (when Open and wallet connected):** Two actions: “Bet Yes” and “Bet No”. Amount input (ETH); validation > 0. On submit: `placeBet(marketId, 1 | 2, { value })`. Toast on success/fail; refetch market and user stake.
-  - **Predictions section:** List from `GET /api/markets/:id/predictions`. Each row: probability (e.g. “65%”), **uncertainty** (e.g. “±12%” from PHPE), model_version, timestamp. If no predictions: “No predictions yet.”
-  - **New feature — Sentiment / hybrid preview:** Collapsible “Preview probability” or “Predict outcome”: input text (or paste tweet); button “Get sentiment”. Call `POST /api/ai/sentiment` and show probability. Optional: “Hybrid” with extra options (e.g. symbol, Chainlink price) and show `probability` and `uncertainty` from `POST /api/predict/hybrid`. Label clearly as “Preview only (not on-chain)”.
-- **Loading and errors:** Skeleton or spinner; 404 if market not found; toast on tx error.
+**Purpose:** Full info, bet form, claim, predictions, AI preview.
+
+**Data:**
+
+- `GET /api/markets/:id`
+- `GET /api/markets/:id/predictions`
+- On-chain: `getMarket(id)`, `getUserStake(id, userAddress)` when wallet connected
+
+**UI sections:**
+
+1. **Question:** Full text, prominent.
+2. **Status and outcome:**
+   - Badge: Open / Locked / Resolved / Cancelled
+   - If Resolved: "Result: Yes" or "Result: No" with visual emphasis
+3. **Times:**
+   - Close time, Resolve time (human-readable)
+   - Countdown: "Closes in X days/hours" or "Resolves in X hours"
+4. **Stakes:**
+   - Total Yes, Total No (ETH)
+   - Visual: two horizontal bars or a simple pie chart
+5. **User position (when connected):**
+   - "Your Yes: X ETH", "Your No: X ETH"
+   - "Claimable: X ETH" when resolved and user won
+   - **Claim** button: only if resolved, user has winning stake, not yet claimed
+6. **Bet form (when Open and connected):**
+   - "Bet Yes" and "Bet No" actions
+   - Amount input (ETH); validation: > 0, max balance
+   - Submit → `placeBet(marketId, 1|2, { value })`
+   - Toast on success/fail; refetch market and user stake
+7. **Predictions section:**
+   - List from API; each row: probability (e.g. "65%"), **uncertainty** (e.g. "±12%"), model_version, timestamp
+   - If none: "No predictions yet."
+8. **AI / Hybrid preview (collapsible):**
+   - **Tab 1 — Sentiment:** Text input (e.g. paste tweet, news headline). Button "Get sentiment" → `POST /api/ai/sentiment` with `{ text }`. Display: "Probability: 72%".
+   - **Tab 2 — Hybrid:** sentiment_text (optional), social_texts multi-line (optional), binance_symbol dropdown (BTCUSDT, ETHUSDT, etc.), checkbox "Include Chainlink ETH/USD". Button "Predict" → `POST /api/predict/hybrid`. Display: "Probability: X%", "Uncertainty: ±Y%" when present.
+   - Label: "Preview only — not on-chain. Use AI + data to estimate outcome before betting."
+9. **Loading/errors:** Skeleton; 404 if not found; toast on tx error.
 
 ### 7.4 Create market (`/markets/create`)
 
-- **Purpose:** Create a new prediction market on-chain.
-- **Data:** No GET; submit to contract then optionally to backend.
-- **Form fields:** Question (textarea, required), Close time (datetime-local or Unix timestamp), Resolve time (datetime-local or Unix timestamp). Validation: question non-empty; close time < resolve time; resolve time in the future.
-- **Submit:** Connect wallet if not connected; ensure correct chain. Call `createMarket(question, closeTimeUnix, resolveTimeUnix)`. On success: show tx hash (link to explorer), optional “Add to backend” that POSTs to `/api/markets` with same question and times (and creator from wallet address). Redirect to `/markets/[newId]` (id from event or from backend if you stored it).
-- **New feature:** Optional “Preview sentiment” for the question text (same as market detail) to show users a rough probability hint.
+**Purpose:** Create a new prediction market on-chain.
 
-### 7.5 My positions (`/positions` or `/my-bets`) — new feature
+**Form fields:**
 
-- **Purpose:** List markets where the connected user has a stake (Yes or No) and show claimable payouts.
-- **Data:** No dedicated backend endpoint; use list of market IDs from your own state or from a list of “recent” markets, then for each call `getUserStake(marketId, address)`. Filter to those with yesStake > 0 or noStake > 0. For each such market fetch `getMarket(marketId)` to know status and outcome and compute claimable amount.
-- **UI:** Table or cards: market question (link to detail), user’s Yes/No stakes, status, “Claim” if resolved and user won and not claimed. Button “Claim” calls `claimPayout(marketId)`.
+- Question (textarea, required, min 10 chars)
+- Close time (datetime-local or Unix)
+- Resolve time (datetime-local or Unix)
+- Validation: close < resolve; resolve in future; question non-empty
 
-### 7.6 Reputation (`/reputation` and `/reputation/[address]`) — new feature
+**Submit flow:**
 
-- **Purpose:** Show creator stats and reputation score.
-- **Data:** `GET /api/reputation/:address` returns `CreatorReputation`.
-- **UI:**
-  - **`/reputation`:** If user connected, redirect to `/reputation/[connectedAddress]` or show “Enter address” and a link to `/reputation/[address]`.
-  - **`/reputation/[address]`:** Page with: address (with explorer link), markets_created, markets_resolved, correct_predictions, reputation_score, updated_at. Optional: list of markets by this creator (if you add a backend endpoint later or filter client-side from market list by creator).
+1. Connect wallet if not connected
+2. Ensure correct chain
+3. `createMarket(question, closeTimeUnix, resolveTimeUnix)`
+4. On success: show tx hash (link to explorer), optional "Add to backend" (POST `/api/markets`)
+5. Redirect to `/markets/[newId]` (id from event or backend)
 
-### 7.7 Optional: Demo resolve (admin or demo flow)
+**Optional:** "Preview sentiment" for question text (same widget as detail).
 
-- For hackathon demo only: a “Resolve (demo)” button that either (a) opens a modal explaining “Run `node scripts/resolveFromBackend.js --market-id N`” or (b) calls an internal API route that runs the script (if you expose it securely). Do not expose resolver private key in the frontend.
+### 7.5 My positions (`/positions` or `/my-bets`)
+
+**Purpose:** List markets where the user has a stake and show claimable payouts.
+
+**Data:** No dedicated backend endpoint. Options:
+
+- Fetch recent markets from API, then for each call `getUserStake(marketId, address)` and filter where yesStake > 0 or noStake > 0
+- Or maintain a local list of market IDs the user has interacted with (localStorage)
+
+**UI:** Table or cards: market question (link to detail), user Yes/No stakes, status, "Claim" when applicable. "Claim" → `claimPayout(marketId)`.
+
+### 7.6 Reputation (`/reputation`, `/reputation/[address]`)
+
+**Purpose:** Creator stats and reputation.
+
+**Data:** `GET /api/reputation/:address`
+
+**UI:**
+
+- `/reputation`: if connected, redirect to `/reputation/[address]`; else "Enter address" input and link
+- `/reputation/[address]`: address (explorer link), markets_created, markets_resolved, correct_predictions, reputation_score, updated_at. Optional: list of markets by this creator.
+
+### 7.7 Data sources explorer (optional, creative)
+
+**Purpose:** Let users explore live data before creating/betting.
+
+**Route:** `/sources` or embedded in Create/Hybrid widget.
+
+**UI:** List sources from `GET /api/sources`; for each, form with params and "Fetch" → `GET /api/sources/fetch?source=...&...`; show price_change_24h, volume_24h, sentiment. Helps users understand what data feeds into hybrid predictions.
+
+### 7.8 Demo resolve (admin / hackathon)
+
+For demo only: "Resolve (demo)" button that opens modal: "Run `node scripts/resolveFromBackend.js --market-id N`" or similar. Do not expose resolver private key in frontend.
 
 ---
 
@@ -305,99 +480,131 @@ Contract: **PredictionMarket** at `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. Use v
 ```
 frontend/
 ├── .env.local
-├── app/                    # Next.js App Router
-│   ├── layout.tsx          # Root layout: header, wallet provider, theme
-│   ├── page.tsx            # Dashboard (markets list + stats)
+├── app/
+│   ├── layout.tsx           # Root: header, wallet provider, theme
+│   ├── page.tsx             # Dashboard
 │   ├── markets/
-│   │   ├── page.tsx        # Optional redirect to /
-│   │   ├── create/page.tsx # Create market form
-│   │   └── [id]/page.tsx   # Market detail
-│   ├── positions/page.tsx  # My positions
-│   └── reputation/
-│       └── [address]/page.tsx # Reputation profile
+│   │   ├── page.tsx         # Redirect to /
+│   │   ├── create/page.tsx
+│   │   └── [id]/page.tsx
+│   ├── positions/page.tsx
+│   ├── reputation/
+│   │   └── [address]/page.tsx
+│   └── sources/page.tsx     # Optional: data sources explorer
 ├── components/
-│   ├── header.tsx          # Nav + wallet
-│   ├── market-card.tsx     # Card for list
-│   ├── market-detail.tsx   # Full market view + bet form + claim
+│   ├── header.tsx
+│   ├── footer.tsx
+│   ├── wallet-button.tsx
+│   ├── wrong-network-banner.tsx
+│   ├── market-card.tsx
+│   ├── market-detail.tsx
 │   ├── create-market-form.tsx
-│   ├── stats-cards.tsx     # Dashboard stats
-│   ├── sentiment-preview.tsx  # AI sentiment / hybrid widget
-│   ├── countdown.tsx       # Close/resolve countdown
-│   └── ui/                 # shadcn/ui or shared primitives
+│   ├── stats-cards.tsx
+│   ├── sentiment-preview.tsx
+│   ├── hybrid-preview.tsx
+│   ├── countdown.tsx
+│   ├── stakes-chart.tsx     # Yes/No bars or pie
+│   └── ui/                  # shadcn/ui primitives
 ├── lib/
-│   ├── api.ts              # fetch wrappers for backend
-│   ├── contracts.ts        # wagmi/viem contract configs and reads
+│   ├── api.ts               # fetch wrappers
+│   ├── contracts.ts         # wagmi configs, read/write
 │   ├── abis/
 │   │   └── prediction-market.ts
-│   └── utils.ts            # formatEth, formatTime, etc.
+│   └── utils.ts             # formatEth, formatTime, truncateAddress
 ├── types/
-│   ├── api.ts              # MarketView, PaginatedResponse, etc.
-│   └── contracts.ts        # OutcomeEnum, MarketViewOnChain
+│   ├── api.ts
+│   └── contracts.ts
 └── hooks/
-    ├── use-markets.ts      # React Query: list, detail, stats
+    ├── use-markets.ts
     ├── use-market-on-chain.ts
     ├── use-user-stake.ts
-    └── use-reputation.ts
+    ├── use-reputation.ts
+    └── use-sources.ts       # Optional
 ```
 
 ---
 
 ## 9. State management and data flow
 
-- **Server state (API + chain):** Use **React Query** (TanStack Query). Keys: `['markets', page, status]`, `['market', id]`, `['market-predictions', id]`, `['stats']`, `['reputation', address]`, `['user-stake', marketId, address]`. Refetch after mutation (e.g. after placeBet or claimPayout).
-- **Wallet and chain:** wagmi hooks: `useAccount`, `useConnect`, `useDisconnect`, `useNetwork`, `useSwitchNetwork`. Store nothing redundant; use wagmi state.
-- **UI state:** Local React state for modals, form inputs, and filters. Optional: small context for “selected chain” or “theme” if not using next-themes.
+- **Server state (API + chain):** React Query. Keys: `['markets', page, status]`, `['market', id]`, `['market-predictions', id]`, `['stats']`, `['reputation', address]`, `['user-stake', marketId, address]`. Refetch after mutations (placeBet, claimPayout, createMarket).
+- **Wallet:** wagmi hooks (`useAccount`, `useConnect`, `useDisconnect`, `useNetwork`, `useSwitchNetwork`). No redundant local storage.
+- **UI state:** Local state for modals, form inputs, filters. Optional: next-themes for theme.
 
 ---
 
 ## 10. UX and accessibility
 
-- **Responsive:** Mobile-first; breakpoints for tablet and desktop. List: 1 column on mobile, 2–3 on desktop. Tables on “My positions” and “Reputation” should scroll horizontally on small screens or collapse to cards.
-- **Loading:** Skeleton loaders for list and detail; disabled buttons with “Processing…” during tx.
-- **Errors:** Toast for every tx failure and API error; do not leave the user without feedback. Show “Transaction failed: user rejected” or “API error: 500” as appropriate.
-- **Accessibility:** Semantic HTML (headings, sections, buttons, links). Labels for all form inputs. Focus management in modals. Sufficient color contrast (WCAG AA). Prefer `aria-label` on icon-only buttons.
+- **Responsive:** Mobile-first; 1 column on mobile, 2–3 on desktop for cards. Tables scroll horizontally on small screens or collapse to cards.
+- **Loading:** Skeleton loaders; disabled buttons with "Processing…" during tx.
+- **Errors:** Toast for every tx failure and API error; clear messages ("Transaction failed: user rejected", "API error: 500").
+- **Accessibility:** Semantic HTML (headings, sections, buttons, links). Labels for all inputs. Focus management in modals. WCAG AA contrast. `aria-label` on icon-only buttons. Keyboard navigation.
 
 ---
 
-## 11. New features summary (beyond minimal MVP)
+## 11. Creative features and enhancements (recommended)
+
+### 11.1 Core differentiators (must-have for PraesagiumChain)
 
 | Feature | Description | Where |
-|---------|-------------|--------|
-| **Dashboard stats** | Total/open/resolved markets and total predictions from `/api/markets/stats`. | Home / dashboard. |
-| **Reputation profile** | Page and links to creator reputation via `GET /api/reputation/:address`. | `/reputation/[address]`, link from market card/detail. |
-| **Predictions + uncertainty** | List predictions and show PHPE **uncertainty** (e.g. “65% ±12%”) on market detail. | Market detail, predictions section. |
-| **Sentiment / hybrid preview** | “Preview probability” widget using `/api/ai/sentiment` and `/api/predict/hybrid` (with uncertainty). | Market detail and/or create form. |
-| **My positions** | List user’s stakes and claimable payouts using `getUserStake` and `getMarket`. | `/positions`. |
-| **Countdown** | Time until close and resolve (human-readable + countdown). | Market card and detail. |
-| **Theme toggle** | Dark/light mode (e.g. next-themes). | Header. |
-| **Block explorer links** | Link tx hash and address to `NEXT_PUBLIC_BLOCK_EXPLORER_URL`. | After create/bet/claim; wallet address; reputation address. |
-| **Filters and pagination** | Status filter and page/limit for market list. | Dashboard. |
+|---------|-------------|-------|
+| **PHPE uncertainty visualization** | Show probability as a range (e.g. "65% ±12%") with a visual band, gauge, or confidence interval bar. Highlight that PraesagiumChain is the only platform showing calibrated uncertainty from the PHPE engine. | Market detail, predictions list |
+| **Hybrid prediction builder** | Step-by-step: (1) Paste sentiment text, (2) Add Binance symbol (dropdown: BTCUSDT, ETHUSDT, etc.), (3) Toggle Chainlink price, (4) Add social texts (multi-line). Show live fetch from `/api/sources/fetch` before predict. Explain: "Combines AI + price data + PHPE for calibrated probability." | Market detail, create form |
+| **Resolution source badge** | For price/weather/sports markets: "Resolves via: Binance BTCUSDT ≥ $50k" or "Weather API: precipitation at (lat, lon)" or "Sports API: fixture X winner". Use report endpoints to show how resolution will be determined. | Market detail |
+| **Creator reputation badge** | On market card: small badge with reputation score (e.g. "Rep: 85"); link to `/reputation/[address]`. Build trust before betting. | Market card |
+
+### 11.2 UX polish
+
+| Feature | Description | Where |
+|---------|-------------|-------|
+| **Countdown urgency** | Color change or pulse when < 1 hour left; "URGENT" label for markets closing soon | Market card, detail |
+| **Portfolio P&amp;L** | In My Positions: total invested vs total claimable; simple P&amp;L percentage; "You're up X ETH" or "Pending resolution" | My positions |
+| **Activity feed** | Optional: recent bets, resolutions, claims (from contract events via wagmi or backend if endpoint added). "You bet 0.1 ETH on Yes" — "Market resolved Yes — Claim available" | Dashboard or sidebar |
+| **Onboarding tooltip** | First-time: short tour "Connect wallet → Browse markets → Place bet → Claim when resolved" | Modal on first visit (dismissible, localStorage flag) |
+| **Share market** | Copy link button; "Share to X" with pre-filled: "Check out this prediction market: [question] — [url]" | Market detail |
+| **Favorites / Watchlist** | LocalStorage: star markets; filter "My favorites" on dashboard | Dashboard |
+| **Dark/light theme** | next-themes toggle in header; persist preference | Header |
+| **Skeleton loaders** | Shimmer effect for cards and detail; avoid jarring layout shifts | All list/detail views |
+
+### 11.3 Advanced creative ideas (nice-to-have)
+
+| Feature | Description | Where |
+|---------|-------------|-------|
+| **Price context for crypto markets** | When market question mentions "BTC" or "ETH," fetch live price from `/api/sources/fetch?source=binance&symbol=BTCUSDT` and show: "BTC currently: $X" next to stake totals. Helps users decide. | Market detail |
+| **Prediction history chart** | If multiple predictions exist for a market, plot probability over time (line chart). Show uncertainty bands if available. | Market detail |
+| **Compare sources** | In hybrid widget: fetch Binance + Chainlink + Cryptocompare for same pair; show all prices; "Predict" uses backend to fuse. Demonstrates multi-source CRE. | Hybrid preview |
+| **Market templates** | Create form: "ETH > $X by date" template pre-fills question and suggests close/resolve times. "BTC sentiment" template. Reduces friction. | Create market |
+| **Gas estimation** | Before placeBet/claimPayout: show estimated gas (viem `estimateGas`). "Est. cost: ~0.002 ETH." | Bet form, Claim button |
+| **Tx history** | Link to explorer for every tx (create, bet, claim). "View on Etherscan" with tx hash. | Post-tx toasts, activity |
 
 ---
 
-## 12. Task checklist (implementation order)
+## 12. Implementation checklist (recommended order)
 
-- [ ] **Setup:** Next.js, TypeScript, Tailwind, wagmi, React Query, env from `config/frontend.env.example`.
-- [ ] **Types:** Add all types from § 4 (api + contracts).
-- [ ] **API client:** `lib/api.ts` with base URL from env; functions for every endpoint in § 5.
-- [ ] **Contract:** Copy ABI, configure wagmi contract; hooks for getMarket, getUserStake and write (createMarket, placeBet, claimPayout).
-- [ ] **Layout:** Header (nav, wallet, wrong-network banner), footer.
-- [ ] **Dashboard:** Stats from `/api/markets/stats`, list from `/api/markets` with filters and pagination, market cards with countdown.
-- [ ] **Market detail:** Full view, user position, bet form, claim button, predictions list with uncertainty.
-- [ ] **Create market:** Form with validation, submit to contract, optional POST to backend, explorer link.
-- [ ] **Sentiment/hybrid widget:** Preview probability and uncertainty on detail (and optionally create).
-- [ ] **My positions:** Page with user stakes and claimable; claim from here or from detail.
-- [ ] **Reputation:** Page `/reputation/[address]` and links from market cards.
-- [ ] **Theme, explorer links, toasts, loading and error states, a11y pass.**
+- [ ] **Setup:** Next.js, TypeScript, Tailwind, wagmi, React Query, env from `config/frontend.env.example`
+- [ ] **Types:** Add all types (§ 4)
+- [ ] **API client:** `lib/api.ts` with functions for every endpoint (§ 5)
+- [ ] **Contract:** Copy ABI, configure wagmi; hooks for getMarket, getUserStake, createMarket, placeBet, claimPayout
+- [ ] **Layout:** Header (nav, wallet, wrong-network), footer (API status)
+- [ ] **Dashboard:** Stats, list with filters/pagination, market cards with countdown
+- [ ] **Market detail:** Full view, user position, bet form, claim, predictions with uncertainty
+- [ ] **Create market:** Form, validation, submit to contract, optional POST to backend
+- [ ] **Sentiment/hybrid widget:** Preview probability and uncertainty on detail (and optionally create)
+- [ ] **My positions:** User stakes and claimable; claim from here or detail
+- [ ] **Reputation:** `/reputation/[address]` and links from market cards
+- [ ] **Data sources explorer:** Optional `/sources` page
+- [ ] **Theme, explorer links, toasts, loading states, a11y pass**
+- [ ] **Creative features:** PHPE visualization, resolution source badge, favorites, share
 
 ---
 
 ## 13. References
 
-- **API and data shapes:** [development-and-deployment.md](development-and-deployment.md) §§ 2–3.
-- **Contract roles and CRE flow:** [architecture-and-design.md](architecture-and-design.md).
-- **Submission and testnet:** [development-and-deployment.md](development-and-deployment.md) § 6.
-- **Env example:** `config/frontend.env.example`.
-- **ABIs:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`.
+- **API and data:** [development-and-deployment.md](development-and-deployment.md) §§ 2–3
+- **Architecture and CRE flow:** [architecture-and-design.md](architecture-and-design.md)
+- **Testnet deployment:** [deploy-testnet.md](deploy-testnet.md)
+- **Env:** `config/frontend.env.example`
+- **ABIs:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`
 
-This document is the single source of truth for the frontend: every page, component, API call, contract call, type, and new feature is specified here so your teammate can implement the app without guessing.
+---
+
+This document is the single source of truth for the frontend: every page, component, API call, contract call, type, and feature is specified so the frontend developer can implement the app without guessing.
