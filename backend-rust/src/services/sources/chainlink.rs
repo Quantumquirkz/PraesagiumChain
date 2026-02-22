@@ -4,6 +4,7 @@
 
 use crate::error::Result;
 use crate::services::sources::binance::BinanceSource;
+use reqwest::Client;
 use crate::services::sources::types::Signal;
 
 /// Chainlink-compatible price source (ETH/USD via Binance as public proxy).
@@ -15,6 +16,12 @@ impl ChainlinkSource {
     pub fn new() -> Self {
         Self {
             binance: BinanceSource::new(),
+        }
+    }
+
+    pub fn with_client(client: Client) -> Self {
+        Self {
+            binance: BinanceSource::with_client(client),
         }
     }
 

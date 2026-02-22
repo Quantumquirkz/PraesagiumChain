@@ -27,7 +27,14 @@ pub struct NewsApiSource {
 
 impl NewsApiSource {
     pub fn new(api_key: Option<String>) -> Self {
-        Self { client: reqwest::Client::new(), api_key }
+        Self {
+            client: reqwest::Client::new(),
+            api_key,
+        }
+    }
+
+    pub fn with_client(client: reqwest::Client, api_key: Option<String>) -> Self {
+        Self { client, api_key }
     }
 
     /// Fetch headlines for a query. Returns a signal derived from article count.

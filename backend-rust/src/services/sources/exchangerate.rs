@@ -17,7 +17,13 @@ pub struct ExchangeRateSource {
 
 impl ExchangeRateSource {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
+    }
+
+    pub fn with_client(client: reqwest::Client) -> Self {
+        Self { client }
     }
 
     pub async fn fetch_eur_usd(&self) -> Result<Signal> {

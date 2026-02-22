@@ -25,7 +25,13 @@ pub struct KrakenSource {
 
 impl KrakenSource {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
+    }
+
+    pub fn with_client(client: reqwest::Client) -> Self {
+        Self { client }
     }
 
     pub async fn fetch_ticker(&self, pair: &str) -> Result<Signal> {

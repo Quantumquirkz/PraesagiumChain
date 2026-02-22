@@ -40,11 +40,11 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn new(url: &str) -> anyhow::Result<Self> {
+    pub async fn new(url: &str, max_connections: u32) -> anyhow::Result<Self> {
         let url = database_url_force_ipv4(url).await?;
         let options = PgConnectOptions::from_str(&url)?;
         let pool = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(max_connections)
             .connect_with(options)
             .await?;
         Ok(Self { pool })

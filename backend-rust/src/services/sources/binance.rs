@@ -9,20 +9,26 @@ pub struct BinanceSource {
 
 impl BinanceSource {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::new() }
+        Self {
+            client: reqwest::Client::new(),
+        }
+    }
+
+    pub fn with_client(client: reqwest::Client) -> Self {
+        Self { client }
     }
 
     pub async fn fetch_ticker(&self, symbol: &str) -> Result<Signal> {
         let url = format!("{}?symbol={}", BINANCE_TICKER_URL, symbol.to_uppercase());
         let resp = self.client.get(&url).send().await
-            .map_err(|e| AppError::Validation(format!("Binance request failed: {e}")))?;
+            .map_err(|e| AppError::ExternalApi(format!("Binance request failed: {e}")))?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Validation(format!("Binance error ({status}): {body}")));
+            return Err(AppError::ExternalApi(format!("Binance error ({status}): {body}")));
         }
         let ticker: PriceSignal = resp.json().await
-            .map_err(|e| AppError::Validation(format!("Binance parse failed: {e}")))?;
+            .map_err(|e| AppError::ExternalApi(format!("Binance parse failed: {e}")))?;
         let price_change = ticker.price_change_percent.parse::<f32>().unwrap_or(0.0);
         let volume = ticker.volume.parse::<f64>().unwrap_or(0.0);
         Ok(Signal {
