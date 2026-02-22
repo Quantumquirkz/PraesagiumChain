@@ -7,11 +7,16 @@ use tracing::{debug, warn};
 pub struct PredictionService {
     _db: Database,
     cache: Arc<Cache>,
+    cache_ttl: u64,
 }
 
 impl PredictionService {
-    pub fn new(db: Database, cache: Arc<Cache>) -> Self {
-        Self { _db: db, cache }
+    pub fn new(db: Database, cache: Arc<Cache>, cache_ttl: u64) -> Self {
+        Self {
+            _db: db,
+            cache,
+            cache_ttl,
+        }
     }
 
     /// Runs a prediction with default context.
@@ -37,7 +42,7 @@ impl PredictionService {
         let result = predict(time_series, &ctx);
         
         if let Some(id) = market_id {
-            self.cache.set_prediction(id, &result, 300).await;
+            self.cache.set_prediction(id, &result, self.cache_ttl).await;
         }
         
         debug!(
@@ -72,7 +77,7 @@ impl PredictionService {
         let result = predict(time_series, ctx);
         
         if let Some(id) = market_id {
-            self.cache.set_prediction(id, &result, 300).await;
+            self.cache.set_prediction(id, &result, self.cache_ttl).await;
         }
         
         debug!(

@@ -11,7 +11,7 @@ use crate::models::{
     CreateConditionalMarketRequest, CreateMarketRequest, MarketStats, MarketView, PaginatedResponse,
     SetPredictionRequest, UpdateStatusRequest,
 };
-use crate::services::{MarketService, ReputationService};
+use crate::services::{Cache, MarketService, ReputationService};
 
 #[derive(Deserialize)]
 pub struct ListQuery {
@@ -69,9 +69,11 @@ pub async fn update_status(
     Path(id): Path<i64>,
     Extension(service): Extension<Arc<MarketService>>,
     Extension(reputation): Extension<Arc<ReputationService>>,
+    Extension(cache): Extension<Arc<Cache>>,
     Json(req): Json<UpdateStatusRequest>,
 ) -> Result<Json<MarketView>> {
     let market = service.update_status(id, req.clone()).await?;
+    cache.invalidate_market(id).await;
     if req.status == "Resolved" {
         if let (Some(ref creator), Some(ref outcome)) = (&market.creator, &req.outcome) {
             let _ = reputation.on_market_resolved(creator, id, outcome).await;
@@ -83,6 +85,7 @@ pub async fn update_status(
 pub async fn set_prediction(
     Path(id): Path<i64>,
     Extension(service): Extension<Arc<MarketService>>,
+    Extension(cache): Extension<Arc<Cache>>,
     Json(req): Json<SetPredictionRequest>,
 ) -> Result<Json<MarketView>> {
     let market = service
@@ -94,6 +97,7 @@ pub async fn set_prediction(
             req.model_hash,
         )
         .await?;
+    cache.invalidate_market(id).await;
     Ok(Json(market))
 }
 

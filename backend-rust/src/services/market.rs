@@ -56,9 +56,14 @@ impl MarketService {
 
         let mut items: Vec<MarketView> = rows.into_iter().map(MarketView::from).collect();
 
-        for item in &mut items {
-            if let Ok(Some(pred)) = self.get_latest_prediction(item.id).await {
-                item.latest_prediction = Some(pred);
+        // Bulk fetch latest predictions (avoids N+1)
+        if !items.is_empty() {
+            let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
+            let preds = self.get_latest_predictions_bulk(&ids).await?;
+            for item in &mut items {
+                if let Some(pred) = preds.get(&item.id) {
+                    item.latest_prediction = Some(pred.clone());
+                }
             }
         }
 
@@ -310,6 +315,32 @@ impl MarketService {
         Ok(pred.map(PredictionView::from))
     }
 
+    /// Fetches latest prediction per market in one query (avoids N+1).
+    pub async fn get_latest_predictions_bulk(
+        &self,
+        market_ids: &[i64],
+    ) -> Result<std::collections::HashMap<i64, PredictionView>> {
+        if market_ids.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+        let rows = sqlx::query_as::<_, Prediction>(
+            r#"
+            SELECT DISTINCT ON (market_id) *
+            FROM predictions
+            WHERE market_id = ANY($1)
+            ORDER BY market_id, timestamp DESC
+            "#,
+        )
+        .bind(market_ids)
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|p| (p.market_id, PredictionView::from(p)))
+            .collect())
+    }
+
     pub async fn get_predictions(&self, market_id: i64, limit: i64) -> Result<Vec<PredictionView>> {
         let preds = sqlx::query_as::<_, Prediction>(
             "SELECT * FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT $2"
@@ -323,27 +354,23 @@ impl MarketService {
     }
 
     pub async fn get_stats(&self) -> Result<MarketStats> {
-        let total_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets")
-            .fetch_one(self.db.pool())
-            .await?;
-
-        let open_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = 'Open'")
-            .fetch_one(self.db.pool())
-            .await?;
-
-        let resolved_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = 'Resolved'")
-            .fetch_one(self.db.pool())
-            .await?;
-
-        let total_predictions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM predictions")
-            .fetch_one(self.db.pool())
-            .await?;
+        let row: (i64, i64, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                (SELECT COUNT(*)::bigint FROM markets),
+                (SELECT COUNT(*) FILTER (WHERE status = 'Open')::bigint FROM markets),
+                (SELECT COUNT(*) FILTER (WHERE status = 'Resolved')::bigint FROM markets),
+                (SELECT COUNT(*)::bigint FROM predictions)
+            "#,
+        )
+        .fetch_one(self.db.pool())
+        .await?;
 
         Ok(MarketStats {
-            total_markets,
-            open_markets,
-            resolved_markets,
-            total_predictions,
+            total_markets: row.0,
+            open_markets: row.1,
+            resolved_markets: row.2,
+            total_predictions: row.3,
         })
     }
 }

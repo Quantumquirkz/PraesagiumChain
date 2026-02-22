@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::models::{HybridPredictRequest, HybridPredictResponse};
 use crate::services::{HybridPredictor, MarketService};
 
-const MAX_TEXT_LEN: usize = 32_768;
+use crate::constants::MAX_TEXT_LEN;
 const MAX_SOCIAL_TEXTS: usize = 20;
 const MAX_SERIES_LEN: usize = 10_000;
 

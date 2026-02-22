@@ -8,8 +8,6 @@ use tracing::debug;
 #[derive(Clone)]
 pub struct Cache {
     predictions: Arc<RwLock<HashMap<i64, CachedPrediction>>>,
-    #[allow(dead_code)]
-    markets: Arc<RwLock<HashMap<i64, u64>>>, // market_id -> last_updated timestamp
 }
 
 #[derive(Clone, Debug)]
@@ -25,7 +23,6 @@ impl Cache {
     pub fn new() -> Self {
         Self {
             predictions: Arc::new(RwLock::new(HashMap::new())),
-            markets: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -69,15 +66,14 @@ impl Cache {
         debug!("Cached prediction for market {} (TTL: {}s)", market_id, ttl_seconds);
     }
 
-    /// Invalidates the cache for a market.
-    #[allow(dead_code)]
+    /// Invalidates the cache for a market (e.g. when prediction or status changes).
     pub async fn invalidate_market(&self, market_id: i64) {
         let mut cache = self.predictions.write().await;
         cache.remove(&market_id);
         debug!("Invalidated cache for market {}", market_id);
     }
 
-    /// Limpia predicciones expiradas.
+    /// Cleans expired predictions.
     pub async fn cleanup_expired(&self) {
         let now = chrono::Utc::now().timestamp() as u64;
         let mut cache = self.predictions.write().await;

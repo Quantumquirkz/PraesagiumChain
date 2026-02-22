@@ -17,6 +17,10 @@ pub enum AppError {
     #[error("Validation error: {0}")]
     Validation(String),
 
+    /// External API/upstream failure (Binance, Open-Meteo, etc.).
+    #[error("External API error: {0}")]
+    ExternalApi(String),
+
     #[error("Internal error: {0}")]
     Internal(#[from] anyhow::Error),
 }
@@ -26,6 +30,10 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::NotFound => (StatusCode::NOT_FOUND, "Not found".to_string()),
             AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::ExternalApi(msg) => {
+                tracing::warn!("External API error: {}", msg);
+                (StatusCode::BAD_GATEWAY, msg)
+            }
             AppError::Database(e) => {
                 tracing::error!("Database error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())

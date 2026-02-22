@@ -1,12 +1,13 @@
 //! Report-step endpoints: external data sources that return outcome 0 or 1 for CRE resolution.
 
 use axum::{
-    extract::Query,
+    extract::{Extension, Query},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::error::{AppError, Result};
 
@@ -28,28 +29,30 @@ pub struct OutcomeResponse {
 
 /// GET /api/weather/rained?lat=9&lon=-79.5&date=2026-02-20
 /// Calls Open-Meteo Archive API; outcome = 1 if precipitation_sum > 0, else 0.
-pub async fn weather_rained(Query(q): Query<WeatherRainedQuery>) -> Result<impl IntoResponse> {
+pub async fn weather_rained(
+    Extension(client): Extension<Arc<reqwest::Client>>,
+    Query(q): Query<WeatherRainedQuery>,
+) -> Result<impl IntoResponse> {
     let url = format!(
         "{}?latitude={}&longitude={}&start_date={}&end_date={}&daily=precipitation_sum",
         OPEN_METEO_ARCHIVE, q.lat, q.lon, q.date, q.date
     );
-    let client = reqwest::Client::new();
     let resp = client
         .get(&url)
         .send()
         .await
-        .map_err(|e| AppError::Validation(format!("Open-Meteo request failed: {e}")))?;
+        .map_err(|e| AppError::ExternalApi(format!("Open-Meteo request failed: {e}")))?;
     if !resp.status().is_success() {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
-        return Err(AppError::Validation(format!(
+        return Err(AppError::ExternalApi(format!(
             "Open-Meteo API error ({status}): {body}"
         )));
     }
     let json: serde_json::Value = resp
         .json()
         .await
-        .map_err(|e| AppError::Validation(format!("Open-Meteo parse failed: {e}")))?;
+        .map_err(|e| AppError::ExternalApi(format!("Open-Meteo parse failed: {e}")))?;
     let daily = json
         .get("daily")
         .and_then(|d| d.get("precipitation_sum"))
@@ -78,7 +81,10 @@ struct BinancePriceResponse {
 /// GET /api/price/above?symbol=BTCUSDT&threshold=50000
 /// or ?symbol=bitcoin&threshold=50000&source=coingecko
 /// outcome = 1 if price >= threshold, else 0.
-pub async fn price_above(Query(q): Query<PriceAboveQuery>) -> Result<impl IntoResponse> {
+pub async fn price_above(
+    Extension(client): Extension<Arc<reqwest::Client>>,
+    Query(q): Query<PriceAboveQuery>,
+) -> Result<impl IntoResponse> {
     let use_binance = q.source.as_deref() == Some("binance")
         || (q.symbol.len() >= 4 && q.symbol.ends_with("USDT"));
     let price = if use_binance {
@@ -88,19 +94,18 @@ pub async fn price_above(Query(q): Query<PriceAboveQuery>) -> Result<impl IntoRe
             format!("{}USDT", q.symbol.to_uppercase())
         };
         let url = format!("{}?symbol={}", BINANCE_PRICE, sym);
-        let client = reqwest::Client::new();
         let resp = client.get(&url).send().await.map_err(|e| {
-            AppError::Validation(format!("Binance price request failed: {e}"))
+            AppError::ExternalApi(format!("Binance price request failed: {e}"))
         })?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Validation(format!(
+            return Err(AppError::ExternalApi(format!(
                 "Binance error ({status}): {body}"
             )));
         }
         let data: BinancePriceResponse = resp.json().await.map_err(|e| {
-            AppError::Validation(format!("Binance parse failed: {e}"))
+            AppError::ExternalApi(format!("Binance parse failed: {e}"))
         })?;
         data.price.parse::<f64>().map_err(|_| {
             AppError::Validation("Binance: invalid price".into())
@@ -109,20 +114,19 @@ pub async fn price_above(Query(q): Query<PriceAboveQuery>) -> Result<impl IntoRe
         // CoinGecko: symbol = bitcoin, ethereum, etc.
         let id = q.symbol.to_lowercase();
         let url = format!("{}?ids={}&vs_currencies=usd", COINGECKO_PRICE, id);
-        let client = reqwest::Client::new();
         let resp = client.get(&url).send().await.map_err(|e| {
-            AppError::Validation(format!("CoinGecko request failed: {e}"))
+            AppError::ExternalApi(format!("CoinGecko request failed: {e}"))
         })?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Validation(format!(
+            return Err(AppError::ExternalApi(format!(
                 "CoinGecko error ({status}): {body}"
             )));
         }
         let data: std::collections::HashMap<String, std::collections::HashMap<String, f64>> =
             resp.json().await.map_err(|e| {
-                AppError::Validation(format!("CoinGecko parse failed: {e}"))
+                AppError::ExternalApi(format!("CoinGecko parse failed: {e}"))
             })?;
         let inner = data.get(&id).ok_or_else(|| {
             AppError::Validation(format!("CoinGecko: unknown id '{id}'"))
@@ -148,7 +152,10 @@ pub struct SportsWinnerQuery {
 /// GET /api/sports/winner?winner_team=TeamA&demo_outcome=1
 /// With API_FOOTBALL_KEY set and fixture_id: calls API-Football and returns real outcome.
 /// Without key: use demo_outcome for testing (0 or 1), or returns 400 with instructions.
-pub async fn sports_winner(Query(q): Query<SportsWinnerQuery>) -> Result<impl IntoResponse> {
+pub async fn sports_winner(
+    Extension(client): Extension<Arc<reqwest::Client>>,
+    Query(q): Query<SportsWinnerQuery>,
+) -> Result<impl IntoResponse> {
     if let Some(outcome) = q.demo_outcome {
         if outcome <= 1 {
             return Ok((
@@ -165,22 +172,21 @@ pub async fn sports_winner(Query(q): Query<SportsWinnerQuery>) -> Result<impl In
             "https://v3.football.api-sports.io/fixtures?id={}",
             fixture_id
         );
-        let client = reqwest::Client::new();
         let resp = client
             .get(&url)
             .header("x-apisports-key", key)
             .send()
             .await
-            .map_err(|e| AppError::Validation(format!("API-Football request failed: {e}")))?;
+            .map_err(|e| AppError::ExternalApi(format!("API-Football request failed: {e}")))?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Validation(format!(
+            return Err(AppError::ExternalApi(format!(
                 "API-Football error ({status}): {body}"
             )));
         }
         let json: serde_json::Value = resp.json().await.map_err(|e| {
-            AppError::Validation(format!("API-Football parse failed: {e}"))
+            AppError::ExternalApi(format!("API-Football parse failed: {e}"))
         })?;
         let fixture = json
             .get("response")

@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::services::{AiService, MarketService};
 
 /// Maximum allowed text length for sentiment analysis (mitigates abuse).
-const MAX_TEXT_LEN: usize = 32_768;
+use crate::constants::MAX_TEXT_LEN;
 
 #[derive(Debug, Deserialize)]
 pub struct SentimentRequest {

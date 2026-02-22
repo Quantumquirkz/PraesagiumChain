@@ -154,7 +154,6 @@ impl ReputationService {
         .fetch_one(self.db.pool())
         .await?;
 
-        let mut correct = 0i64;
         let rows = sqlx::query_as::<_, (i64, Option<String>)>(
             "SELECT id, outcome FROM markets WHERE creator = $1 AND status = 'Resolved'"
         )
@@ -162,15 +161,28 @@ impl ReputationService {
         .fetch_all(self.db.pool())
         .await?;
 
+        let market_ids: Vec<i64> = rows.iter().map(|(id, _)| *id).collect();
+        let preds: std::collections::HashMap<i64, f32> = if market_ids.is_empty() {
+            std::collections::HashMap::new()
+        } else {
+            let pred_rows = sqlx::query_as::<_, (i64, f32)>(
+                r#"
+                SELECT DISTINCT ON (market_id) market_id, probability
+                FROM predictions
+                WHERE market_id = ANY($1)
+                ORDER BY market_id, timestamp DESC
+                "#,
+            )
+            .bind(&market_ids)
+            .fetch_all(self.db.pool())
+            .await?;
+            pred_rows.into_iter().collect()
+        };
+
+        let mut correct = 0i64;
         for (market_id, outcome) in rows {
             if let Some(out) = outcome {
-                let pred: Option<f32> = sqlx::query_scalar(
-                    "SELECT probability FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
-                )
-                .bind(market_id)
-                .fetch_optional(self.db.pool())
-                .await?
-                .flatten();
+                let pred = preds.get(&market_id).copied();
                 let predicted_yes = pred.map(|p| p >= 0.5).unwrap_or(false);
                 let actual_yes = out.eq_ignore_ascii_case("yes");
                 if predicted_yes == actual_yes {

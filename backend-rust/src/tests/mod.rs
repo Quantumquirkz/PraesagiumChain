@@ -48,7 +48,7 @@ mod api_markets_tests {
             }
         };
 
-        let db = match crate::db::Database::new(&database_url).await {
+        let db = match crate::db::Database::new(&database_url, 5).await {
             Ok(d) => d,
             Err(_) => {
                 eprintln!("Skipping list_markets test: could not connect to DB");
