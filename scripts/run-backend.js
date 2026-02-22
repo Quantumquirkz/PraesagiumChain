@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { spawn } = require('child_process');
-const proc = spawn('cargo', ['run', '--manifest-path', require('path').join(__dirname, '..', 'backend-rust', 'Cargo.toml')], {
+const isProd = process.env.NODE_ENV === 'production';
+const args = ['run', '--manifest-path', require('path').join(__dirname, '..', 'backend-rust', 'Cargo.toml')];
+if (isProd) args.splice(1, 0, '--release');
+const proc = spawn('cargo', args, {
   stdio: 'inherit',
   env: process.env,
   shell: true,

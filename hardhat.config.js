@@ -11,7 +11,8 @@ const config = {
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      timeout: 60000
     },
     polygon: {
       url: process.env.POLYGON_RPC_URL || "",
@@ -27,11 +28,7 @@ const config = {
     }
   },
   etherscan: {
-    apiKey: {
-      sepolia: process.env.ETHERSCAN_API_KEY || "",
-      polygon: process.env.POLYGONSCAN_API_KEY || "",
-      polygonAmoy: process.env.POLYGONSCAN_API_KEY || ""
-    }
+    apiKey: process.env.ETHERSCAN_API_KEY || ""
   },
   paths: {
     sources: "./contracts",

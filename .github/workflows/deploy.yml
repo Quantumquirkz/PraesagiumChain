@@ -13,8 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Run contract tests
         run: npm test
       - name: Security audit (npm)
@@ -39,6 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Run backend tests
         run: npm run test:backend
       - name: Security audit (cargo)
