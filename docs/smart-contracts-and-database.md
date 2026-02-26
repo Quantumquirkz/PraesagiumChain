@@ -84,7 +84,20 @@ enum Outcome { Undecided, Yes, No }
 | `getMarket(marketId)` | View | Returns `MarketView` struct |
 | `getUserStake(marketId, user)` | View | Returns `(yesStake, noStake)` for a user |
 
-### 2.4 Payout Formula
+### 2.4 Market Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open : createMarket()
+    Open --> Open : placeBet()
+    Open --> Locked : lockMarket() - onlyResolver
+    Locked --> Resolved : resolveMarket() - onlyResolver\nrequires block.timestamp >= resolveTime
+    Resolved --> Resolved : claimPayout() - winners only
+    Open --> Cancelled : admin cancel
+    Locked --> Cancelled : admin cancel
+```
+
+### 2.5 Payout Formula
 
 Winners receive a proportional share of the total pool:
 
@@ -100,7 +113,7 @@ Example: market resolves Yes, total pool = 1 ETH, total Yes stake = 0.6 ETH, use
 payout = (0.2 × 1.0) / 0.6 = 0.333 ETH
 ```
 
-### 2.5 Events
+### 2.6 Events
 
 | Event | Emitted when |
 |-------|-------------|
@@ -110,7 +123,7 @@ payout = (0.2 × 1.0) / 0.6 = 0.333 ETH
 | `MarketResolved(marketId, outcome, totalYesStake, totalNoStake)` | `resolveMarket()` called |
 | `PayoutClaimed(marketId, user, amount)` | `claimPayout()` succeeds |
 
-### 2.6 Reputation Hook Integration
+### 2.7 Reputation Hook Integration
 
 `PredictionMarket` calls `ReputationSystem` hooks via `try/catch` (best-effort — a reputation failure never blocks market operations):
 
@@ -216,6 +229,23 @@ Conditions are stored in the market struct and emitted as `ConditionAdded` event
 ### 4.3 Resolution Logic
 
 `resolveMarket(marketId)` is called by the resolver after `resolveTime`. It iterates all conditions:
+
+```mermaid
+flowchart TD
+    start[resolveMarket called] --> time{block.timestamp >= resolveTime?}
+    time -->|no| revert[revert: Too early]
+    time -->|yes| loop[For each Condition]
+    loop --> resolved{External market Resolved?}
+    resolved -->|no| revert2[revert: Condition not resolved]
+    resolved -->|yes| match{outcome == expectedOutcome?}
+    match -->|no| setNo[allMatch = false\nbreak loop]
+    match -->|yes| next[Next condition]
+    next --> loop
+    setNo --> result
+    loop -->|all checked| result{allMatch?}
+    result -->|yes| yes[outcome = Yes]
+    result -->|no| no[outcome = No]
+```
 
 ```solidity
 for (uint256 i = 0; i < m.conditions.length; i++) {
@@ -336,6 +366,19 @@ The owner calls `setAuthorizedCaller(predictionMarketAddress, true)` after deplo
 - Increments `_stats[creator].resolved` and `_stats[creator].score` (+1)
 - Emits `CreatorReputationUpdated(creator, newScore)`
 
+```mermaid
+flowchart LR
+    create["PredictionMarket\ncreateMarket()"] -->|"try onMarketCreated(id, creator)"| rep[ReputationSystem]
+    rep --> store["marketCreator[id] = creator\ncreated += 1"]
+
+    resolve["PredictionMarket\nresolveMarket()"] -->|"try onMarketResolved(id, creator, outcome)"| rep
+    rep --> verify{creator matches\nrecorded?}
+    verify -->|yes| update["resolved += 1\nscore += 1\nemit CreatorReputationUpdated"]
+    verify -->|no| revert[revert: Creator mismatch]
+
+    update --> api["GET /api/reputation/:address\n→ creator_reputation table"]
+```
+
 ### 6.4 Anti-Spoofing
 
 If `onMarketCreated` was called first, `onMarketResolved` verifies the creator matches:
@@ -365,7 +408,32 @@ The backend mirrors this data in the `creator_reputation` table (see §8) and ex
 
 **File:** [`contracts/PrivatePredictionMarket.sol`](../contracts/PrivatePredictionMarket.sol)
 
-See [`docs/private-prediction-markets.md`](private-prediction-markets.md) for the full architecture. Key technical details:
+### 7.0 Commit-Reveal Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant PPM as PrivatePredictionMarket
+    participant CRE as CRE Workflow
+
+    Note over U: Market is Open
+    U->>U: commitment = keccak256(outcome, amount, nonce)
+    U->>PPM: commitBet(marketId, commitment) + ETH
+    Note over PPM: Stores hash only - position hidden
+
+    Note over PPM: closeTime reached - no more commits
+
+    CRE->>PPM: resolveMarket(marketId, outcome)
+    Note over PPM: Market is now Resolved
+
+    Note over U: Reveal phase begins
+    U->>PPM: revealBet(marketId, index, outcome, amount, nonce)
+    Note over PPM: Verifies keccak256(outcome, amount, nonce) == stored hash
+    PPM->>PPM: Adds to totalYesStake or totalNoStake
+
+    U->>PPM: claimPayout(marketId)
+    PPM->>U: ETH payout if winner
+```
 
 ### 7.1 Commitment Scheme
 

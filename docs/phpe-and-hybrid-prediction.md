@@ -102,6 +102,17 @@ The encoder selects a strategy based on `TemporalParams.strategy`:
 | `Mean` | `series.len() <= 10` | Averages all features; stable for short series |
 | `RegimeDetection` | Manual config | Detects structural breaks in the series |
 
+```mermaid
+flowchart TD
+    check{series.len() > 10?}
+    check -->|yes| sw["SlidingWindow(10)\nUse last 10 points\nCaptures recent momentum"]
+    check -->|no| mean["Mean\nAverage all points\nStable for short series"]
+    manual["Manual config"] --> regime["RegimeDetection\nDetects structural breaks"]
+    sw --> embed["Fixed-size embedding vector\ndim = base_dim x 2 + base_dim x 3"]
+    mean --> embed
+    regime --> embed
+```
+
 The `default_context()` function automatically selects `SlidingWindow(10)` for series longer than 10 points, and `Mean` otherwise:
 
 ```rust
@@ -129,6 +140,17 @@ let temporal_params = TemporalParams {
 - The mean of the outputs is the point probability estimate.
 - The variance across samples is the epistemic uncertainty proxy.
 
+```mermaid
+flowchart LR
+    emb[Embedding vector] --> p1["Forward pass 1\n+ dropout"]
+    emb --> p2["Forward pass 2\n+ dropout"]
+    emb --> p3["Forward pass 3\n+ dropout"]
+    emb --> p4["Forward pass 4\n+ dropout"]
+    emb --> p5["Forward pass 5\n+ dropout"]
+    p1 & p2 & p3 & p4 & p5 --> mean["mean(outputs)\n→ probability"]
+    p1 & p2 & p3 & p4 & p5 --> var["variance(outputs)\n→ uncertainty"]
+```
+
 This approach is computationally cheap compared to full Bayesian inference but provides a meaningful uncertainty signal: high variance across dropout samples indicates the model is uncertain about the input region.
 
 **Output:** `(probability: f32, uncertainty: f32)` — both in `[0, 1]` before calibration.
@@ -144,6 +166,15 @@ Raw neural network outputs are often overconfident (probabilities cluster near 0
 **`CalibrationParams::default_t1()`** applies **temperature scaling** with `T = 1.0` (identity by default). In a trained model, `T > 1` softens the distribution (reduces overconfidence) and `T < 1` sharpens it.
 
 The library also supports **isotonic regression calibration** (`isotonic_calibration`), which learns a monotone mapping from raw scores to calibrated probabilities using held-out data. This is the recommended approach for production models.
+
+```mermaid
+flowchart LR
+    raw["Raw probability\nfrom Bayesian head\ne.g. 0.91 overconfident"]
+    raw --> temp["Temperature scaling\np_scaled = sigmoid(logit(p) / T)\nT=1.0 default, T>1 softens"]
+    raw --> iso["Isotonic regression\nmonotone mapping\nlearned from held-out data"]
+    temp --> out["Calibrated probability\ne.g. 0.74"]
+    iso --> out
+```
 
 **Output:** Calibrated `probability ∈ [0, 1]`.
 
@@ -335,6 +366,20 @@ AI_PROVIDER=gemini      → GeminiProvider (falls back to Mock if GEMINI_API_KEY
 AI_PROVIDER=huggingface → HuggingFaceProvider (falls back to Mock if keys missing)
 AI_PROVIDER=mock        → MockAiProvider (always)
 (default)               → MockAiProvider
+```
+
+```mermaid
+flowchart TD
+    env["AI_PROVIDER env var"] --> g{gemini?}
+    g -->|yes| gkey{GEMINI_API_KEY set?}
+    gkey -->|yes| gemini[GeminiProvider\ngemini-2.0-flash]
+    gkey -->|no| mock1[MockAiProvider\nfallback]
+    g -->|no| hf{huggingface?}
+    hf -->|yes| hfkey{HF_API_KEY + HF_MODEL set?}
+    hfkey -->|yes| huggingface[HuggingFaceProvider\ncardiffnlp model]
+    hfkey -->|no| mock2[MockAiProvider\nfallback]
+    hf -->|no| mock3[MockAiProvider\ndefault]
+    gemini & huggingface & mock1 & mock2 & mock3 --> trait["AiProvider trait\nsentiment_score(text) → f32"]
 ```
 
 ---
