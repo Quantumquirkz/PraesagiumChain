@@ -1,0 +1,158 @@
+"use client";
+
+import Link from "next/link";
+// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
+import { useEffect, useState } from "react";
+import type { MarketView } from "@/types/api";
+import { useCountdown, formatCountdownDisplay } from "@/components/countdown";
+import { truncateAddress, formatEth } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  Open: "badge-open",
+  Locked: "badge-locked",
+  Resolved: "badge-resolved",
+  Cancelled: "badge-cancelled",
+};
+
+const URGENT_THRESHOLD_SEC = 3600;
+
+function addressToGradient(address: string): string {
+  let hash = 0;
+  for (let i = 0; i < address.length; i++) {
+    hash = address.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  const h2 = (h + 120) % 360;
+  return `linear-gradient(135deg, hsl(${h}, 70%, 55%), hsl(${h2}, 70%, 45%))`;
+}
+
+export interface MarketCardProps {
+  market: MarketView;
+  /** If > 70, show gold star before creator */
+  creatorReputation?: number;
+}
+
+export function MarketCard({ market, creatorReputation }: MarketCardProps) {
+  const countdown = useCountdown(market.close_time);
+  const [barMounted, setBarMounted] = useState(false);
+
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setBarMounted(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+
+  const totalStake = Number(market.total_yes_stake) + Number(market.total_no_stake);
+  const yesPct = totalStake > 0 ? (Number(market.total_yes_stake) / totalStake) * 100 : 50;
+  const noPct = 100 - yesPct;
+
+  const isUrgent = !countdown.expired && countdown.totalSeconds < URGENT_THRESHOLD_SEC;
+  const yesWei = BigInt(Math.floor(Number(market.total_yes_stake)));
+  const noWei = BigInt(Math.floor(Number(market.total_no_stake)));
+
+  const statusClass = STATUS_BADGE_CLASS[market.status] ?? "badge-cancelled";
+  const showStar = creatorReputation != null && creatorReputation > 70;
+
+  return (
+    <Link
+      href={`/markets/${market.id}`}
+      className={cn(
+        "block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
+        "transition-all duration-200 ease-out",
+        "hover:border-border-bright hover:shadow-[0_0_0_1px_var(--border-bright),0_0_24px_var(--cyan-dim),0_8px_32px_rgba(0,0,0,0.4)] hover:-translate-y-0.5"
+      )}
+      style={{ padding: 20 }}
+      aria-label={`View market: ${market.question}`}
+    >
+      {/* ROW 1 — Header */}
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "rounded-md px-2 py-0.5 font-mono text-[11px] uppercase",
+            statusClass
+          )}
+          aria-label={`Status: ${market.status}`}
+        >
+          {market.status}
+        </span>
+        {market.creator && (
+          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+            {showStar && (
+              <span className="text-gold text-sm leading-none" aria-hidden>★</span>
+            )}
+            <div
+              className="h-5 w-5 shrink-0 rounded"
+              style={{ background: addressToGradient(market.creator) }}
+              aria-hidden
+            />
+            <span className="font-mono text-[10px] text-text-muted truncate">
+              {truncateAddress(market.creator)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ROW 2 — Question */}
+      <h3
+        className="mt-3 font-body font-medium text-[15px] text-foreground line-clamp-2 leading-snug"
+        style={{ marginTop: 12 }}
+      >
+        {market.question}
+      </h3>
+
+      {/* ROW 3 — Stakes */}
+      <div className="mt-4 flex flex-col gap-2" style={{ marginTop: 16 }}>
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-mono text-xs text-green shrink-0">
+            YES {formatEth(yesWei)}
+          </span>
+          <div
+            className="flex-1 h-1.5 min-w-0 rounded-[3px] bg-elevated overflow-hidden flex"
+            style={{ height: 6, borderRadius: 3 }}
+          >
+            <div
+              className="h-full shrink-0 bg-green transition-[width] duration-[800ms] ease-out rounded-l-[3px]"
+              style={{
+                width: barMounted ? `${yesPct}%` : "0%",
+              }}
+            />
+            <div
+              className="h-full shrink-0 bg-red transition-[width] duration-[800ms] ease-out rounded-r-[3px]"
+              style={{
+                width: barMounted ? `${noPct}%` : "0%",
+              }}
+            />
+          </div>
+          <span className="font-mono text-xs text-red shrink-0">
+            NO {formatEth(noWei)}
+          </span>
+        </div>
+      </div>
+
+      {/* ROW 4 — Footer */}
+      <div className="mt-4 flex items-center justify-between gap-3" style={{ marginTop: 16 }}>
+        <span className="font-mono text-xs text-text-secondary shrink-0" role="status">
+          {countdown.expired ? (
+            <span className="text-text-muted">Closed</span>
+          ) : isUrgent ? (
+            <span className="urgent-pulse">
+              ⚡ {countdown.totalSeconds < 60 ? "<1m" : `${Math.ceil(countdown.totalSeconds / 60)}m`} left
+            </span>
+          ) : (
+            <>⏱ {formatCountdownDisplay(countdown)}</>
+          )}
+        </span>
+        {market.latest_prediction != null ? (
+          <span className="font-mono text-xs text-violet shrink-0">
+            ◈ AI {Math.round(market.latest_prediction.probability * 100)}%
+          </span>
+        ) : (
+          <span className="flex-1" />
+        )}
+        <span className="shrink-0 font-body text-xs border border-border-bright bg-transparent rounded px-2 py-1 text-foreground hover:bg-cyan-dim hover:border-cyan hover:text-cyan transition-all duration-200 group">
+          View <span className="inline-block group-hover:translate-x-0.5 transition-transform">→</span>
+        </span>
+      </div>
+    </Link>
+  );
+}
