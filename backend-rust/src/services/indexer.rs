@@ -91,7 +91,8 @@ impl EventIndexer {
         }
 
         let from_block = self.last_processed_block + 1;
-        let to_block = current_block.min(self.last_processed_block + 2000);
+        // Alchemy Free tier limits eth_getLogs to a 10-block range max.
+        let to_block = current_block.min(self.last_processed_block + 9);
 
         let filter = Filter::new()
             .address(self.contract_address)
