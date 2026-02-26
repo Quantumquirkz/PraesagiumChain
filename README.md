@@ -185,7 +185,7 @@ flowchart LR
 | **On-chain Indexer** | ethers-rs | 2.0 |
 | **AI Providers** | Gemini API / Hugging Face Inference API | gemini-2.0-flash |
 | **CRE Workflow** | TypeScript + @chainlink/cre-sdk | ^1.0.7 |
-| **Frontend** | Next.js 14 + wagmi v2 + Tailwind CSS | coming soon |
+| **Frontend** | Next.js 14 + wagmi v2 + Tailwind CSS | 14.2.15 / 2.12 / 3.4 |
 
 ---
 
@@ -219,14 +219,25 @@ Before running the project, ensure you have the following installed:
 ```bash
 git clone https://github.com/quantumquirkz/PraesagiumChain.git
 cd PraesagiumChain
+
+# Contracts + Hardhat tooling
 npm install
 npx hardhat compile
+
+# Frontend (Next.js)
+cd frontend
+npm install
+cd ..
 ```
 
 **Step 2 — Configure environment**
 
 ```bash
+# Backend + contracts
 cp config/env.example .env
+
+# Frontend
+cp frontend/.env.example frontend/.env.local
 ```
 
 Edit `.env` with at minimum these values:
@@ -238,6 +249,16 @@ GEMINI_API_KEY=your_key     # skip if AI_PROVIDER=mock
 PRIVATE_KEY=your_hardhat_or_wallet_key
 RPC_URL=http://127.0.0.1:8545
 API_BASE_URL=http://localhost:4000
+```
+
+Edit `frontend/.env.local` with:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+NEXT_PUBLIC_CHAIN_ID=11155111
+NEXT_PUBLIC_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0xf2397b5827860b361427240d1D1F6F89e9bF197f
+NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 ```
 
 > **Supabase on WSL / IPv4-only networks:** Use the **Session pooler** URI from Supabase Dashboard → Connect. Encode `#` in passwords as `%23`.
@@ -279,7 +300,16 @@ npm run deploy
 # CRE_WORKFLOW_ADDRESS=0x...
 ```
 
-**Step 7 — Run the E2E demo**
+**Step 7 — Start the frontend**
+
+```bash
+# Terminal 4
+cd frontend
+npm run dev
+# Frontend starts on http://localhost:3000
+```
+
+**Step 8 — Run the E2E demo**
 
 ```bash
 npm run demo
@@ -384,6 +414,15 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 | `npm run node` | Start Hardhat local blockchain (port 8545) |
 | `npm run backend` | Start Rust backend (port 4000) |
 | `npm run demo` | Full E2E demo: create → bet → resolve → claim |
+
+### Frontend (run from `frontend/`)
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Next.js dev server (port 3000) |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
 
 ### Contracts
 
@@ -615,8 +654,7 @@ PraesagiumChain/
 ├── .github/
 │   └── workflows/deploy.yml      # CI: contract tests + Rust tests + audits
 ├── config/
-│   ├── env.example               # Template → copy to root .env
-│   └── frontend.env.example      # Template for frontend .env.local
+│   └── env.example               # Template → copy to root .env
 ├── contracts/
 │   ├── PredictionMarket.sol      # Core: binary markets, bets, payouts
 │   ├── CREWorkflow.sol           # Bridge: oracle result → resolveMarket
@@ -645,17 +683,44 @@ PraesagiumChain/
 │   │       ├── bayesian/         # Bayesian head with MC dropout
 │   │       └── calibration/      # Isotonic / temperature calibration
 │   └── migrations/               # SQL migration files
+├── frontend/                     # Next.js 14 App Router frontend
+│   ├── app/                      # Pages (App Router)
+│   │   ├── page.tsx              # Dashboard — market list + stats
+│   │   ├── layout.tsx            # Root layout (Header, LiveTicker, Footer)
+│   │   ├── markets/create/       # Create market wizard (3-step)
+│   │   ├── markets/[id]/         # Market detail + bet form
+│   │   ├── positions/            # My positions + payout claiming
+│   │   └── reputation/           # Creator reputation profiles
+│   ├── components/               # Reusable UI components
+│   │   ├── ui/                   # shadcn/ui primitives (Button, Card, Dialog, etc.)
+│   │   ├── market-card.tsx       # Market list item
+│   │   ├── market-detail.tsx     # Full market view with bet form
+│   │   ├── create-market-form.tsx
+│   │   ├── live-ticker.tsx       # Price ticker bar
+│   │   ├── ohlcv-chart.tsx       # Candlestick chart (Recharts)
+│   │   ├── stakes-chart.tsx      # Yes/No stakes bar chart
+│   │   └── providers.tsx         # WagmiProvider + QueryClientProvider + ThemeProvider
+│   ├── lib/
+│   │   ├── api.ts                # All backend API calls (fetch wrapper)
+│   │   ├── wagmi.ts              # wagmi config (Sepolia, injected connector)
+│   │   ├── constants.ts          # Contract addresses, OUTCOME enum
+│   │   └── abis/                 # PredictionMarket ABI
+│   ├── types/api.ts              # TypeScript types for API responses
+│   ├── next.config.js            # Rewrites: /api/* → backend :4000
+│   ├── tailwind.config.ts        # Custom design tokens (dark theme)
+│   ├── tsconfig.json             # TypeScript config (@/* alias)
+│   ├── package.json              # Frontend dependencies
+│   ├── .env.local                # gitignored — copy from .env.example
+│   └── .env.example              # Template for frontend env vars
 ├── cre/
 │   ├── praesagium-resolver/      # Standard market CRE workflow (TypeScript)
 │   │   ├── main.ts               # CRON → HTTP → outcome → oracleCallback
-│   │   ├── workflow.yaml         # Staging / production targets
-│   │   ├── config.staging.json   # Staging config
+│   │   ├── config.staging.json
 │   │   └── config.production.json
 │   └── praesagium-resolver-confidential/  # Private market CRE workflow (TEE)
 ├── scripts/
 │   ├── deploy/                   # deployLocal.js, deployPrivateMarket.js, deployWithFunctions.js
 │   ├── demo/demoE2E.js           # Full E2E demo script
-│   ├── test/                     # testPredictionMarket.js, testCREWorkflow.js
 │   ├── verify/verify.js          # Etherscan/Polygonscan verification
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
@@ -664,14 +729,11 @@ PraesagiumChain/
 │   └── migrations/               # Migration files
 ├── notebook/                     # Python simulation notebooks
 ├── docs/
-│   ├── architecture-and-design.md
-│   ├── development-and-deployment.md
-│   ├── deploy-testnet.md
-│   ├── private-prediction-markets.md
-│   ├── security-and-operations.md
+│   ├── phpe-and-hybrid-prediction.md
+│   ├── smart-contracts-and-database.md
 │   └── frontend-project.md       # Frontend spec (Next.js 14, wagmi v2, Tailwind)
 ├── hardhat.config.js
-├── package.json
+├── package.json                  # Hardhat + contracts tooling
 └── .env                          # gitignored — copy from config/env.example
 ```
 
@@ -724,21 +786,30 @@ RUST_LOG=praesagium_backend=debug,tower_http=debug npm run backend
 
 ---
 
-## Frontend (Coming Soon)
+## Frontend
 
-The frontend is currently in development. It will be a **Next.js 14** application with:
+The frontend is a **Next.js 14** application located in the [`frontend/`](frontend/) directory. It connects to the Rust backend at `localhost:4000` via a built-in proxy (configured in `next.config.js`) and interacts with the `PredictionMarket` contract on Sepolia via wagmi v2.
 
-- Wallet connection (wagmi v2 + viem)
-- Market dashboard with live stats and filters
+**To run:**
+
+```bash
+cd frontend
+npm install        # first time only
+npm run dev        # http://localhost:3000
+```
+
+**Features:**
+
+- Wallet connection (MetaMask / injected, Sepolia testnet)
+- Market dashboard with live stats, filters, and pagination
 - Market detail with bet form, PHPE uncertainty visualization, and AI sentiment preview
-- Create market form with on-chain submission
+- Create market wizard (3-step: question → timeline → on-chain deploy)
 - My positions and payout claiming
-- Creator reputation profiles
-- Hybrid prediction builder (PHPE + sentiment + live price data)
+- Creator reputation profiles with on-chain score visualization
+
+**Stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · Recharts
 
 The full frontend specification — including all API endpoints, contract ABIs, TypeScript types, component structure, and UX requirements — is documented in [`docs/frontend-project.md`](docs/frontend-project.md).
-
-**Planned stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · Recharts
 
 ---
 
@@ -789,6 +860,7 @@ This project follows the [Chainlink Prediction Markets Hackathon](https://chain.
 | Deployed contracts (Sepolia) | ✅ |
 | Etherscan verification | ✅ |
 | E2E demo (`npm run demo`) | ✅ |
+| Frontend (Next.js 14 + wagmi v2) | ✅ |
 | Demo video (2–5 min) | ⬜ |
 | Live frontend link | ⬜ Coming soon |
 
@@ -803,12 +875,12 @@ This project follows the [Chainlink Prediction Markets Hackathon](https://chain.
 ## Contributing
 
 1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
-2. Install dependencies: `npm install && cd backend-rust && cargo build`
-3. Copy `config/env.example` to `.env` and configure
+2. Install dependencies: `npm install && cd frontend && npm install && cd ../backend-rust && cargo build`
+3. Copy `config/env.example` to `.env` and `frontend/.env.example` to `frontend/.env.local`; configure both
 4. Make your changes; ensure tests pass: `npm run test:all`
-5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`)
+5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`), TypeScript (`npm run lint` in `frontend/`)
 6. Open a pull request against `main` with a clear description
-7. Do not commit `.env` or any secrets
+7. Do not commit `.env`, `frontend/.env.local`, or any secrets
 
 ---
 
