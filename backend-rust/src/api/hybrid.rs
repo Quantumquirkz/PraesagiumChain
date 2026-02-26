@@ -1,17 +1,16 @@
-use axum::{extract::Extension, Json};
+use axum::{extract::State, Json};
 use std::sync::Arc;
 
+use crate::constants::MAX_TEXT_LEN;
 use crate::error::Result;
 use crate::models::{HybridPredictRequest, HybridPredictResponse};
-use crate::services::{HybridPredictor, MarketService};
+use crate::state::AppState;
 
-use crate::constants::MAX_TEXT_LEN;
 const MAX_SOCIAL_TEXTS: usize = 20;
 const MAX_SERIES_LEN: usize = 10_000;
 
 pub async fn hybrid_predict(
-    Extension(hybrid): Extension<Arc<HybridPredictor>>,
-    Extension(markets): Extension<Arc<MarketService>>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<HybridPredictRequest>,
 ) -> Result<Json<HybridPredictResponse>> {
     if let Some(ref t) = req.sentiment_text {
@@ -51,12 +50,14 @@ pub async fn hybrid_predict(
     let symbol = req.binance_symbol.as_deref();
     let use_chainlink = req.use_chainlink_price.unwrap_or(false);
 
-    let (prob, uncertainty) = hybrid
+    let (prob, uncertainty) = state
+        .hybrid_predictor
         .predict_hybrid(series, text, social, symbol, use_chainlink)
         .await?;
 
     if let Some(market_id) = req.market_id {
-        let _ = markets
+        let _ = state
+            .market_service
             .set_prediction(
                 market_id,
                 prob,

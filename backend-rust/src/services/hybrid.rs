@@ -1,9 +1,11 @@
-//! Hybrid predictor: fuses time series (engine), sentiment (AI), Binance, Chainlink.
-//! Sources: X, Reddit, Binance, Chainlink (proxy) for multi-signal predictions.
+//! Hybrid predictor: fuses time series (PHPE engine), sentiment (AI), Binance, Chainlink.
+//! The PHPE PredictionContext is cached in an Arc<RwLock<...>> so it is built once and
+//! reused across requests instead of being reconstructed on every call.
 
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use predictor::{default_context, predict, TimeSeriesSample};
+use predictor::{default_context, predict, PredictionContext, TimeSeriesSample};
 
 use crate::error::Result;
 use crate::services::ai::AiService;
@@ -11,7 +13,7 @@ use crate::services::sources::{BinanceSource, ChainlinkSource};
 use crate::services::Cache;
 use tracing::debug;
 
-/// Weights for hybrid fusion (sum = 1.0).
+/// Weights for hybrid fusion (must sum to 1.0 when all signals are present).
 #[derive(Clone)]
 pub struct HybridWeights {
     pub series: f32,
@@ -29,7 +31,7 @@ impl Default for HybridWeights {
     }
 }
 
-/// Hybrid predictor: engine + AI + Binance + Chainlink.
+/// Hybrid predictor: PHPE engine + AI + Binance + Chainlink.
 pub struct HybridPredictor {
     ai: Arc<AiService>,
     binance: BinanceSource,
@@ -37,6 +39,8 @@ pub struct HybridPredictor {
     #[allow(dead_code)]
     cache: Arc<Cache>,
     weights: HybridWeights,
+    /// Persistent PHPE context — built once from the first time series seen, then reused.
+    phpe_ctx: Arc<RwLock<Option<PredictionContext>>>,
 }
 
 impl HybridPredictor {
@@ -47,23 +51,36 @@ impl HybridPredictor {
             chainlink: ChainlinkSource::new(),
             cache,
             weights: HybridWeights::default(),
+            phpe_ctx: Arc::new(RwLock::new(None)),
         }
     }
 
-    /// Prediction from time series only (engine). Returns (probability, uncertainty).
-    pub fn predict_series_with_uncertainty(&self, series: &TimeSeriesSample) -> (f32, f32) {
+    /// Returns the cached PHPE context, or builds and caches a new one from `series`.
+    async fn get_or_init_context(&self, series: &TimeSeriesSample) -> PredictionContext {
+        {
+            let read = self.phpe_ctx.read().await;
+            if let Some(ctx) = read.as_ref() {
+                return ctx.clone();
+            }
+        }
+        // Context not yet initialised — build it and cache it.
+        let ctx = default_context(series);
+        let mut write = self.phpe_ctx.write().await;
+        // Double-check after acquiring write lock.
+        if write.is_none() {
+            *write = Some(ctx.clone());
+        }
+        write.as_ref().unwrap().clone()
+    }
+
+    /// Prediction from time series only (PHPE engine). Returns (probability, uncertainty).
+    pub async fn predict_series_with_uncertainty(&self, series: &TimeSeriesSample) -> (f32, f32) {
         if series.is_empty() {
             return (0.5, 0.25);
         }
-        let ctx = default_context(series);
+        let ctx = self.get_or_init_context(series).await;
         let res = predict(series, &ctx);
         (res.probability, res.uncertainty)
-    }
-
-    /// Prediction from time series only (engine).
-    #[allow(dead_code)]
-    pub fn predict_series(&self, series: &TimeSeriesSample) -> f32 {
-        self.predict_series_with_uncertainty(series).0
     }
 
     /// Predict from sentiment text (AI).
@@ -111,7 +128,7 @@ impl HybridPredictor {
 
         if let Some(s) = series {
             if !s.is_empty() {
-                let (p, u) = self.predict_series_with_uncertainty(s);
+                let (p, u) = self.predict_series_with_uncertainty(s).await;
                 weighted_sum += w.series * p;
                 total_weight += w.series;
                 phpe_uncertainty = Some(u);

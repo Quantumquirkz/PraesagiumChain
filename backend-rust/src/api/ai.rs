@@ -1,19 +1,19 @@
-use axum::{extract::Extension, Json};
-use serde::{Deserialize, Serialize};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use std::sync::Arc;
 
-use crate::error::Result;
-use crate::services::{AiService, MarketService};
-
-/// Maximum allowed text length for sentiment analysis (mitigates abuse).
 use crate::constants::MAX_TEXT_LEN;
+use crate::error::Result;
+use crate::state::AppState;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct SentimentRequest {
     pub text: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct SentimentResponse {
     pub provider: String,
     /// Sentiment score in [-1, 1].
@@ -23,7 +23,7 @@ pub struct SentimentResponse {
 }
 
 pub async fn sentiment(
-    Extension(ai): Extension<Arc<AiService>>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<SentimentRequest>,
 ) -> Result<Json<SentimentResponse>> {
     if req.text.len() > MAX_TEXT_LEN {
@@ -36,9 +36,9 @@ pub async fn sentiment(
     if text.is_empty() {
         return Err(crate::error::AppError::Validation("Text cannot be empty".into()));
     }
-    let (score, prob) = ai.sentiment(text).await?;
+    let (score, prob) = state.ai_service.sentiment(text).await?;
     Ok(Json(SentimentResponse {
-        provider: ai.provider_name().to_string(),
+        provider: state.ai_service.provider_name().to_string(),
         sentiment_score: score,
         probability: prob,
     }))
@@ -46,9 +46,8 @@ pub async fn sentiment(
 
 /// Runs AI sentiment and stores it as a prediction entry for the market.
 pub async fn market_ai_predict(
-    Extension(ai): Extension<Arc<AiService>>,
-    Extension(markets): Extension<Arc<MarketService>>,
-    axum::extract::Path(market_id): axum::extract::Path<i64>,
+    State(state): State<Arc<AppState>>,
+    Path(market_id): Path<i64>,
     Json(req): Json<SentimentRequest>,
 ) -> Result<Json<serde_json::Value>> {
     if req.text.len() > MAX_TEXT_LEN {
@@ -61,24 +60,23 @@ pub async fn market_ai_predict(
     if text.is_empty() {
         return Err(crate::error::AppError::Validation("Text cannot be empty".into()));
     }
-    let (score, prob) = ai.sentiment(text).await?;
+    let (score, prob) = state.ai_service.sentiment(text).await?;
 
-    // Store as a prediction record.
-    let _ = markets
+    let _ = state
+        .market_service
         .set_prediction(
             market_id,
             prob,
-            Some((1.0 - prob).abs().min(1.0)), // simple uncertainty proxy
-            Some(format!("ai:sentiment:{}", ai.provider_name())),
+            Some((1.0 - prob).abs().min(1.0)),
+            Some(format!("ai:sentiment:{}", state.ai_service.provider_name())),
             None,
         )
         .await?;
 
     Ok(Json(serde_json::json!({
         "market_id": market_id,
-        "provider": ai.provider_name(),
+        "provider": state.ai_service.provider_name(),
         "sentiment_score": score,
         "probability": prob
     })))
 }
-

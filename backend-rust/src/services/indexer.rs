@@ -203,10 +203,17 @@ impl EventIndexer {
             _ => 0,
         };
         // Outcome enum: 0 Undecided, 1 Yes, 2 No
+        // Treat 0 (Undecided) as a non-final state — skip resolution to avoid corrupting data.
         let outcome = match outcome_byte {
             1 => "Yes",
             2 => "No",
-            _ => "No",
+            _ => {
+                warn!(
+                    "MarketResolved event for on_chain_market_id={} has unexpected outcome byte {}; skipping",
+                    on_chain_market_id, outcome_byte
+                );
+                return Ok(());
+            }
         };
 
         let market = self.market_service.get_by_on_chain_market_id(on_chain_market_id).await?;

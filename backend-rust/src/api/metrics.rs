@@ -1,10 +1,10 @@
 //! Metrics endpoint for observability.
 
-use axum::{extract::Extension, Json};
+use axum::{extract::State, Json};
 use std::sync::Arc;
 
 use crate::error::Result;
-use crate::services::{Cache, MarketService};
+use crate::state::AppState;
 
 #[derive(serde::Serialize)]
 pub struct MetricsResponse {
@@ -25,11 +25,10 @@ pub struct MarketMetrics {
 }
 
 pub async fn get_metrics(
-    Extension(cache): Extension<Arc<Cache>>,
-    Extension(market_service): Extension<Arc<MarketService>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<MetricsResponse>> {
-    let cache_stats = cache.stats().await;
-    let market_stats = market_service.get_stats().await?;
+    let cache_stats = state.cache.stats().await;
+    let market_stats = state.market_service.get_stats().await?;
 
     Ok(Json(MetricsResponse {
         cache: CacheMetrics {

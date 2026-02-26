@@ -15,6 +15,8 @@ struct CachedPrediction {
     probability: f32,
     uncertainty: f32,
     model_version: String,
+    /// Preserved from the original PredictionResult so cache hits return the real hash.
+    model_hash: [u8; 32],
     timestamp: u64,
     ttl: u64,
 }
@@ -37,7 +39,7 @@ impl Cache {
                     probability: cached.probability,
                     uncertainty: cached.uncertainty,
                     model_version: cached.model_version.clone(),
-                    model_hash: [0u8; 32],
+                    model_hash: cached.model_hash,
                 });
             }
         }
@@ -59,6 +61,7 @@ impl Cache {
                 probability: prediction.probability,
                 uncertainty: prediction.uncertainty,
                 model_version: prediction.model_version.clone(),
+                model_hash: prediction.model_hash,
                 timestamp: now,
                 ttl: ttl_seconds,
             },

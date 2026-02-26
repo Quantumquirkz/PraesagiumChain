@@ -33,6 +33,7 @@ pub struct Config {
     pub gemini_model: Option<String>,
     pub finnhub_api_key: Option<String>,
     pub newsapi_key: Option<String>,
+    pub api_football_key: Option<String>,
     /// Comma-separated origins for CORS (e.g. "https://app.example.com,http://localhost:3000"). If unset, allows all.
     pub cors_origins: Option<Vec<String>>,
     /// Rate limit: requests per second per IP (default 60).
@@ -99,6 +100,7 @@ impl Config {
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
             finnhub_api_key: std::env::var("FINNHUB_API_KEY").ok(),
             newsapi_key: std::env::var("NEWSAPI_KEY").ok(),
+            api_football_key: std::env::var("API_FOOTBALL_KEY").ok(),
             cors_origins,
             rate_limit_per_second,
             rate_limit_burst,

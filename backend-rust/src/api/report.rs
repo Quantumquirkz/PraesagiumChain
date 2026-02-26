@@ -1,7 +1,7 @@
 //! Report-step endpoints: external data sources that return outcome 0 or 1 for CRE resolution.
 
 use axum::{
-    extract::{Extension, Query},
+    extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::error::{AppError, Result};
+use crate::state::AppState;
 
 const OPEN_METEO_ARCHIVE: &str = "https://archive-api.open-meteo.com/v1/archive";
 const BINANCE_PRICE: &str = "https://api.binance.com/api/v3/ticker/price";
@@ -30,14 +31,15 @@ pub struct OutcomeResponse {
 /// GET /api/weather/rained?lat=9&lon=-79.5&date=2026-02-20
 /// Calls Open-Meteo Archive API; outcome = 1 if precipitation_sum > 0, else 0.
 pub async fn weather_rained(
-    Extension(client): Extension<Arc<reqwest::Client>>,
+    State(state): State<Arc<AppState>>,
     Query(q): Query<WeatherRainedQuery>,
 ) -> Result<impl IntoResponse> {
     let url = format!(
         "{}?latitude={}&longitude={}&start_date={}&end_date={}&daily=precipitation_sum",
         OPEN_METEO_ARCHIVE, q.lat, q.lon, q.date, q.date
     );
-    let resp = client
+    let resp = state
+        .http_client
         .get(&url)
         .send()
         .await
@@ -82,7 +84,7 @@ struct BinancePriceResponse {
 /// or ?symbol=bitcoin&threshold=50000&source=coingecko
 /// outcome = 1 if price >= threshold, else 0.
 pub async fn price_above(
-    Extension(client): Extension<Arc<reqwest::Client>>,
+    State(state): State<Arc<AppState>>,
     Query(q): Query<PriceAboveQuery>,
 ) -> Result<impl IntoResponse> {
     let use_binance = q.source.as_deref() == Some("binance")
@@ -94,7 +96,7 @@ pub async fn price_above(
             format!("{}USDT", q.symbol.to_uppercase())
         };
         let url = format!("{}?symbol={}", BINANCE_PRICE, sym);
-        let resp = client.get(&url).send().await.map_err(|e| {
+        let resp = state.http_client.get(&url).send().await.map_err(|e| {
             AppError::ExternalApi(format!("Binance price request failed: {e}"))
         })?;
         if !resp.status().is_success() {
@@ -111,10 +113,9 @@ pub async fn price_above(
             AppError::Validation("Binance: invalid price".into())
         })?
     } else {
-        // CoinGecko: symbol = bitcoin, ethereum, etc.
         let id = q.symbol.to_lowercase();
         let url = format!("{}?ids={}&vs_currencies=usd", COINGECKO_PRICE, id);
-        let resp = client.get(&url).send().await.map_err(|e| {
+        let resp = state.http_client.get(&url).send().await.map_err(|e| {
             AppError::ExternalApi(format!("CoinGecko request failed: {e}"))
         })?;
         if !resp.status().is_success() {
@@ -153,26 +154,23 @@ pub struct SportsWinnerQuery {
 /// With API_FOOTBALL_KEY set and fixture_id: calls API-Football and returns real outcome.
 /// Without key: use demo_outcome for testing (0 or 1), or returns 400 with instructions.
 pub async fn sports_winner(
-    Extension(client): Extension<Arc<reqwest::Client>>,
+    State(state): State<Arc<AppState>>,
     Query(q): Query<SportsWinnerQuery>,
 ) -> Result<impl IntoResponse> {
     if let Some(outcome) = q.demo_outcome {
         if outcome <= 1 {
-            return Ok((
-                StatusCode::OK,
-                Json(OutcomeResponse {
-                    outcome,
-                }),
-            ));
+            return Ok((StatusCode::OK, Json(OutcomeResponse { outcome })));
         }
     }
-    let api_key = std::env::var("API_FOOTBALL_KEY").ok();
+    // Use Config instead of std::env::var for proper DI
+    let api_key = state.config.api_football_key.clone();
     if let (Some(key), Some(fixture_id)) = (api_key, &q.fixture_id) {
         let url = format!(
             "https://v3.football.api-sports.io/fixtures?id={}",
             fixture_id
         );
-        let resp = client
+        let resp = state
+            .http_client
             .get(&url)
             .header("x-apisports-key", key)
             .send()
@@ -201,7 +199,7 @@ pub async fn sports_winner(
         let winner_name = match home_goals.cmp(&away_goals) {
             std::cmp::Ordering::Greater => home_name,
             std::cmp::Ordering::Less => away_name,
-            std::cmp::Ordering::Equal => "", // draw
+            std::cmp::Ordering::Equal => "",
         };
         let outcome = if winner_name.eq_ignore_ascii_case(q.winner_team.trim()) {
             1

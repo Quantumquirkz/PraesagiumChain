@@ -8,11 +8,14 @@ const BASE: &str = "https://min-api.cryptocompare.com/data/pricemultifull";
 
 #[derive(Debug, Deserialize)]
 struct Raw {
-    RAW: Option<std::collections::HashMap<String, std::collections::HashMap<String, Quote>>>,
+    #[serde(rename = "RAW")]
+    raw: Option<std::collections::HashMap<String, std::collections::HashMap<String, Quote>>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Quote {
+    #[serde(rename = "PRICE")]
+    price: Option<f64>,
     #[serde(rename = "CHANGEPCT24HOUR")]
     pct: Option<f64>,
     #[serde(rename = "VOLUME24HOURTO")]
@@ -40,11 +43,12 @@ impl CryptocompareSource {
             .map_err(|e| AppError::Validation(format!("Cryptocompare: {e}")))?;
         let data: Raw = resp.json().await
             .map_err(|e| AppError::Validation(format!("Cryptocompare parse: {e}")))?;
-        let raw = data.RAW.ok_or_else(|| AppError::Validation("no RAW".into()))?;
+        let raw = data.raw.ok_or_else(|| AppError::Validation("no RAW".into()))?;
         let coin = raw.get(&fsym.to_uppercase()).ok_or_else(|| AppError::Validation("unknown symbol".into()))?;
         let q = coin.get(&tsym.to_uppercase()).ok_or_else(|| AppError::Validation("unknown quote".into()))?;
         Ok(Signal {
             source: "cryptocompare".to_string(),
+            price: q.price,
             price_change_24h: Some(q.pct.unwrap_or(0.0) as f32),
             volume_24h: q.vol,
             sentiment: None,

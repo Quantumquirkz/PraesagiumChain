@@ -1,9 +1,10 @@
 //! API for fetching from multiple real-time data sources.
 
-use axum::{extract::Query, Extension, Json};
+use axum::{extract::{Query, State}, Json};
 use std::sync::Arc;
 
 use crate::error::Result;
+use crate::state::AppState;
 
 pub async fn list_sources() -> Json<Vec<SourceInfo>> {
     Json(vec![
@@ -74,31 +75,34 @@ pub struct FetchQuery {
 #[derive(serde::Serialize)]
 pub struct FetchResponse {
     source: String,
+    price: Option<f64>,
     price_change_24h: Option<f32>,
     volume_24h: Option<f64>,
     sentiment: Option<f32>,
 }
 
 pub async fn fetch(
+    State(state): State<Arc<AppState>>,
     Query(q): Query<FetchQuery>,
-    Extension(registry): Extension<Arc<crate::services::SourcesRegistry>>,
 ) -> Result<Json<FetchResponse>> {
     let source = q.source.to_lowercase();
     let resp = match source.as_str() {
         "binance" => {
             let sym = q.symbol.as_deref().unwrap_or("BTCUSDT");
-            let sig = registry.binance.fetch_ticker(sym).await?;
+            let sig = state.sources_registry.binance.fetch_ticker(sym).await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
             }
         }
         "chainlink" => {
-            let sig = registry.chainlink.fetch_eth_usd().await?;
+            let sig = state.sources_registry.chainlink.fetch_eth_usd().await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
@@ -107,9 +111,10 @@ pub async fn fetch(
         "cryptocompare" => {
             let fsym = q.fsym.as_deref().unwrap_or("BTC");
             let tsym = q.tsym.as_deref().unwrap_or("USD");
-            let sig = registry.cryptocompare.fetch_ticker(fsym, tsym).await?;
+            let sig = state.sources_registry.cryptocompare.fetch_ticker(fsym, tsym).await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
@@ -117,18 +122,20 @@ pub async fn fetch(
         }
         "kraken" => {
             let pair = q.pair.as_deref().unwrap_or("XBTUSD");
-            let sig = registry.kraken.fetch_ticker(pair).await?;
+            let sig = state.sources_registry.kraken.fetch_ticker(pair).await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
             }
         }
         "exchangerate" => {
-            let sig = registry.exchangerate.fetch_eur_usd().await?;
+            let sig = state.sources_registry.exchangerate.fetch_eur_usd().await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
@@ -136,9 +143,10 @@ pub async fn fetch(
         }
         "finnhub" => {
             let sym = q.symbol.as_deref().unwrap_or("AAPL");
-            let sig = registry.finnhub.fetch_quote(sym).await?;
+            let sig = state.sources_registry.finnhub.fetch_quote(sym).await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,
@@ -147,9 +155,10 @@ pub async fn fetch(
         "newsapi" => {
             let query = q.query.as_deref().unwrap_or("bitcoin");
             let country = q.country.as_deref().unwrap_or("us");
-            let sig = registry.newsapi.fetch_headlines(query, country).await?;
+            let sig = state.sources_registry.newsapi.fetch_headlines(query, country).await?;
             FetchResponse {
                 source: sig.source,
+                price: sig.price,
                 price_change_24h: sig.price_change_24h,
                 volume_24h: sig.volume_24h,
                 sentiment: sig.sentiment,

@@ -1,24 +1,22 @@
-use axum::{
-    extract::Extension,
-    Json,
-};
+use axum::{extract::State, Json};
 use std::sync::Arc;
 
 use crate::error::Result;
 use crate::models::{RunPredictRequest, RunPredictResponse};
-use crate::services::{MarketService, PredictionService};
+use crate::state::AppState;
 
 pub async fn run_predict(
-    Extension(prediction_service): Extension<Arc<PredictionService>>,
-    Extension(market_service): Extension<Arc<MarketService>>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<RunPredictRequest>,
 ) -> Result<Json<RunPredictResponse>> {
-    let result = prediction_service
+    let result = state
+        .prediction_service
         .run_prediction(&req.time_series, req.market_id)
         .await;
 
     if let Some(market_id) = req.market_id {
-        let _ = market_service
+        let _ = state
+            .market_service
             .set_prediction(
                 market_id,
                 result.probability,

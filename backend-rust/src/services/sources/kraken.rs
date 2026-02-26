@@ -51,6 +51,7 @@ impl KrakenSource {
         let vol: f64 = t.v.get(1).and_then(|s| s.parse().ok()).unwrap_or(0.0);
         Ok(Signal {
             source: "kraken".to_string(),
+            price: if last > 0.0 { Some(last) } else { None },
             price_change_24h: Some(pct),
             volume_24h: Some(vol),
             sentiment: None,
