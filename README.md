@@ -1,0 +1,827 @@
+# PraesagiumChain
+
+<p align="center">
+  <strong>Decentralized Prediction Markets — Trustless AI-Powered Resolution via Chainlink CRE</strong><br>
+  PHPE Engine · Multi-Source Data · Solidity Smart Contracts · Rust Backend
+</p>
+
+<p align="center">
+  <a href="https://github.com/quantumquirkz/PraesagiumChain/actions"><img src="https://img.shields.io/github/actions/workflow/status/quantumquirkz/PraesagiumChain/deploy.yml?branch=main&label=CI&style=flat-square" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity" alt="Solidity" />
+  <img src="https://img.shields.io/badge/Rust-1.70+-DEA584?style=flat-square&logo=rust" alt="Rust" />
+  <img src="https://img.shields.io/badge/Chainlink-CRE-375BD2?style=flat-square&logo=chainlink" alt="Chainlink CRE" />
+  <img src="https://img.shields.io/badge/Network-Sepolia-6F4CFF?style=flat-square" alt="Sepolia" />
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#prerequisites">Prerequisites</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#commands">Commands</a> •
+  <a href="#api-reference">API</a> •
+  <a href="#deployed-contracts">Contracts</a> •
+  <a href="#testing">Testing</a> •
+  <a href="#documentation">Docs</a>
+</p>
+
+---
+
+## Overview
+
+**PraesagiumChain** is a decentralized prediction market platform built for the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon). Users create binary (Yes/No) markets on real-world events — price movements, weather, sports outcomes, news sentiment — stake ETH, and markets are resolved trustlessly via the **Chainlink Runtime Environment (CRE)** using AI and live data feeds.
+
+The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Gemini / Hugging Face), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
+
+The backend is a production-grade **Rust/Axum** REST API backed by PostgreSQL (Supabase), with a built-in on-chain event indexer, rate limiting, and 7 external data source integrations. The smart contract layer includes standard markets, private commit-reveal markets (Confidential Compute), conditional markets, tokenized (ERC-721) markets, and an on-chain reputation system.
+
+---
+
+## What Makes PraesagiumChain Unique
+
+| Differentiator | Description |
+|----------------|-------------|
+| **Calibrated Uncertainty (PHPE)** | Users see not just a probability but an **uncertainty band** (e.g. "65% ±12%") from a dedicated Bayesian + time-series engine — so they can gauge confidence before betting. |
+| **Hybrid Prediction API** | Fuses 3 signals: PHPE time-series (35%) + AI sentiment (40%) + live price data (25%) into one calibrated probability via `/api/predict/hybrid`. |
+| **Single CRE Layer for All Sources** | Resolution from AI sentiment, Chainlink Price Feeds, Binance, sports/weather APIs — all through one Chainlink CRE workflow. |
+| **Private Prediction Markets (TEE)** | Commit-reveal bets with a dedicated CRE workflow for Confidential Compute resolution — positions are hidden until reveal. |
+| **On-Chain Reputation System** | Market creators accumulate a verifiable reputation score based on prediction accuracy, visible on-chain and via API. |
+| **Modular Contract Design** | Conditional, private, tokenized (NFT), and base markets share a common interface — easily extensible. |
+
+---
+
+## Architecture
+
+### System Overview
+
+```mermaid
+flowchart TB
+    subgraph clients [Clients]
+        UI[Frontend / User]
+        Wallet[Wallet / RPC]
+    end
+
+    subgraph backend [Backend - Rust / Axum - port 4000]
+        API[REST API]
+        PHPE[PHPE Engine]
+        AISvc[AI Service]
+        Hybrid[Hybrid Predictor]
+        Indexer[Event Indexer]
+        Cache[TTL Cache]
+        Sources[Data Sources x7]
+        API --> PHPE
+        API --> AISvc
+        API --> Hybrid
+        API --> Sources
+        Indexer --> API
+    end
+
+    subgraph chain [Blockchain - Sepolia]
+        PM[PredictionMarket.sol]
+        CRE[CREWorkflow.sol]
+        OC[OracleConsumer.sol]
+        Rep[ReputationSystem.sol]
+        OC -->|resolveFromOracle| CRE
+        CRE -->|resolveMarket| PM
+        PM -->|onMarketCreated / Resolved| Rep
+    end
+
+    subgraph external [External Services]
+        Gemini[Gemini AI]
+        HF[Hugging Face]
+        Binance[Binance API]
+        CL[Chainlink Data Feed]
+        News[NewsAPI / Finnhub]
+    end
+
+    UI <-->|HTTP REST| API
+    Wallet <-->|ethers / wagmi| chain
+    AISvc --> Gemini
+    AISvc --> HF
+    Sources --> Binance
+    Sources --> CL
+    Sources --> News
+    Indexer -.->|RPC events| PM
+```
+
+### CRE Workflow — Compute · Report · Evaluate
+
+```mermaid
+flowchart LR
+    subgraph compute [Compute]
+        A[User creates market] --> B[PredictionMarket.createMarket]
+        B --> C[closeTime + resolveTime registered on-chain]
+    end
+    subgraph report [Report]
+        D[CRON trigger at resolveTime] --> E[CRE workflow calls /api/ai/sentiment]
+        E --> F[Gemini / HuggingFace returns probability]
+        F --> G[Map to outcome 0 or 1]
+    end
+    subgraph evaluate [Evaluate]
+        G --> H[OracleConsumer.oracleCallback]
+        H --> I[CREWorkflow.resolveFromOracle]
+        I --> J[PredictionMarket.resolveMarket]
+        J --> K[Winners call claimPayout]
+    end
+    compute --> report --> evaluate
+```
+
+### Resolution Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant PM as PredictionMarket
+    participant OC as OracleConsumer
+    participant CRE as CREWorkflow
+    participant CL as Chainlink CRE
+
+    U->>PM: createMarket(question, closeTime, resolveTime)
+    U->>PM: placeBet(marketId, Yes/No) + ETH
+    Note over PM: closeTime reached — market locked
+    CL->>OC: oracleCallback(marketId, outcome)
+    OC->>CRE: resolveFromOracle(marketId, outcome)
+    CRE->>PM: resolveMarket(marketId, outcome)
+    Note over PM: Market resolved — payouts available
+    U->>PM: claimPayout(marketId)
+```
+
+### Market Lifecycle
+
+```mermaid
+flowchart LR
+    Create[createMarket] --> Open[Open]
+    Open -->|placeBet| Betting[Betting phase]
+    Betting -->|closeTime reached| Locked[Locked]
+    Locked -->|CRE resolves| Resolved[Resolved]
+    Resolved -->|claimPayout| Paid[Paid out]
+```
+
+### PHPE Pipeline
+
+```mermaid
+flowchart LR
+    TS[Time series input] --> Norm[Normalize]
+    Norm --> Causal[Causal DAG inference]
+    Causal --> Temporal[Temporal encoder]
+    Temporal --> Bayes[Bayesian head - MC dropout]
+    Bayes --> Calib[Isotonic calibration]
+    Calib --> Out[probability + uncertainty]
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Smart Contracts** | Solidity + OpenZeppelin + Chainlink | 0.8.24 / ^5.0.2 / ^1.0.0 |
+| **Contract Tooling** | Hardhat | ^2.22.0 |
+| **Backend** | Rust + Axum + Tokio | 1.70+ / 0.7 / 1.0 |
+| **Prediction Engine** | PHPE (ndarray, MC dropout, isotonic calibration) | internal |
+| **Database** | PostgreSQL via SQLx + Supabase | 0.7 |
+| **On-chain Indexer** | ethers-rs | 2.0 |
+| **AI Providers** | Gemini API / Hugging Face Inference API | gemini-2.0-flash |
+| **CRE Workflow** | TypeScript + @chainlink/cre-sdk | ^1.0.7 |
+| **Frontend** | Next.js 14 + wagmi v2 + Tailwind CSS | coming soon |
+
+---
+
+## Prerequisites
+
+Before running the project, ensure you have the following installed:
+
+| Tool | Version | Install |
+|------|---------|---------|
+| **Node.js** | 18+ | [nodejs.org](https://nodejs.org) |
+| **npm** | 9+ | bundled with Node.js |
+| **Rust** | 1.70+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Bun** *(CRE only)* | 1.2+ | `curl -fsSL https://bun.sh/install \| bash` |
+| **CRE CLI** *(CRE only)* | latest | `curl -sSL https://cre.chain.link/install.sh \| bash` |
+| **Git** | any | [git-scm.com](https://git-scm.com) |
+
+**Accounts / Services required:**
+
+- [Supabase](https://supabase.com) account (free tier is sufficient) — for PostgreSQL
+- [Google AI Studio](https://aistudio.google.com/api-keys) — for `GEMINI_API_KEY` (optional, mock provider available)
+- Ethereum wallet with [Sepolia ETH](https://sepoliafaucet.com) — for testnet deployment
+
+---
+
+## Quick Start
+
+### Local Development (full stack)
+
+**Step 1 — Clone and install dependencies**
+
+```bash
+git clone https://github.com/quantumquirkz/PraesagiumChain.git
+cd PraesagiumChain
+npm install
+npx hardhat compile
+```
+
+**Step 2 — Configure environment**
+
+```bash
+cp config/env.example .env
+```
+
+Edit `.env` with at minimum these values:
+
+```env
+DATABASE_URL=postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+AI_PROVIDER=gemini          # or "mock" to skip AI key
+GEMINI_API_KEY=your_key     # skip if AI_PROVIDER=mock
+PRIVATE_KEY=your_hardhat_or_wallet_key
+RPC_URL=http://127.0.0.1:8545
+API_BASE_URL=http://localhost:4000
+```
+
+> **Supabase on WSL / IPv4-only networks:** Use the **Session pooler** URI from Supabase Dashboard → Connect. Encode `#` in passwords as `%23`.
+
+**Step 3 — Apply database schema**
+
+```bash
+# Option A: Supabase CLI
+npx supabase link --project-ref <your-project-ref>
+npm run db:push
+
+# Option B: Paste supabase/schema.sql in the Supabase SQL Editor
+```
+
+**Step 4 — Start the local blockchain**
+
+```bash
+# Terminal 1
+npm run node
+```
+
+**Step 5 — Start the backend**
+
+```bash
+# Terminal 2
+npm run backend
+# Backend starts on http://localhost:4000
+# Health check: curl http://localhost:4000/health
+```
+
+**Step 6 — Deploy contracts**
+
+```bash
+# Terminal 3
+npm run deploy
+# Copy printed addresses to .env:
+# PREDICTION_MARKET_ADDRESS=0x...
+# ORACLE_CONSUMER_ADDRESS=0x...
+# CRE_WORKFLOW_ADDRESS=0x...
+```
+
+**Step 7 — Run the E2E demo**
+
+```bash
+npm run demo
+# Flow: create market → place bet → advance time → resolve via AI → claim payout
+```
+
+### CRE Workflow Simulation
+
+**Option A — Node.js (quick)**
+
+```bash
+node scripts/simulateCRE.js
+```
+
+**Option B — Official Chainlink CRE CLI**
+
+```bash
+# Install CRE CLI first (see Prerequisites)
+cd cre/praesagium-resolver
+bun install          # or: npm install
+
+cd ..
+cp .env.example .env
+# Set CRE_ETH_PRIVATE_KEY in cre/.env
+
+cre workflow simulate praesagium-resolver --target staging-settings
+# Select option 1 (cron-trigger) when prompted
+# Backend must be running (npm run backend)
+```
+
+---
+
+## Configuration
+
+Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.
+
+### Backend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | HTTP port for the backend | `4000` |
+| `DATABASE_URL` | PostgreSQL connection string (Supabase) | required |
+| `DB_POOL_SIZE` | Connection pool size | `10` |
+| `PREDICTION_CACHE_TTL` | Prediction cache TTL in seconds | `300` |
+| `RATE_LIMIT_PER_SECOND` | Requests per second per IP | `60` |
+| `RATE_LIMIT_BURST` | Burst size for rate limiting | `30` |
+| `CORS_ORIGINS` | Comma-separated allowed origins (production) | all allowed |
+
+### AI Providers
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AI_PROVIDER` | `gemini`, `huggingface`, or `mock` | `mock` |
+| `GEMINI_API_KEY` | Google Gemini API key | — |
+| `GEMINI_MODEL` | Gemini model name | `gemini-2.0-flash` |
+| `HF_API_KEY` | Hugging Face API key | — |
+| `HF_MODEL` | Hugging Face model | `cardiffnlp/twitter-roberta-base-sentiment` |
+
+### Blockchain / Indexer
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RPC_URL` | Ethereum RPC URL (for event indexer) | — |
+| `PREDICTION_MARKET_ADDRESS` | Deployed contract address | — |
+| `START_BLOCK` | Block number to start indexing from | — |
+
+### Hardhat / Testnet
+
+| Variable | Description |
+|----------|-------------|
+| `PRIVATE_KEY` | Deployer wallet private key (no `0x` prefix) |
+| `SEPOLIA_RPC_URL` | Sepolia RPC URL (Alchemy recommended) |
+| `ETHERSCAN_API_KEY` | For contract verification on Etherscan |
+| `POLYGON_AMOY_RPC_URL` | Polygon Amoy RPC URL |
+| `POLYGONSCAN_API_KEY` | For contract verification on Polygonscan |
+
+### Post-deploy (after `npm run deploy`)
+
+| Variable | Description |
+|----------|-------------|
+| `PREDICTION_MARKET_ADDRESS` | PredictionMarket contract address |
+| `CRE_WORKFLOW_ADDRESS` | CREWorkflow contract address |
+| `ORACLE_CONSUMER_ADDRESS` | OracleConsumer contract address |
+| `API_BASE_URL` | Backend URL (e.g. `http://localhost:4000`) |
+
+### Optional APIs
+
+| Variable | Description |
+|----------|-------------|
+| `FINNHUB_API_KEY` | Finnhub stocks/crypto data |
+| `NEWSAPI_KEY` | NewsAPI headlines |
+| `FUNCTIONS_ROUTER` | Chainlink Functions Router address |
+
+---
+
+## Commands
+
+### Core
+
+| Command | Description |
+|---------|-------------|
+| `npm run node` | Start Hardhat local blockchain (port 8545) |
+| `npm run backend` | Start Rust backend (port 4000) |
+| `npm run demo` | Full E2E demo: create → bet → resolve → claim |
+
+### Contracts
+
+| Command | Description |
+|---------|-------------|
+| `npm run compile` | Compile Solidity + sync CRE ABI |
+| `npm run deploy` | Deploy to localhost (Hardhat node) |
+| `npm run deploy:private` | Deploy PrivatePredictionMarket to localhost |
+| `npm run deploy:sepolia` | Deploy to Sepolia testnet |
+| `npm run deploy:polygon` | Deploy to Polygon Amoy testnet |
+| `npm run verify:sepolia` | Verify contracts on Etherscan |
+| `npm run verify:polygon` | Verify contracts on Polygonscan |
+
+### Testing & Quality
+
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run Hardhat contract tests (5 tests) |
+| `npm run test:backend` | Run Rust backend tests (2 tests) |
+| `npm run test:all` | Run all tests (contracts + backend) |
+| `npm run audit` | `npm audit` + `cargo audit` for dependency vulnerabilities |
+
+### Database & Utilities
+
+| Command | Description |
+|---------|-------------|
+| `npm run db:push` | Apply Supabase schema migrations |
+| `npm run sync:cre-abi` | Sync OracleConsumer ABI to CRE workflow directory |
+
+### CRE CLI
+
+```bash
+# Simulate standard market resolver
+cd cre && cre workflow simulate praesagium-resolver --target staging-settings
+
+# Simulate confidential market resolver
+cd cre && cre workflow simulate praesagium-resolver-confidential --target staging-settings
+
+# Broadcast on-chain (production)
+cd cre && cre workflow simulate praesagium-resolver --target production-settings --broadcast
+```
+
+### Rust (direct)
+
+```bash
+cd backend-rust
+cargo build --release        # Build optimized binary
+cargo run --release          # Run backend directly
+cargo test                   # Run backend tests
+cargo clippy                 # Lint
+cargo fmt                    # Format
+```
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:4000` (local) or your deployed backend URL.
+All POST/PATCH requests require `Content-Type: application/json`.
+
+### Health & Metrics
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Liveness check — returns `{ "ok": true }` |
+| GET | `/api/metrics` | Prometheus-style metrics |
+
+### Markets
+
+| Method | Path | Query / Body | Description |
+|--------|------|-------------|-------------|
+| GET | `/api/markets` | `page`, `limit`, `status` | List markets (paginated) |
+| GET | `/api/markets/stats` | — | Global stats (total, open, resolved) |
+| GET | `/api/markets/:id` | — | Single market by ID |
+| POST | `/api/markets` | `CreateMarketRequest` | Create market (mirror on-chain to DB) |
+| PATCH | `/api/markets/:id/status` | `{ "status": "..." }` | Update market status |
+| POST | `/api/markets/:id/prediction` | `PredictionView` | Store prediction for market |
+| GET | `/api/markets/:id/predictions` | `limit` | List predictions for market |
+| POST | `/api/markets/:id/ai/predict` | `{ "text": "..." }` | AI prediction for specific market |
+| POST | `/api/markets/conditional` | `ConditionalMarketRequest` | Create conditional market |
+
+### AI & Prediction
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| POST | `/api/ai/sentiment` | `{ "text": "..." }` | Sentiment analysis → `{ probability, sentiment_score, provider }` |
+| POST | `/api/predict` | `{ "time_series": [...] }` | PHPE time-series prediction |
+| POST | `/api/predict/hybrid` | See below | Hybrid: PHPE + sentiment + price data |
+
+**Hybrid prediction body:**
+
+```json
+{
+  "time_series": [{ "timestamp": 1234567890, "value": 50000.5 }],
+  "sentiment_text": "Bitcoin is bullish",
+  "social_texts": ["Tweet 1", "Tweet 2"],
+  "binance_symbol": "BTCUSDT",
+  "use_chainlink_price": true,
+  "market_id": 1
+}
+```
+
+### Resolution Sources (for CRE)
+
+| Method | Path | Query | Description |
+|--------|------|-------|-------------|
+| GET | `/api/price/above` | `symbol`, `threshold`, `source` | Returns `{ "outcome": 0 \| 1 }` — price ≥ threshold |
+| GET | `/api/weather/rained` | `lat`, `lon`, `date` | Returns `{ "outcome": 0 \| 1 }` — precipitation check |
+| GET | `/api/sports/winner` | `fixture_id`, `winner_team` | Returns `{ "outcome": 0 \| 1 }` — match winner |
+
+### Reputation
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/reputation/:address` | Creator reputation stats by Ethereum address |
+
+### Data Sources
+
+| Method | Path | Query | Description |
+|--------|------|-------|-------------|
+| GET | `/api/sources` | — | List all available data sources |
+| GET | `/api/sources/fetch` | `source`, `symbol?`, `fsym?`, `tsym?`, `pair?`, `query?` | Fetch live data from a source |
+
+**Source examples:**
+
+```bash
+# Binance 24h ticker
+curl "http://localhost:4000/api/sources/fetch?source=binance&symbol=BTCUSDT"
+
+# Chainlink ETH/USD price feed
+curl "http://localhost:4000/api/sources/fetch?source=chainlink"
+
+# CryptoCompare
+curl "http://localhost:4000/api/sources/fetch?source=cryptocompare&fsym=BTC&tsym=USD"
+
+# NewsAPI headlines
+curl "http://localhost:4000/api/sources/fetch?source=newsapi&query=bitcoin&country=us"
+```
+
+**Sentiment + hybrid examples:**
+
+```bash
+# Sentiment analysis
+curl -X POST http://localhost:4000/api/ai/sentiment \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Bitcoin is going to reach 100k this year"}'
+
+# Hybrid prediction (sentiment + Binance + Chainlink)
+curl -X POST http://localhost:4000/api/predict/hybrid \
+  -H "Content-Type: application/json" \
+  -d '{"sentiment_text":"ETH bullish","binance_symbol":"ETHUSDT","use_chainlink_price":true}'
+```
+
+---
+
+## Data Sources
+
+| Source | Data | Requires Key |
+|--------|------|:---:|
+| **Binance** | 24h ticker, price change, volume | No |
+| **Chainlink** | ETH/USD price feed proxy | No |
+| **CryptoCompare** | Crypto prices, 24h change | No |
+| **Kraken** | Crypto prices (public API) | No |
+| **ExchangeRate API** | Forex EUR/USD | No |
+| **Finnhub** | Stocks + crypto prices | Yes (`FINNHUB_API_KEY`) |
+| **NewsAPI** | News headlines | Yes (`NEWSAPI_KEY`) |
+| **Open-Meteo** | Weather / precipitation | No |
+| **CoinGecko** | Prices (price-above endpoint) | No |
+| **API-Football** | Sports match results | No |
+
+---
+
+## Chainlink Integration
+
+PraesagiumChain is built around the [Chainlink Runtime Environment (CRE)](https://chain.link/chainlink-runtime-environment) as the core orchestration layer.
+
+| Component | File | Role |
+|-----------|------|------|
+| **CRE Workflow (standard)** | [`cre/praesagium-resolver/main.ts`](cre/praesagium-resolver/main.ts) | CRON → HTTP `/api/ai/sentiment` → outcome 0/1 → `oracleCallback` |
+| **CRE Workflow (confidential)** | [`cre/praesagium-resolver-confidential/main.ts`](cre/praesagium-resolver-confidential/main.ts) | Same flow in TEE — for private markets |
+| **OracleConsumer.sol** | [`contracts/OracleConsumer.sol`](contracts/OracleConsumer.sol) | Receives CRE callback; forwards to CREWorkflow |
+| **CREWorkflow.sol** | [`contracts/CREWorkflow.sol`](contracts/CREWorkflow.sol) | Bridge: oracle result → `PredictionMarket.resolveMarket()` |
+| **PredictionMarket.sol** | [`contracts/PredictionMarket.sol`](contracts/PredictionMarket.sol) | Binary markets, bets, resolution, payouts |
+| **PrivatePredictionMarket.sol** | [`contracts/PrivatePredictionMarket.sol`](contracts/PrivatePredictionMarket.sol) | Commit-reveal markets (Confidential Compute) |
+
+**CRE SDK used:** `@chainlink/cre-sdk ^1.0.7`
+
+**Chainlink primitives used:**
+- `CronCapability` — schedule-based workflow trigger
+- `HTTPClient` — off-chain HTTP requests to backend
+- `consensusIdenticalAggregation` — multi-node consensus on result
+- `Runner` — workflow lifecycle management
+
+**References:**
+- [CRE Documentation](https://docs.chain.link/cre/getting-started/part-1-project-setup-ts)
+- [CRE Simulating Workflows](https://docs.chain.link/cre/guides/operations/simulating-workflows)
+- [Chainlink Prediction Market Demo Template](https://docs.chain.link/cre-templates/prediction-market-demo)
+
+---
+
+## Deployed Contracts
+
+### Sepolia Testnet
+
+| Contract | Address | Explorer |
+|----------|---------|---------|
+| PredictionMarket | `0xf2397b5827860b361427240d1D1F6F89e9bF197f` | [View on Etherscan](https://sepolia.etherscan.io/address/0xf2397b5827860b361427240d1D1F6F89e9bF197f) |
+| CREWorkflow | `0x3724BD048C11f50e01900061D8D50022A7c890c7` | [View on Etherscan](https://sepolia.etherscan.io/address/0x3724BD048C11f50e01900061D8D50022A7c890c7) |
+| OracleConsumer | `0x153D088Eabb57b021503Aa1192F511B14e8819D8` | [View on Etherscan](https://sepolia.etherscan.io/address/0x153D088Eabb57b021503Aa1192F511B14e8819D8) |
+
+### Deploy to Testnet
+
+```bash
+# 1. Configure .env with PRIVATE_KEY, SEPOLIA_RPC_URL, ETHERSCAN_API_KEY
+# 2. Get Sepolia ETH from https://sepoliafaucet.com
+
+npm run deploy:sepolia
+npm run verify:sepolia
+```
+
+See [docs/deploy-testnet.md](docs/deploy-testnet.md) for a complete step-by-step guide.
+
+---
+
+## Project Structure
+
+```
+PraesagiumChain/
+├── .github/
+│   └── workflows/deploy.yml      # CI: contract tests + Rust tests + audits
+├── config/
+│   ├── env.example               # Template → copy to root .env
+│   └── frontend.env.example      # Template for frontend .env.local
+├── contracts/
+│   ├── PredictionMarket.sol      # Core: binary markets, bets, payouts
+│   ├── CREWorkflow.sol           # Bridge: oracle result → resolveMarket
+│   ├── OracleConsumer.sol        # Receives CRE/Chainlink callback
+│   ├── PrivatePredictionMarket.sol  # Commit-reveal private markets
+│   ├── TokenizedMarket.sol       # ERC-721 tokenized markets
+│   ├── ConditionalMarket.sol     # Markets chained on other markets
+│   ├── ReputationSystem.sol      # On-chain creator reputation
+│   └── interfaces/               # IPredictionMarket, IReputationSystem
+├── backend-rust/
+│   ├── src/
+│   │   ├── api/                  # Route handlers (markets, ai, hybrid, report, reputation, sources, metrics)
+│   │   ├── services/             # Business logic + data sources (7 sources) + AI providers
+│   │   │   ├── ai/               # Gemini, HuggingFace, Mock providers
+│   │   │   └── sources/          # Binance, Chainlink, CryptoCompare, Kraken, ExchangeRate, Finnhub, NewsAPI
+│   │   ├── main.rs               # App entrypoint, router, service wiring
+│   │   ├── config.rs             # Typed config from env
+│   │   ├── db.rs                 # PostgreSQL pool + migrations
+│   │   ├── models.rs             # Shared request/response types
+│   │   └── error.rs              # Unified error type
+│   ├── phpe/                     # PHPE prediction engine (standalone crate)
+│   │   └── src/
+│   │       ├── data/             # Normalization, feature extraction
+│   │       ├── causal/           # Causal DAG inference
+│   │       ├── temporal/         # Temporal encoding (sliding window, regime detection)
+│   │       ├── bayesian/         # Bayesian head with MC dropout
+│   │       └── calibration/      # Isotonic / temperature calibration
+│   └── migrations/               # SQL migration files
+├── cre/
+│   ├── praesagium-resolver/      # Standard market CRE workflow (TypeScript)
+│   │   ├── main.ts               # CRON → HTTP → outcome → oracleCallback
+│   │   ├── workflow.yaml         # Staging / production targets
+│   │   ├── config.staging.json   # Staging config
+│   │   └── config.production.json
+│   └── praesagium-resolver-confidential/  # Private market CRE workflow (TEE)
+├── scripts/
+│   ├── deploy/                   # deployLocal.js, deployPrivateMarket.js, deployWithFunctions.js
+│   ├── demo/demoE2E.js           # Full E2E demo script
+│   ├── test/                     # testPredictionMarket.js, testCREWorkflow.js
+│   ├── verify/verify.js          # Etherscan/Polygonscan verification
+│   ├── simulateCRE.js            # Local CRE simulation
+│   └── resolveFromBackend.js     # Resolve market via backend API
+├── supabase/
+│   ├── schema.sql                # Full DB schema (markets, predictions, reputation, conditions)
+│   └── migrations/               # Migration files
+├── notebook/                     # Python simulation notebooks
+├── docs/
+│   ├── architecture-and-design.md
+│   ├── development-and-deployment.md
+│   ├── deploy-testnet.md
+│   ├── private-prediction-markets.md
+│   ├── security-and-operations.md
+│   └── frontend-project.md       # Frontend spec (Next.js 14, wagmi v2, Tailwind)
+├── hardhat.config.js
+├── package.json
+└── .env                          # gitignored — copy from config/env.example
+```
+
+---
+
+## Testing
+
+```bash
+# Contract tests (Hardhat) — 5 tests
+npm test
+
+# Backend tests (Rust) — 2 tests
+npm run test:backend
+
+# All tests
+npm run test:all
+
+# Dependency audit
+npm run audit
+```
+
+**What the tests cover:**
+
+| Suite | Tests |
+|-------|-------|
+| Contract (Hardhat) | Market creation, bet placement, resolution, payout claiming, access control |
+| Backend (Rust) | API endpoint responses, PHPE engine output validation |
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `EADDRINUSE 127.0.0.1:8545` | Hardhat node already running | Do not start another; use the existing terminal |
+| `Set in .env: PREDICTION_MARKET_ADDRESS` | Missing post-deploy addresses | Copy printed addresses from `npm run deploy` to `.env` |
+| `CRE callback failed` | `block.timestamp < resolveTime` | The demo script advances time with `evm_increaseTime`; ensure you have the latest version |
+| `Backend not responding` | Backend not started | Run `npm run backend` in a separate terminal |
+| `DB connection failed` | Wrong `DATABASE_URL` | On WSL/IPv4, use Supabase **Session pooler** URI; encode `#` as `%23` |
+| `Migration failed` | Schema not applied | Run `npm run db:push` or paste `supabase/schema.sql` in Supabase SQL Editor |
+| `cargo build` fails | Rust not installed or outdated | Run `rustup update stable` |
+| `cre workflow simulate` fails | CRE CLI not installed or backend down | Install CRE CLI; ensure `npm run backend` is running |
+| `Only resolver` revert | Wrong resolver address | Ensure `ORACLE_CONSUMER_ADDRESS` is set as resolver in `PredictionMarket` |
+
+Enable verbose backend logging:
+
+```bash
+RUST_LOG=praesagium_backend=debug,tower_http=debug npm run backend
+```
+
+---
+
+## Frontend (Coming Soon)
+
+The frontend is currently in development. It will be a **Next.js 14** application with:
+
+- Wallet connection (wagmi v2 + viem)
+- Market dashboard with live stats and filters
+- Market detail with bet form, PHPE uncertainty visualization, and AI sentiment preview
+- Create market form with on-chain submission
+- My positions and payout claiming
+- Creator reputation profiles
+- Hybrid prediction builder (PHPE + sentiment + live price data)
+
+The full frontend specification — including all API endpoints, contract ABIs, TypeScript types, component structure, and UX requirements — is documented in [`docs/frontend-project.md`](docs/frontend-project.md).
+
+**Planned stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · Recharts
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/phpe-and-hybrid-prediction.md](docs/phpe-and-hybrid-prediction.md) | PHPE pipeline, hybrid fusion algorithm, AI providers, prediction API reference |
+| [docs/smart-contracts-and-database.md](docs/smart-contracts-and-database.md) | All contracts (base, conditional, tokenized, reputation, CRE flow), DB schema, on-chain sync |
+| [docs/frontend-project.md](docs/frontend-project.md) | Frontend specification: stack, pages, API usage, contract calls, types |
+| [cre/README.md](cre/README.md) | CRE workflow setup, simulation, and CLI reference |
+
+---
+
+## Security
+
+**Implemented:**
+
+- `OracleConsumer.oracleCallback` restricted to `authorizedCallback` (set to Chainlink Functions Router or CRE executor in production)
+- `CREWorkflow.resolveFromOracle` restricted to `onlyOracle`
+- `PredictionMarket.claimPayout` uses Checks-Effects-Interactions pattern + `ReentrancyGuard`
+- Backend: parameterized queries (SQLx), input validation on all endpoints, secrets in env only
+- Rate limiting via `tower_governor` on all API routes
+- CI: `npm audit` + `cargo audit` on every push to `main`
+
+**Recommendations before mainnet:**
+
+- Run [Slither](https://github.com/crytic/slither): `slither . --exclude-dependencies`
+- Set `authorizedCallback` to the Chainlink Functions Router address, not an EOA
+- Consider a professional audit for the contract suite
+- Report vulnerabilities via GitHub Security Advisories (do not open public issues)
+
+---
+
+## Hackathon Submission
+
+This project follows the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon) guidelines.
+
+**Submission checklist:**
+
+| Item | Status |
+|------|--------|
+| Public repository | ✅ |
+| README with architecture and setup | ✅ |
+| Chainlink CRE integration | ✅ |
+| Smart contracts (Solidity) | ✅ |
+| Backend + PHPE engine | ✅ |
+| Deployed contracts (Sepolia) | ✅ |
+| Etherscan verification | ✅ |
+| E2E demo (`npm run demo`) | ✅ |
+| Demo video (2–5 min) | ⬜ |
+| Live frontend link | ⬜ Coming soon |
+
+**Key differentiators for judges:**
+- PHPE calibrated uncertainty (unique in the prediction market space)
+- Multi-source CRE resolution (AI + price + weather + sports)
+- Private markets with Confidential Compute
+- Production-grade Rust backend with on-chain indexer
+
+---
+
+## Contributing
+
+1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
+2. Install dependencies: `npm install && cd backend-rust && cargo build`
+3. Copy `config/env.example` to `.env` and configure
+4. Make your changes; ensure tests pass: `npm run test:all`
+5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`)
+6. Open a pull request against `main` with a clear description
+7. Do not commit `.env` or any secrets
+
+---
+
+## License & Authors
+
+**License:** [MIT](LICENSE)
+
+**Authors:**
+- **Querube Yuneth Ariza Ríos**
+- **Jhuomar Boskoll Quintero**
+
+---
+
+<p align="center">
+  Built for the Chainlink ecosystem · Powered by <a href="https://chain.link/chainlink-runtime-environment">Chainlink CRE</a>
+</p>

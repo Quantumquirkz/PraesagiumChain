@@ -1,0 +1,16 @@
+# PraesagiumChain CRE Project — Global configuration
+# https://docs.chain.link/cre/reference/project-configuration-go
+
+staging-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com
+    - chain-name: ethereum-mainnet
+      url: https://ethereum-sepolia-rpc.publicnode.com  # fallback for local
+
+production-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com
+    - chain-name: ethereum-mainnet
+      url: https://eth.llamarpc.com

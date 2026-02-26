@@ -1,0 +1,5 @@
+{
+  "market_id": 1,
+  "question": "Will ETH be above $3000 at resolution time?",
+  "api_base_url": "http://localhost:4000"
+}

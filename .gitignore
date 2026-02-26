@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # dependencies
 /node_modules
 /.pnp
@@ -32,3 +33,55 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+=======
+# Dependencies
+node_modules/
+**/.venv/
+**/target/
+**/Cargo.lock
+
+# Build artifacts
+coverage/
+cache/
+artifacts/
+dist/
+build/
+
+# Environment (templates config/env.example, cre/.env.example are committed)
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# CRE secrets (never commit)
+cre/secrets.yaml
+
+# IDE
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+backend-rust/data/
+
+# Temporary files
+*.tmp
+*.bak
+tmp.js
+**/tmp.js
+
+# CRE build artifacts
+cre/**/tmp.js
+
+# Supabase CLI
+supabase/.temp/
+>>>>>>> e00916a48e8f9833214520325b22f91c5ea519fc

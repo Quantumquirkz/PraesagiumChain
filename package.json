@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "praesagium-chain-frontend",
   "version": "0.1.0",
   "private": true,
@@ -41,5 +42,37 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"
+=======
+  "name": "praesagiumchain",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile && npm run sync:cre-abi",
+    "node": "hardhat node",
+    "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
+    "deploy:private": "hardhat run scripts/deploy/deployPrivateMarket.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy/deployWithFunctions.js --network sepolia",
+    "deploy:polygon": "hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
+    "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
+    "verify:polygon": "hardhat run scripts/verify/verify.js --network polygonAmoy",
+    "backend": "node scripts/run-backend.js",
+    "db:push": "npx supabase db push",
+    "demo": "hardhat run scripts/demo/demoE2E.js --network localhost",
+    "test:backend": "cd backend-rust && cargo test",
+    "test:all": "npm test && npm run test:backend",
+    "sync:cre-abi": "node scripts/syncCreAbi.js",
+    "audit": "npm audit && cd backend-rust && cargo audit 2>/dev/null || true"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/minimatch": "^5.1.2",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^1.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.0"
+>>>>>>> e00916a48e8f9833214520325b22f91c5ea519fc
   }
 }

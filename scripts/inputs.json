@@ -1,0 +1,6 @@
+{
+  "market_id": 1,
+  "question": "Will Bitcoin exceed $50,000 on 28/02/2026?",
+  "text_to_analyze": "Bitcoin will reach 100k this year",
+  "api_base_url": "http://localhost:4000"
+}

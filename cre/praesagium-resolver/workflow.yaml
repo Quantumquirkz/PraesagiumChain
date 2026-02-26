@@ -1,0 +1,18 @@
+# Workflow configuration for praesagium-resolver (TypeScript)
+# https://docs.chain.link/cre/reference/project-configuration-ts
+
+staging-settings:
+  user-workflow:
+    workflow-name: "praesagium-resolver-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: ""
+
+production-settings:
+  user-workflow:
+    workflow-name: "praesagium-resolver-production"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: ""
