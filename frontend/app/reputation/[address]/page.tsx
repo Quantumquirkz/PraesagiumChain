@@ -11,7 +11,7 @@ import { getReputation } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
 import { EXPLORER_URL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ReputationSkeleton } from "@/components/skeletons";
 import { cn } from "@/lib/utils";
 
 function addressToGradient(address: string): { gradient: string; hue: number } {
@@ -110,10 +110,7 @@ export default function ReputationAddressPage() {
   if (isLoading || !rep) {
     return (
       <div className="container py-8 px-4">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr]">
-          <Skeleton className="h-[420px] rounded-md" />
-          <Skeleton className="h-80 rounded-md" />
-        </div>
+        <ReputationSkeleton />
       </div>
     );
   }
