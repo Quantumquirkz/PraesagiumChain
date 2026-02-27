@@ -1,0 +1,10 @@
+Reglas adicionales para PraesagiumChain:
+- Wagmi v2 siempre usa useWriteContract, useWaitForTransactionReceipt, useReadContract
+- Nunca uses el patrón antiguo de wagmi v1 (usePrepareContractWrite, useContractWrite)
+- El contrato PredictionMarket está en process.env.NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS
+- Chain ID de Sepolia: 11155111
+- Siempre usa parseEther/formatEther de viem para conversiones ETH
+- Los errores de contrato se parsean con parseContractError (ver módulo de seguridad)
+- React Query: staleTime 30s, refetchInterval 10s para datos de mercado
+- Sonner para todos los toasts (import { toast } from 'sonner')
+- Nunca hagas fetch directo en componentes — siempre usa hooks de React Query
