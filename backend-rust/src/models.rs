@@ -40,6 +40,9 @@ pub struct MarketView {
     pub details_hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encrypted_uri: Option<String>,
+    /// On-chain market ID set by the indexer. Required for frontend to call contract functions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on_chain_market_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latest_prediction: Option<PredictionView>,
 }
@@ -60,6 +63,7 @@ impl From<Market> for MarketView {
             metadata: m.metadata,
             details_hash: m.details_hash,
             encrypted_uri: m.encrypted_uri,
+            on_chain_market_id: m.on_chain_market_id,
             latest_prediction: None,
         }
     }
@@ -82,6 +86,9 @@ pub struct PredictionView {
     pub probability: f32,
     pub uncertainty: Option<f32>,
     pub model_version: Option<String>,
+    /// SHA-256 hex of the model weights at prediction time. Useful for on-chain integrity checks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_hash: Option<String>,
     pub timestamp: i64,
 }
 
@@ -91,9 +98,19 @@ impl From<Prediction> for PredictionView {
             probability: p.probability,
             uncertainty: p.uncertainty,
             model_version: p.model_version,
+            model_hash: p.model_hash,
             timestamp: p.timestamp,
         }
     }
+}
+
+/// A single condition attached to a conditional market.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ConditionalConditionView {
+    pub id: i64,
+    pub condition_contract: String,
+    pub condition_market_id: i64,
+    pub expected_outcome: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

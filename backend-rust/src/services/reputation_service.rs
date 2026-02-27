@@ -115,6 +115,22 @@ impl ReputationService {
         self.get_reputation(creator_address).await
     }
 
+    /// Returns the top creators ordered by reputation_score descending (leaderboard).
+    pub async fn list(&self, limit: i64, offset: i64) -> Result<Vec<CreatorReputation>> {
+        let rows = sqlx::query_as::<_, CreatorReputation>(
+            "SELECT creator_address, markets_created, markets_resolved, correct_predictions, \
+             reputation_score, updated_at \
+             FROM creator_reputation \
+             ORDER BY reputation_score DESC \
+             LIMIT $1 OFFSET $2",
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(self.db.pool())
+        .await?;
+        Ok(rows)
+    }
+
     async fn compute_and_upsert(&self, creator_address: &str) -> Result<CreatorReputation> {
         let created: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE creator = $1")
             .bind(creator_address)

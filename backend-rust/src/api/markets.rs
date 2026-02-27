@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use crate::error::Result;
 use crate::models::{
-    CreateConditionalMarketRequest, CreateMarketRequest, MarketStats, MarketView, PaginatedResponse,
-    SetPredictionRequest, UpdateStatusRequest,
+    ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, MarketStats,
+    MarketView, PaginatedResponse, PredictionView, SetPredictionRequest, UpdateStatusRequest,
 };
 use crate::state::AppState;
 
@@ -19,6 +19,11 @@ pub struct ListQuery {
     page: Option<i64>,
     limit: Option<i64>,
     status: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct PredictionsQuery {
+    limit: Option<i64>,
 }
 
 pub async fn list(
@@ -90,14 +95,30 @@ pub async fn set_prediction(
     Ok(Json(market))
 }
 
+pub async fn get_by_chain_id(
+    State(state): State<Arc<AppState>>,
+    Path(on_chain_id): Path<i64>,
+) -> Result<Json<MarketView>> {
+    let market = state.market_service.get_by_on_chain_market_id(on_chain_id).await?;
+    Ok(Json(market))
+}
+
 pub async fn get_predictions(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i64>,
-    Query(params): Query<std::collections::HashMap<String, i64>>,
-) -> Result<Json<Vec<crate::models::PredictionView>>> {
-    let limit = params.get("limit").copied().unwrap_or(10).min(100).max(1);
+    Query(params): Query<PredictionsQuery>,
+) -> Result<Json<Vec<PredictionView>>> {
+    let limit = params.limit.unwrap_or(10).min(100).max(1);
     let predictions = state.market_service.get_predictions(id, limit).await?;
     Ok(Json(predictions))
+}
+
+pub async fn get_conditions(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<Vec<ConditionalConditionView>>> {
+    let conditions = state.market_service.get_conditions(id).await?;
+    Ok(Json(conditions))
 }
 
 pub async fn stats(

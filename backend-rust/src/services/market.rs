@@ -1,8 +1,8 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    CreateConditionalMarketRequest, CreateMarketRequest, Market, MarketStats, MarketView,
-    PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
+    ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, Market,
+    MarketStats, MarketView, PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
 };
 use tracing::{debug, info};
 
@@ -351,6 +351,28 @@ impl MarketService {
         .await?;
 
         Ok(preds.into_iter().map(PredictionView::from).collect())
+    }
+
+    /// Returns all conditions for a conditional market.
+    pub async fn get_conditions(&self, market_id: i64) -> Result<Vec<ConditionalConditionView>> {
+        // Verify the market exists first.
+        let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM markets WHERE id = $1")
+            .bind(market_id)
+            .fetch_optional(self.db.pool())
+            .await?;
+        if exists.is_none() {
+            return Err(AppError::NotFound);
+        }
+
+        let rows = sqlx::query_as::<_, ConditionalConditionView>(
+            "SELECT id, condition_contract, condition_market_id, expected_outcome \
+             FROM conditional_conditions WHERE market_id = $1 ORDER BY id ASC",
+        )
+        .bind(market_id)
+        .fetch_all(self.db.pool())
+        .await?;
+
+        Ok(rows)
     }
 
     pub async fn get_stats(&self) -> Result<MarketStats> {
