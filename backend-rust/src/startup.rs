@@ -11,14 +11,17 @@ use crate::db::Database;
 use crate::middleware;
 use crate::router::build_router;
 use crate::services::{
-    AiService, Cache, GeminiProvider, HuggingFaceProvider, HybridPredictor, MarketService,
-    MockAiProvider, PredictionService, ReputationService, SourcesRegistry,
+    AiService, Cache, EventBus, GeminiProvider, HuggingFaceProvider, HybridPredictor,
+    IndexerState, MarketService, MockAiProvider, PredictionService, ReputationService,
+    SourcesRegistry,
 };
 use crate::state::AppState;
 
 /// Builds the full Axum application with all layers and routes.
 pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
+    let started_at = chrono::Utc::now().timestamp();
     let cache = Arc::new(Cache::new());
+    let event_bus = EventBus::new();
 
     let market_service = Arc::new(MarketService::new(db.clone()));
     let prediction_service = Arc::new(PredictionService::new(
@@ -68,40 +71,53 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     ));
 
     // Spawn event indexer if RPC and contract address are configured
-    if let (Some(rpc_url), Some(contract_addr)) =
-        (&config.rpc_url, &config.prediction_market_address)
-    {
-        if !rpc_url.is_empty() && !contract_addr.trim().is_empty() {
-            let rpc_url = rpc_url.clone();
-            let contract_address: ethers::types::Address = contract_addr
-                .trim()
-                .parse()
-                .map_err(|_| {
-                    anyhow::anyhow!(
-                        "PREDICTION_MARKET_ADDRESS is not a valid Ethereum address (0x + 40 hex)"
-                    )
-                })?;
-            let market_svc = market_service.clone();
-            let rep_svc = reputation_service.clone();
-            let start_block = config.start_block;
+    let indexer_state: Option<Arc<IndexerState>> =
+        if let (Some(rpc_url), Some(contract_addr)) =
+            (&config.rpc_url, &config.prediction_market_address)
+        {
+            if !rpc_url.is_empty() && !contract_addr.trim().is_empty() {
+                let rpc_url = rpc_url.clone();
+                let contract_address: ethers::types::Address = contract_addr
+                    .trim()
+                    .parse()
+                    .map_err(|_| {
+                        anyhow::anyhow!(
+                            "PREDICTION_MARKET_ADDRESS is not a valid Ethereum address (0x + 40 hex)"
+                        )
+                    })?;
+                let market_svc = market_service.clone();
+                let rep_svc = reputation_service.clone();
+                let start_block = config.start_block;
+                let shared_state = IndexerState::new(start_block.unwrap_or(0));
+                let shared_state_clone = shared_state.clone();
+                let bus_clone = event_bus.clone();
 
-            tokio::spawn(async move {
-                if let Ok(mut indexer) = crate::services::indexer::EventIndexer::new(
-                    &rpc_url,
-                    contract_address,
-                    market_svc,
-                    rep_svc,
-                    start_block,
-                )
-                .await
-                {
-                    if let Err(e) = indexer.start().await {
-                        tracing::error!("Indexer error: {}", e);
+                tokio::spawn(async move {
+                    if let Ok(mut indexer) =
+                        crate::services::indexer::EventIndexer::new_with_state(
+                            &rpc_url,
+                            contract_address,
+                            market_svc,
+                            rep_svc,
+                            start_block,
+                            shared_state_clone,
+                            bus_clone,
+                        )
+                        .await
+                    {
+                        if let Err(e) = indexer.start().await {
+                            tracing::error!("Indexer error: {}", e);
+                        }
                     }
-                }
-            });
-        }
-    }
+                });
+
+                Some(shared_state)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
     // Periodic cache cleanup
     let cache_cleanup = cache.clone();
@@ -123,6 +139,8 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     let cors = cors_layer(&config);
     let config_arc = Arc::new(config);
 
+    let nonce_store = crate::api::auth::new_nonce_store();
+
     let state = Arc::new(AppState {
         market_service,
         prediction_service,
@@ -134,6 +152,10 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
         http_client,
         config: config_arc,
         db,
+        event_bus,
+        indexer_state,
+        started_at,
+        nonce_store,
     });
 
     let router = build_router(state)

@@ -4,11 +4,12 @@
 
 use std::sync::Arc;
 
+use crate::api::auth::NonceStore;
 use crate::config::Config;
 use crate::db::Database;
 use crate::services::{
-    AiService, Cache, HybridPredictor, MarketService, PredictionService, ReputationService,
-    SourcesRegistry,
+    AiService, Cache, EventBus, HybridPredictor, IndexerState, MarketService, PredictionService,
+    ReputationService, SourcesRegistry,
 };
 
 /// Central application state shared across all request handlers.
@@ -24,4 +25,12 @@ pub struct AppState {
     pub http_client: Arc<reqwest::Client>,
     pub config: Arc<Config>,
     pub db: Database,
+    /// In-process event bus for SSE streams.
+    pub event_bus: EventBus,
+    /// Shared indexer metrics (None if indexer is not configured).
+    pub indexer_state: Option<Arc<IndexerState>>,
+    /// Application start time (Unix seconds) for uptime calculation.
+    pub started_at: i64,
+    /// In-memory nonce store for SIWE challenges.
+    pub nonce_store: NonceStore,
 }

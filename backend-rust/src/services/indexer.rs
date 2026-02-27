@@ -1,8 +1,13 @@
-//! Indexador de eventos on-chain: MarketCreated, MarketResolved.
-//! Sincroniza mercados desde el contrato PredictionMarket a la base de datos.
+//! On-chain event indexer: MarketCreated, MarketResolved.
+//! Syncs markets from the PredictionMarket contract to the off-chain database.
+//!
+//! Now exposes real-time metrics via `IndexerState` and publishes events to
+//! `EventBus` so SSE subscribers receive on-chain updates immediately.
 
 use crate::error::Result;
 use crate::models::UpdateStatusRequest;
+use crate::services::event_bus::{EventBus, MarketEvent};
+use crate::services::indexer_state::IndexerState;
 use crate::services::{MarketService, ReputationService};
 use ethers::abi::{decode, ParamType, Token};
 use ethers::providers::{Http, Middleware, Provider};
@@ -11,12 +16,10 @@ use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 fn market_created_topic() -> H256 {
-    // MarketCreated(uint256,string,uint256,uint256,address)
     ethers::utils::keccak256("MarketCreated(uint256,string,uint256,uint256,address)").into()
 }
 
 fn market_resolved_topic() -> H256 {
-    // MarketResolved(uint256,uint8,uint256,uint256)
     ethers::utils::keccak256("MarketResolved(uint256,uint8,uint256,uint256)").into()
 }
 
@@ -26,15 +29,43 @@ pub struct EventIndexer {
     market_service: Arc<MarketService>,
     reputation_service: Arc<ReputationService>,
     last_processed_block: u64,
+    /// Shared metrics exposed to /api/metrics.
+    state: Arc<IndexerState>,
+    /// Event bus for SSE subscribers.
+    event_bus: EventBus,
 }
 
 impl EventIndexer {
+    /// Legacy constructor (no shared state / event bus). Used in tests.
     pub async fn new(
         rpc_url: &str,
         contract_address: Address,
         market_service: Arc<MarketService>,
         reputation_service: Arc<ReputationService>,
         start_block: Option<u64>,
+    ) -> anyhow::Result<Self> {
+        let dummy_state = IndexerState::new(start_block.unwrap_or(0));
+        Self::new_with_state(
+            rpc_url,
+            contract_address,
+            market_service,
+            reputation_service,
+            start_block,
+            dummy_state,
+            EventBus::new(),
+        )
+        .await
+    }
+
+    /// Full constructor with shared observability state and event bus.
+    pub async fn new_with_state(
+        rpc_url: &str,
+        contract_address: Address,
+        market_service: Arc<MarketService>,
+        reputation_service: Arc<ReputationService>,
+        start_block: Option<u64>,
+        state: Arc<IndexerState>,
+        event_bus: EventBus,
     ) -> anyhow::Result<Self> {
         let provider = Arc::new(Provider::<Http>::try_from(rpc_url)?);
         let current: u64 = provider
@@ -44,6 +75,8 @@ impl EventIndexer {
             .map(|n: U64| n.as_u64())
             .unwrap_or(0);
         let last_processed_block = start_block.unwrap_or(current);
+
+        state.update_block(last_processed_block);
 
         info!(
             "Event indexer initialized: contract={:?}, start_block={}",
@@ -56,17 +89,24 @@ impl EventIndexer {
             market_service,
             reputation_service,
             last_processed_block,
+            state,
+            event_bus,
         })
     }
 
     pub async fn start(&mut self) -> anyhow::Result<()> {
         info!("Starting event indexer from block {}", self.last_processed_block);
+        self.state.set_running(true);
 
         loop {
             match self.process_events().await {
                 Ok(processed) => {
                     if processed > 0 {
-                        debug!("Processed {} events up to block {}", processed, self.last_processed_block);
+                        debug!(
+                            "Processed {} events up to block {}",
+                            processed, self.last_processed_block
+                        );
+                        self.state.add_events(processed as u64);
                     }
                 }
                 Err(e) => {
@@ -125,12 +165,11 @@ impl EventIndexer {
         }
 
         self.last_processed_block = to_block;
+        self.state.update_block(to_block);
         Ok(processed)
     }
 
     async fn handle_market_created(&self, log: &ethers::types::Log) -> Result<()> {
-        // topics[0] = event sig, topics[1] = marketId (indexed), topics[2] = creator (indexed)
-        // data = question (string), closeTime (uint256), resolveTime (uint256)
         if log.topics.len() < 3 {
             return Err(crate::error::AppError::Validation(
                 "MarketCreated log missing topics".to_string(),
@@ -178,8 +217,6 @@ impl EventIndexer {
     }
 
     async fn handle_market_resolved(&self, log: &ethers::types::Log) -> Result<()> {
-        // topics[0] = event sig, topics[1] = marketId (indexed)
-        // data = outcome (uint8), totalYesStake (uint256), totalNoStake (uint256)
         if log.topics.len() < 2 {
             return Err(crate::error::AppError::Validation(
                 "MarketResolved log missing topics".to_string(),
@@ -203,7 +240,6 @@ impl EventIndexer {
             _ => 0,
         };
         // Outcome enum: 0 Undecided, 1 Yes, 2 No
-        // Treat 0 (Undecided) as a non-final state — skip resolution to avoid corrupting data.
         let outcome = match outcome_byte {
             1 => "Yes",
             2 => "No",
@@ -229,7 +265,18 @@ impl EventIndexer {
         if let Some(ref creator) = market.creator {
             let _ = self.reputation_service.on_market_resolved(creator, market.id, outcome).await;
         }
-        info!("Indexed MarketResolved: on_chain_market_id={}, outcome={}", on_chain_market_id, outcome);
+
+        // Publish to event bus for SSE subscribers
+        self.event_bus.publish(MarketEvent::OnChainResolved {
+            market_id: market.id,
+            on_chain_market_id,
+            outcome: outcome.to_string(),
+        });
+
+        info!(
+            "Indexed MarketResolved: on_chain_market_id={}, outcome={}",
+            on_chain_market_id, outcome
+        );
         Ok(())
     }
 }

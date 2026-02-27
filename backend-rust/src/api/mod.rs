@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod health;
 pub mod markets;
 pub mod predictions;
@@ -6,4 +7,6 @@ pub mod ai;
 pub mod reputation;
 pub mod hybrid;
 pub mod report;
+pub mod resolve;
 pub mod sources;
+pub mod stream;

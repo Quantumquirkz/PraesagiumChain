@@ -208,3 +208,45 @@ pub struct MarketStats {
     pub resolved_markets: i64,
     pub total_predictions: i64,
 }
+
+// ─── Resolution models ───────────────────────────────────────────────────────
+
+/// Request body for the universal resolution endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolveRequest {
+    pub market_id: i64,
+    /// One of: price_above | weather_rained | sports_winner | ai_sentiment | hybrid
+    pub resolution_type: String,
+    /// Type-specific parameters (threshold, symbol, city, team, text, …).
+    pub params: serde_json::Value,
+}
+
+/// Response from the universal resolution endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolveResponse {
+    pub market_id: i64,
+    pub resolution_type: String,
+    /// 1 = Yes / condition met, 0 = No / condition not met.
+    pub outcome: u8,
+    /// Normalised confidence in [0, 1]: how decisively the condition was met/missed.
+    pub confidence: f32,
+    /// Which data source provided the raw value.
+    pub source: String,
+    /// The actual measured value (price, mm of rain, probability, …).
+    pub raw_value: Option<f64>,
+    /// Unix timestamp (seconds) when the resolution was computed.
+    pub resolved_at: i64,
+}
+
+/// A persisted resolution record (read from `market_resolutions`).
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketResolution {
+    pub id: i64,
+    pub market_id: i64,
+    pub resolution_type: String,
+    pub outcome: i16,
+    pub confidence: Option<f64>,
+    pub source: Option<String>,
+    pub raw_value: Option<f64>,
+    pub resolved_at: i64,
+}

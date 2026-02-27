@@ -233,6 +233,7 @@ mod api_markets_tests {
             newsapi_key: None,
             api_football_key: None,
             cors_origins: None,
+            jwt_secret: None,
         });
 
         let state = std::sync::Arc::new(crate::state::AppState {
@@ -246,6 +247,10 @@ mod api_markets_tests {
             http_client,
             config,
             db,
+            event_bus: crate::services::EventBus::new(),
+            indexer_state: None,
+            started_at: chrono::Utc::now().timestamp(),
+            nonce_store: crate::api::auth::new_nonce_store(),
         });
 
         let app = crate::router::build_router(state);

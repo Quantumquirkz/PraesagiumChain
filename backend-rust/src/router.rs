@@ -22,13 +22,17 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/markets/:id/prediction", post(api::markets::set_prediction))
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
         .route("/api/markets/:id/conditions", get(api::markets::get_conditions))
+        .route("/api/markets/:id/resolutions", get(api::resolve::list_resolutions))
+        .route("/api/markets/:id/stream", get(api::stream::market_stream))
         .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict))
         // Predictions
         .route("/api/predict", post(api::predictions::run_predict))
         .route("/api/predict/hybrid", post(api::hybrid::hybrid_predict))
         // AI
         .route("/api/ai/sentiment", post(api::ai::sentiment))
-        // Report / Oracle
+        // Resolution (universal CRE oracle endpoint)
+        .route("/api/resolve/evaluate", post(api::resolve::evaluate))
+        // Report / Oracle (individual endpoints kept for backward compatibility)
         .route("/api/weather/rained", get(api::report::weather_rained))
         .route("/api/price/above", get(api::report::price_above))
         .route("/api/sports/winner", get(api::report::sports_winner))
@@ -37,6 +41,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/reputation/:address", get(api::reputation::get_reputation))
         // Observability
         .route("/api/metrics", get(api::metrics::get_metrics))
+        // Authentication (SIWE)
+        .route("/api/auth/challenge", post(api::auth::challenge))
+        .route("/api/auth/verify", post(api::auth::verify))
         // Data sources
         .route("/api/sources", get(api::sources::list_sources))
         .route("/api/sources/fetch", get(api::sources::fetch))

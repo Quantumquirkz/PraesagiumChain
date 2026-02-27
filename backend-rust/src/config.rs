@@ -42,6 +42,8 @@ pub struct Config {
     /// Rate limit: burst size per IP (default 30).
     #[serde(default = "default_rate_limit_burst")]
     pub rate_limit_burst: u32,
+    /// Secret key for JWT signing. If unset, a default insecure key is used (dev only).
+    pub jwt_secret: Option<String>,
 }
 
 impl Config {
@@ -104,6 +106,7 @@ impl Config {
             cors_origins,
             rate_limit_per_second,
             rate_limit_burst,
+            jwt_secret: std::env::var("JWT_SECRET").ok(),
         })
     }
 }
