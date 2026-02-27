@@ -1,23 +1,45 @@
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
+// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
+import { useState, useEffect } from "react";
+import { useAccount, useSwitchChain } from "wagmi";
 
 const REQUIRED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
   ? Number(process.env.NEXT_PUBLIC_CHAIN_ID)
   : 11155111; // Sepolia
 
-/** Cambia de red manualmente vía window.ethereum como fallback */
-async function switchManually(): Promise<void> {
-  const ethereum = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
-  if (!ethereum) return;
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+};
+
+function getEthereum(): EthereumProvider | undefined {
+  return (window as unknown as { ethereum?: EthereumProvider }).ethereum;
+}
+
+/** Lee el chainId real desde window.ethereum (no desde wagmi config) */
+async function readWalletChainId(): Promise<number | null> {
+  const eth = getEthereum();
+  if (!eth) return null;
   try {
-    await ethereum.request({
+    const hex = await eth.request({ method: "eth_chainId" }) as string;
+    return parseInt(hex, 16);
+  } catch {
+    return null;
+  }
+}
+
+async function switchManually(): Promise<void> {
+  const eth = getEthereum();
+  if (!eth) return;
+  try {
+    await eth.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: "0xaa36a7" }], // 11155111 en hex
     });
   } catch (err: unknown) {
     const code = (err as { code?: number })?.code;
     if (code === 4902) {
-      // La red no está añadida — la añadimos
-      await ethereum.request({
+      await eth.request({
         method: "wallet_addEthereumChain",
         params: [
           {
@@ -34,17 +56,35 @@ async function switchManually(): Promise<void> {
 }
 
 export function useNetworkGuard() {
-  const chainId = useChainId();
   const { isConnected } = useAccount();
   const { switchChain, isPending } = useSwitchChain();
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
 
-  const isWrongNetwork = isConnected && chainId !== REQUIRED_CHAIN_ID;
+  useEffect(() => {
+    if (!isConnected) {
+      setWalletChainId(null);
+      return;
+    }
+
+    readWalletChainId().then(setWalletChainId);
+
+    const eth = getEthereum();
+    if (!eth) return;
+
+    const handleChainChanged = (chainHex: unknown) => {
+      setWalletChainId(parseInt(chainHex as string, 16));
+    };
+
+    eth.on("chainChanged", handleChainChanged);
+    return () => eth.removeListener("chainChanged", handleChainChanged);
+  }, [isConnected]);
+
+  const isWrongNetwork = isConnected && walletChainId !== null && walletChainId !== REQUIRED_CHAIN_ID;
 
   const switchToRequired = async () => {
     try {
       switchChain({ chainId: REQUIRED_CHAIN_ID as Parameters<typeof switchChain>[0]["chainId"] });
     } catch {
-      // Fallback manual si useSwitchChain falla
       await switchManually();
     }
   };
@@ -54,5 +94,6 @@ export function useNetworkGuard() {
     switchToRequired,
     isSwitching: isPending,
     requiredChainId: REQUIRED_CHAIN_ID,
+    walletChainId,
   };
 }

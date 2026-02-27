@@ -7,16 +7,20 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseEventLogs } from "viem";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Loader2, Link2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi } from "lucide-react";
 import { createMarketBackend } from "@/lib/api";
 import { predictionMarketContract, EXPLORER_URL } from "@/lib/constants";
 import { formatEth } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  ResolutionSourcePicker,
+  type ResolutionSourceParams,
+} from "@/components/resolution-source-picker";
+import { useNetworkGuard } from "@/hooks/use-network-guard";
 
 const MARKET_TYPES = [
   { value: "base", label: "Base", description: "Standard binary outcome market" },
@@ -48,7 +52,6 @@ const createMarketSchema = z
 
 type FormValues = z.infer<typeof createMarketSchema>;
 
-const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID ? Number(process.env.NEXT_PUBLIC_CHAIN_ID) : 11155111;
 
 function formatRelativeFromNow(date: Date): string {
   const now = Date.now();
@@ -66,11 +69,16 @@ export default function CreateMarketPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [deploySuccess, setDeploySuccess] = useState(false);
+  const [resolutionParams, setResolutionParams] = useState<ResolutionSourceParams>({
+    type: "price_above",
+    symbol: "BTCUSDT",
+    priceSource: "binance",
+  });
 
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const { isWrongNetwork, switchToRequired, isSwitching, walletChainId } = useNetworkGuard();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(createMarketSchema),
@@ -146,7 +154,7 @@ export default function CreateMarketPage() {
   const goNext = async () => {
     const ok = await validateStep(step);
     if (!ok) return;
-    if (step < 3) setStep(step + 1);
+    if (step < 4) setStep(step + 1);
   };
 
   const goBack = () => {
@@ -158,7 +166,7 @@ export default function CreateMarketPage() {
       toast.error("Please connect your wallet");
       return;
     }
-    if (chainId !== EXPECTED_CHAIN_ID) {
+    if (isWrongNetwork) {
       toast.error("Wrong network. Switch to Sepolia.");
       return;
     }
@@ -191,6 +199,7 @@ export default function CreateMarketPage() {
           close_time: closeUnix,
           resolve_time: resolveUnix,
           market_type: data.marketType,
+          metadata: JSON.stringify({ resolution: resolutionParams }),
         });
       } catch {
         // non-blocking
@@ -201,7 +210,7 @@ export default function CreateMarketPage() {
     }
   });
 
-  const isWrongNetwork = chainId !== undefined && chainId !== EXPECTED_CHAIN_ID;
+  // isWrongNetwork viene de useNetworkGuard (ya incluye el check de isConnected)
 
   return (
     <div className="mx-auto w-full max-w-[720px] py-10 px-6" style={{ padding: "40px 24px" }}>
@@ -214,12 +223,56 @@ export default function CreateMarketPage() {
         </p>
       </header>
 
+      {/* Network guard — visible en todos los pasos */}
+      {!isConnected && (
+        <div className="mb-6 flex items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+          <Wifi className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+          <p className="font-body text-sm text-amber-400">
+            Connect your wallet to deploy on Sepolia.
+          </p>
+        </div>
+      )}
+      {isConnected && isWrongNetwork && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-red/40 bg-red-dim px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red" aria-hidden />
+            <p className="font-body text-sm text-red">
+              Wrong network — this market deploys on <span className="font-bold">Sepolia</span>.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-red text-red hover:bg-red-dim font-mono text-xs"
+            onClick={switchToRequired}
+            disabled={isSwitching}
+            aria-label="Switch to Sepolia"
+          >
+            {isSwitching ? (
+              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />Switching…</>
+            ) : (
+              "Switch to Sepolia"
+            )}
+          </Button>
+        </div>
+      )}
+      {isConnected && walletChainId !== null && !isWrongNetwork && (
+        <div className="mb-6 flex items-center gap-2 rounded-md border border-green/20 bg-green-dim px-4 py-2.5">
+          <span className="h-2 w-2 rounded-full bg-green shrink-0" style={{ boxShadow: "0 0 6px var(--green)" }} aria-hidden />
+          <p className="font-mono text-xs text-green font-medium">
+            Connected to Sepolia — ready to deploy
+          </p>
+        </div>
+      )}
+
       {/* Stepper */}
       <div className="flex items-center justify-between mb-10">
         {[
           { num: 1, label: "Question" },
           { num: 2, label: "Timeline" },
-          { num: 3, label: "Deploy" },
+          { num: 3, label: "Resolution" },
+          { num: 4, label: "Deploy" },
         ].map((s, i) => (
           <div key={s.num} className="flex flex-1 items-center">
             <div className="flex flex-col items-center">
@@ -244,10 +297,10 @@ export default function CreateMarketPage() {
                 {s.label}
               </span>
             </div>
-            {i < 2 && (
+            {i < 3 && (
               <div
                 className={cn(
-                  "mx-2 h-0.5 flex-1 min-w-[24px] rounded transition-colors",
+                  "mx-2 h-0.5 flex-1 min-w-[16px] rounded transition-colors",
                   step > s.num ? "bg-green" : "bg-border"
                 )}
               />
@@ -372,22 +425,19 @@ export default function CreateMarketPage() {
         </div>
       )}
 
-      {/* Step 3 — Deploy */}
+      {/* Step 3 — Resolution Source */}
       {step === 3 && (
-        <form onSubmit={onSubmit} className="space-y-6">
-          {!isConnected && (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4">
-              <p className="font-body text-sm text-amber-600 dark:text-amber-400">
-                Please connect your wallet to deploy.
-              </p>
-            </div>
-          )}
-          {isConnected && isWrongNetwork && (
-            <div className="rounded-md border border-red/40 bg-red-dim p-4">
-              <p className="font-body text-sm text-red">Wrong network. Switch to Sepolia.</p>
-            </div>
-          )}
+        <div className="space-y-4">
+          <ResolutionSourcePicker
+            value={resolutionParams}
+            onChange={setResolutionParams}
+          />
+        </div>
+      )}
 
+      {/* Step 4 — Deploy */}
+      {step === 4 && (
+        <form onSubmit={onSubmit} className="space-y-6">
           <div className="card-gradient-border rounded-md p-4">
             <p className="font-body text-sm text-foreground line-clamp-2">{question || "—"}</p>
             <div className="mt-2 flex flex-wrap gap-4 font-mono text-xs text-text-secondary">
@@ -447,7 +497,7 @@ export default function CreateMarketPage() {
       )}
 
       {/* Navigation */}
-      {step < 3 && (
+      {step < 4 && (
         <div className="mt-10 flex items-center justify-between gap-4">
           <Button
             type="button"
