@@ -1,6 +1,6 @@
 // @ts-nocheck — recharts/React types; componentes válidos en runtime
 "use client";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   ComposedChart,
   Area,
@@ -32,12 +32,13 @@ import {
   type OHLCV,
   type Timeframe,
 } from "@/lib/ohlcv-utils";
+import { useOHLCVHistory } from "@/hooks/use-ohlcv-data";
 import { cn } from "@/lib/utils";
 
-const CANDLE_GREEN = "#00E87A";
-const CANDLE_RED = "#FF3D5A";
-const GRID_COLOR = "#1a2030";
-const BG_CHART = "#050810";
+const CANDLE_GREEN = "var(--green, #00E87A)";
+const CANDLE_RED = "var(--red, #FF3D5A)";
+const GRID_COLOR = "var(--border, #1a2030)";
+const BG_CHART = "var(--bg-base, #050810)";
 const MAIN_H = 0.65;
 const TOTAL_H = 500;
 
@@ -115,6 +116,25 @@ function CandleLayer(props: { data: Array<OHLCV & { index: number }>; yAxisId?: 
 
 const OSCILLATOR_ORDER: IndicatorId[] = ["macd", "rsi", "stochRsi", "stoch", "atr", "obv", "bop"];
 
+/** Cuenta regresiva hasta el próximo refetch (30 → 0 segundos) */
+function useLiveCountdown(refetchIntervalMs: number) {
+  const [seconds, setSeconds] = useState(refetchIntervalMs / 1000);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    setSeconds(refetchIntervalMs / 1000);
+    const id = setInterval(() => {
+      const elapsed = (Date.now() - startRef.current) / 1000;
+      const remaining = Math.max(0, refetchIntervalMs / 1000 - elapsed);
+      setSeconds(Math.ceil(remaining));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [refetchIntervalMs]);
+
+  return seconds;
+}
+
 export interface OHLCVChartProps {
   className?: string;
   height?: number;
@@ -123,6 +143,8 @@ export interface OHLCVChartProps {
   onTimeframeChange?: (t: Timeframe) => void;
   indicators?: Set<IndicatorId>;
   onIndicatorsChange?: (i: Set<IndicatorId>) => void;
+  /** Símbolo Binance, p.ej. 'ETHUSDT'. Si no se provee usa mock data. */
+  symbol?: string;
 }
 
 export function OHLCVChart({
@@ -133,6 +155,7 @@ export function OHLCVChart({
   onTimeframeChange,
   indicators: controlledInd,
   onIndicatorsChange,
+  symbol,
 }: OHLCVChartProps) {
   const [internalTf, setInternalTf] = useState<Timeframe>("1h");
   const [internalInd, setInternalInd] = useState<Set<IndicatorId>>(new Set(["ma7", "volume"]));
@@ -156,8 +179,20 @@ export function OHLCVChart({
     else setInternalInd(next);
   };
 
+  // ─── Datos reales vs mock ─────────────────────────────────────────────────
+  const {
+    data: liveData,
+    isLoading: isLiveLoading,
+    isError: isLiveError,
+  } = useOHLCVHistory(symbol, timeframe, 200);
+
+  const usingLive = !!symbol && !isLiveError && !!liveData;
+  const usingFallback = !!symbol && isLiveError;
+
+  const liveSecondsLeft = useLiveCountdown(30_000);
+
   const { chartData, yDomain } = useMemo(() => {
-    const raw = generateMockOHLCV(timeframe, 200);
+    const raw = usingLive ? liveData : generateMockOHLCV(timeframe, 200);
     const ma7 = computeMA(raw, 7);
     const ma25 = computeMA(raw, 25);
     const ma99 = computeMA(raw, 99);
@@ -209,12 +244,13 @@ export function OHLCVChart({
     const yDomain = [min - pad, max + pad] as [number, number];
 
     return { chartData, yDomain };
-  }, [timeframe]);
+  }, [timeframe, usingLive, liveData]);
 
   const mainHeight = Math.floor(height * MAIN_H);
   const secondaryCount = OSCILLATOR_ORDER.filter((id) => indicators.has(id)).slice(-3);
   const secondaryHeight = secondaryCount.length > 0 ? Math.floor((height * (1 - MAIN_H)) / secondaryCount.length) : 80;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const TooltipContent = useCallback(
     ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number }>; label?: string }) => {
       if (!active || label == null) return null;
@@ -234,9 +270,33 @@ export function OHLCVChart({
     [chartData, indicators]
   );
 
+  // ─── Skeleton mientras carga ──────────────────────────────────────────────
+  if (symbol && isLiveLoading) {
+    return (
+      <div
+        className={cn("overflow-hidden rounded-md", className)}
+        style={{
+          background: BG_CHART,
+          border: "1px solid var(--border-bright)",
+          borderRadius: 6,
+          padding: 12,
+          height,
+        }}
+      >
+        <div className="flex gap-2 mb-3">
+          {TIMEFRAMES.map((tf) => (
+            <div key={tf} className="h-7 w-10 rounded animate-pulse bg-elevated" />
+          ))}
+        </div>
+        <div className="animate-pulse rounded bg-elevated" style={{ height: mainHeight }} />
+        <div className="mt-2 animate-pulse rounded bg-elevated" style={{ height: 60 }} />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={cn("overflow-hidden rounded-md", className)}
+      className={cn("overflow-hidden rounded-md relative", className)}
       style={{
         background: BG_CHART,
         border: "1px solid var(--border-bright)",
@@ -245,6 +305,28 @@ export function OHLCVChart({
         height: height,
       }}
     >
+      {/* ── Indicador LIVE ─────────────────────────────────────────────────── */}
+      {usingLive && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full border border-green/30 bg-elevated px-2 py-0.5">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-green" />
+          </span>
+          <span className="font-mono text-[10px] text-green">LIVE</span>
+          <span className="font-mono text-[10px] text-text-muted">
+            {liveSecondsLeft}s
+          </span>
+        </div>
+      )}
+
+      {/* ── Badge offline / fallback ────────────────────────────────────────── */}
+      {usingFallback && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full border border-gold/40 bg-elevated px-2 py-0.5">
+          <span className="h-2 w-2 rounded-full bg-gold" />
+          <span className="font-mono text-[10px] text-gold">Offline — showing demo data</span>
+        </div>
+      )}
+
       {!embedded && (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -305,9 +387,9 @@ export function OHLCVChart({
           </defs>
           <CartesianGrid stroke={GRID_COLOR} strokeDasharray="2 2" vertical={true} horizontal={true} />
           {/* @ts-expect-error recharts component types */}
-          <XAxis dataKey="index" tickFormatter={(i: number) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} tick={{ fill: "#6B7A99", fontFamily: "var(--font-mono), JetBrains Mono, monospace" }} axisLine={{ stroke: "#1a2030" }} />
+          <XAxis dataKey="index" tickFormatter={(i: number) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} tick={{ fill: "var(--text-muted)", fontFamily: "var(--font-mono), JetBrains Mono, monospace" }} axisLine={{ stroke: "var(--border)" }} />
           {/* @ts-expect-error recharts component types */}
-          <YAxis domain={yDomain} orientation="right" stroke="#6B7A99" fontSize={10} tick={{ fill: "#6B7A99", fontFamily: "var(--font-mono), JetBrains Mono, monospace" }} width={40} axisLine={false} tickFormatter={(v: number) => v.toFixed(2)} />
+          <YAxis domain={yDomain} orientation="right" stroke="var(--text-muted)" fontSize={10} tick={{ fill: "var(--text-muted)", fontFamily: "var(--font-mono), JetBrains Mono, monospace" }} width={40} axisLine={false} tickFormatter={(v: number) => v.toFixed(2)} />
           {/* @ts-expect-error recharts component types */}
           <Tooltip content={<TooltipContent />} cursor={false} />
           {hoverIndex != null && (
@@ -368,9 +450,9 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
-                <ReferenceLine y={0} stroke="#666" strokeOpacity={0.5} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
+                <ReferenceLine y={0} stroke="var(--border-bright)" strokeOpacity={0.5} />
                 <Bar dataKey="macdHist" radius={[2, 2, 0, 0]}>
                   {chartData.map((_, i) => (
                     <Cell key={i} fill={(chartData[i]?.macdHist ?? 0) >= 0 ? CANDLE_GREEN : CANDLE_RED} fillOpacity={0.8} />
@@ -385,8 +467,8 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis domain={[0, 100]} stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
                 <ReferenceArea y1={70} y2={100} fill="var(--red-dim)" fillOpacity={0.3} />
                 <ReferenceArea y1={0} y2={30} fill="var(--green-dim)" fillOpacity={0.3} />
                 <ReferenceLine y={70} stroke="#666" strokeDasharray="2 2" strokeOpacity={0.6} />
@@ -399,8 +481,8 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis domain={[0, 100]} stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
                 <Line type="monotone" dataKey="stochRsiK" stroke="#8B5CF6" strokeWidth={1} dot={false} connectNulls />
                 <Line type="monotone" dataKey="stochRsiD" stroke="#F5A623" strokeWidth={1} dot={false} connectNulls />
               </ComposedChart>
@@ -410,8 +492,8 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis domain={[0, 100]} stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
                 <Line type="monotone" dataKey="stochK" stroke="#00E87A" strokeWidth={1} dot={false} connectNulls />
                 <Line type="monotone" dataKey="stochD" stroke="#FF3D5A" strokeWidth={1} dot={false} connectNulls />
               </ComposedChart>
@@ -421,8 +503,8 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
                 <Area type="monotone" dataKey="atr" fill="#8B5CF620" stroke="#8B5CF6" strokeWidth={1} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
@@ -431,8 +513,8 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} tickFormatter={(v) => (v / 1e6).toFixed(1) + "M"} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} tickFormatter={(v) => (v / 1e6).toFixed(1) + "M"} />
                 <Line type="monotone" dataKey="obv" stroke="#00D4FF" strokeWidth={1} dot={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
@@ -441,9 +523,9 @@ export function OHLCVChart({
           return (
             <ResponsiveContainer key={id} width="100%" height={secondaryHeight}>
               <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-                <YAxis domain={[-1, 1]} stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
-                <ReferenceLine y={0} stroke="#666" strokeOpacity={0.5} />
+                <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+                <YAxis domain={[-1, 1]} stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
+                <ReferenceLine y={0} stroke="var(--border-bright)" strokeOpacity={0.5} />
                 <Bar dataKey="bop" fill="#8B5CF6" radius={[2, 2, 0, 0]} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -454,8 +536,8 @@ export function OHLCVChart({
       {indicators.has("volume") && (
         <ResponsiveContainer width="100%" height={secondaryHeight}>
           <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-            <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="#6B7A99" fontSize={10} hide />
-            <YAxis stroke="#6B7A99" fontSize={10} width={36} tick={{ fill: "#6B7A99" }} />
+            <XAxis dataKey="index" tickFormatter={(i) => chartData[i]?.timeLabel ?? ""} stroke="var(--text-muted)" fontSize={10} hide />
+            <YAxis stroke="var(--text-muted)" fontSize={10} width={36} tick={{ fill: "var(--text-muted)" }} />
             <Bar dataKey="volume" radius={[2, 2, 0, 0]}>
               {chartData.map((entry, i) => (
                 <Cell key={i} fill={entry.close >= entry.open ? CANDLE_GREEN : CANDLE_RED} fillOpacity={0.7} />
