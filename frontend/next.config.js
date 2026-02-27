@@ -1,4 +1,13 @@
 /** @type {import('next').NextConfig} */
+const withPWA = require("next-pwa")({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+  skipWaiting: true,
+  // Excluye rutas de API del service worker
+  buildExcludes: [/middleware-manifest\.json$/],
+});
+
 const nextConfig = {
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL ?? "http://localhost:4000";
@@ -13,6 +22,18 @@ const nextConfig = {
       },
     ];
   },
+  webpack(config) {
+    // Dependencias opcionales de node que no existen en el entorno browser/Next.js
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      "@react-native-async-storage/async-storage": false,
+      "pino-pretty": false,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    return config;
+  },
 };
 
-module.exports = nextConfig;
+module.exports = withPWA(nextConfig);
