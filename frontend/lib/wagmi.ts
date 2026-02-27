@@ -1,19 +1,35 @@
-import { createConfig, http } from "wagmi";
-import { sepolia } from "wagmi/chains";
-import { injected } from "wagmi/connectors";
+import { createConfig, http } from 'wagmi'
+import { sepolia } from 'viem/chains'
+import { injected, walletConnect, coinbaseWallet, safe } from 'wagmi/connectors'
 
-const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? "https://rpc.sepolia.org";
+const rawProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? ''
 
-export const config = createConfig({
+// Solo incluir WalletConnect si el projectId parece válido (no placeholder)
+const isValidProjectId =
+  rawProjectId.length > 10 &&
+  !rawProjectId.includes('tu_project') &&
+  !rawProjectId.includes('your_project')
+
+const connectors = [
+  injected({ target: 'metaMask' }),
+  ...(isValidProjectId ? [walletConnect({ projectId: rawProjectId })] : []),
+  coinbaseWallet({ appName: 'PraesagiumChain' }),
+  safe(),
+]
+
+export const wagmiConfig = createConfig({
   chains: [sepolia],
-  connectors: [injected()],
+  connectors,
   transports: {
-    [sepolia.id]: http(rpcUrl),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_RPC_URL),
   },
-});
+})
 
-declare module "wagmi" {
+/** Alias para compatibilidad con imports existentes */
+export const config = wagmiConfig
+
+declare module 'wagmi' {
   interface Register {
-    config: typeof config;
+    config: typeof wagmiConfig
   }
 }

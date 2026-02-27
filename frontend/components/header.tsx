@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 // @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect, useRef } from "react";
-import { Menu, Moon, Sun, X, LogOut, Loader2 } from "lucide-react";
+import { Menu, X, LogOut, Loader2 } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
+import { useIsMounted } from "@/hooks/use-is-mounted";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Dialog,
   DialogContent,
@@ -300,12 +301,14 @@ function WalletButtonMobile() {
 
 export function Header() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const chainId = useChainId();
   const { switchChain, isPending } = useSwitchChain();
   const { isConnected } = useAccount();
-  const isWrongNetwork = chainId !== undefined && chainId !== EXPECTED_CHAIN_ID;
+  const mounted = useIsMounted();
+
+  // Solo evaluar red incorrecta tras el montaje para evitar hydration mismatch
+  const isWrongNetwork = mounted && chainId !== undefined && chainId !== EXPECTED_CHAIN_ID;
 
   return (
     <div key="header-root">
@@ -394,20 +397,13 @@ export function Header() {
           {/* Right */}
           <div className="flex items-center gap-3">
             <LiveIndicator />
-            {isConnected && (
+            {mounted && isConnected && (
               <NetworkBadge />
             )}
             <div className="hidden md:block">
-              <WalletButtonInner />
+              {mounted ? <WalletButtonInner /> : <div className="h-9 w-32" />}
             </div>
-            <button
-              type="button"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="p-1 text-text-secondary hover:text-foreground transition-colors"
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+            <ThemeToggle />
 
             {/* Mobile menu trigger */}
             <button

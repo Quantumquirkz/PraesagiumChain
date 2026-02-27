@@ -1,133 +1,166 @@
 "use client";
 
 // @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
-import Link from "next/link";
-import { getStats, getMarkets } from "@/lib/api";
-import { MarketFilters, type SortOption } from "@/components/market-filters";
+import { useInfiniteMarkets, useMarketStats } from "@/hooks/use-markets";
+import {
+  MarketFilters,
+  filterStateFromParams,
+  filterStateToParams,
+  type SortOption,
+  type FilterState,
+} from "@/components/market-filters";
 import { StatsCards } from "@/components/stats-cards";
 import { MarketCard } from "@/components/market-card";
-import { MarketCardSkeleton } from "@/components/market-card-skeleton";
-import { StatsSkeleton } from "@/components/skeletons/stats-skeleton";
+import { MarketCardSkeleton, StatsSkeleton } from "@/components/skeletons";
 import { NoMarkets } from "@/components/empty-states/no-markets";
+import { LastUpdated } from "@/components/last-updated";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
 import type { MarketView } from "@/types/api";
+import { detectCategory, type MarketCategory } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-const LIMIT = 12;
-const MAX_VISIBLE_PAGES = 5;
+// ─── Helpers de filtrado/ordenamiento (client-side) ───────────────────────────
 
-function filterAndSort(
-  items: MarketView[],
-  searchQuery: string,
-  sort: SortOption
-): MarketView[] {
-  const q = searchQuery.trim().toLowerCase();
-  let list = q
-    ? items.filter((m) => m.question.toLowerCase().includes(q))
-    : [...items];
-  if (sort === "newest") {
-    list.sort((a, b) => b.id - a.id);
-  } else if (sort === "closes_soon") {
-    list.sort((a, b) => a.close_time - b.close_time);
-  } else if (sort === "most_volume") {
-    list.sort((a, b) => {
-      const volA = Number(a.total_yes_stake) + Number(a.total_no_stake);
-      const volB = Number(b.total_yes_stake) + Number(b.total_no_stake);
-      return volB - volA;
-    });
+function filterAndSort(items: MarketView[], filters: FilterState): MarketView[] {
+  const q = filters.q.trim().toLowerCase();
+  let list = [...items];
+
+  if (q) list = list.filter((m) => m.question.toLowerCase().includes(q));
+  if (filters.category) list = list.filter((m) => detectCategory(m.question) === filters.category);
+
+  switch (filters.sort) {
+    case "newest":
+      list.sort((a, b) => b.id - a.id);
+      break;
+    case "closes_soon":
+      list.sort((a, b) => a.close_time - b.close_time);
+      break;
+    case "most_volume":
+      list.sort((a, b) => {
+        const volA = Number(a.total_yes_stake) + Number(a.total_no_stake);
+        const volB = Number(b.total_yes_stake) + Number(b.total_no_stake);
+        return volB - volA;
+      });
+      break;
+    case "ai_confidence":
+      list.sort((a, b) => (b.latest_prediction?.probability ?? -1) - (a.latest_prediction?.probability ?? -1));
+      break;
   }
+
   return list;
 }
 
-function getPageRange(
-  page: number,
-  total: number,
-  displayedCount: number
-): { start: number; end: number } {
-  const start = (page - 1) * LIMIT + 1;
-  const end = (page - 1) * LIMIT + displayedCount;
-  return { start, end };
-}
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sort, setSort] = useState<SortOption>("newest");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const statusParam = statusFilter || undefined;
+  // Estado inicial desde URL
+  const initialFilters = useMemo(() => filterStateFromParams(searchParams), []);  // eslint-disable-line react-hooks/exhaustive-deps
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["stats"],
-    queryFn: getStats,
-  });
+  // Sincronizar filtros → URL sin reload
+  useEffect(() => {
+    const params = filterStateToParams(filters);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const setFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters((prev: FilterState) => ({ ...prev, [key]: value }));
+  }, []);
+
+  // Stats
+  const { data: stats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useMarketStats();
+
+  // Infinite markets — solo status va al backend; category/sort/q son client-side
+  const statusParam = filters.status || undefined;
   const {
-    data: marketsData,
+    data,
     isLoading: marketsLoading,
     isError: marketsError,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
     refetch: refetchMarkets,
-  } = useQuery({
-    queryKey: ["markets", page, statusParam],
-    queryFn: () => getMarkets(page, LIMIT, statusParam),
-  });
+    dataUpdatedAt: marketsUpdatedAt,
+  } = useInfiniteMarkets(statusParam);
 
-  const filteredAndSorted = useMemo(() => {
-    const items = marketsData?.items ?? [];
-    return filterAndSort(items, searchQuery, sort);
-  }, [marketsData?.items, searchQuery, sort]);
+  // Aplanar todas las páginas y aplicar filtros client-side
+  const allItems = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data?.pages]
+  );
+  const filteredAndSorted = useMemo(() => filterAndSort(allItems, filters), [allItems, filters]);
+  const totalFromApi = data?.pages[0]?.total ?? 0;
 
-  const totalFromApi = marketsData?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalFromApi / LIMIT));
-  const { start, end } = getPageRange(page, totalFromApi, filteredAndSorted.length);
-  const isEmpty = !marketsLoading && !marketsError && filteredAndSorted.length === 0;
-  const isFirstEmpty = totalFromApi === 0 && !statusFilter;
+  // Sentinel para IntersectionObserver
+  const { ref: sentinelRef, inView } = useInView({ threshold: 0.1, rootMargin: "200px" });
 
-  const pageNumbers = useMemo(() => {
-    let low = Math.max(1, page - Math.floor(MAX_VISIBLE_PAGES / 2));
-    let high = Math.min(totalPages, low + MAX_VISIBLE_PAGES - 1);
-    if (high - low + 1 < MAX_VISIBLE_PAGES) {
-      low = Math.max(1, high - MAX_VISIBLE_PAGES + 1);
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-    return Array.from({ length: high - low + 1 }, (_, i) => low + i);
-  }, [page, totalPages]);
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (marketsError) {
-    toast.error("Failed to load markets.");
-  }
+  // Rastrear cuántos items había antes de la última carga para animar solo los nuevos
+  const prevCountRef = useRef(0);
+  const newBatchStart = prevCountRef.current;
+  useEffect(() => {
+    prevCountRef.current = filteredAndSorted.length;
+  }, [filteredAndSorted.length]);
+
+  const lastUpdatedAt = Math.max(statsUpdatedAt ?? 0, marketsUpdatedAt ?? 0) || undefined;
+  const isEmpty = !marketsLoading && !marketsError && filteredAndSorted.length === 0;
+  const isFirstEmpty = totalFromApi === 0 && !filters.status;
+
+  if (marketsError) toast.error("Failed to load markets.");
 
   return (
     <div className="space-y-8">
+      {/* Stats */}
       <section aria-label="Statistics">
         {statsLoading ? (
           <StatsSkeleton aria-busy="true" />
         ) : (
-          <StatsCards stats={stats} isLoading={false} />
+          <>
+            <StatsCards stats={stats} isLoading={false} />
+            <div className="mt-2 flex justify-end">
+              <LastUpdated updatedAt={lastUpdatedAt} freshThresholdMs={15_000} />
+            </div>
+          </>
         )}
       </section>
 
+      {/* Markets */}
       <section aria-label="Markets">
         <div className="mb-6">
-          <h2 className="font-display text-xl font-bold text-foreground mb-4">
-            Markets
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-bold text-foreground">Markets</h2>
+            {!marketsLoading && (
+              <LastUpdated updatedAt={marketsUpdatedAt || undefined} freshThresholdMs={15_000} />
+            )}
+          </div>
           <MarketFilters
-            statusFilter={statusFilter}
-            onStatusChange={(v) => {
-              setStatusFilter(v === "all" ? "" : v);
-              setPage(1);
-            }}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            sort={sort}
-            onSortChange={setSort}
-            totalCount={totalFromApi}
+            statusFilter={filters.status}
+            onStatusChange={(v) => setFilter("status", v === "all" ? "" : v)}
+            categoryFilter={filters.category}
+            onCategoryChange={(v) => setFilter("category", v as MarketCategory | "")}
+            searchQuery={filters.q}
+            onSearchChange={(v) => setFilter("q", v)}
+            sort={filters.sort}
+            onSortChange={(v) => setFilter("sort", v as SortOption)}
+            totalCount={filteredAndSorted.length}
           />
         </div>
 
+        {/* Initial loading skeleton */}
         {marketsLoading ? (
           <div
             className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
@@ -143,9 +176,7 @@ export default function DashboardPage() {
             className="flex flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 py-12 px-4 text-center"
             role="alert"
           >
-            <p className="font-body font-medium text-foreground mb-2">
-              Failed to load markets.
-            </p>
+            <p className="font-body font-medium text-foreground mb-2">Failed to load markets.</p>
             <Button
               onClick={() => refetchMarkets()}
               variant="outline"
@@ -162,61 +193,51 @@ export default function DashboardPage() {
           />
         ) : (
           <>
+            {/* Market grid */}
             <div
               className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
               role="list"
               aria-label="Market list"
             >
-              {filteredAndSorted.map((market: MarketView) => (
-                <article key={market.id} role="listitem">
-                  <MarketCard market={market} />
-                </article>
-              ))}
+              {filteredAndSorted.map((market: MarketView, i: number) => {
+                // Animar solo las cards nuevas de la última página cargada
+                const isNew = i >= newBatchStart;
+                const delay = isNew ? (i - newBatchStart) * 0.05 : 0;
+                return (
+                  <article
+                    key={market.id}
+                    role="listitem"
+                    className={cn(isNew && "fade-up")}
+                    style={isNew ? { animationDelay: `${delay}s`, opacity: 0 } : undefined}
+                  >
+                    <MarketCard market={market} searchQuery={filters.q} />
+                  </article>
+                );
+              })}
             </div>
 
-            <div className="flex flex-col items-center gap-4 pt-6 sm:flex-row sm:justify-between">
-              <p className="font-mono text-sm text-text-secondary order-2 sm:order-1">
-                Showing {start}–{end} of {totalFromApi} markets
-              </p>
-              <nav
-                className="flex items-center gap-2 order-1 sm:order-2"
-                aria-label="Pagination"
+            {/* Sentinel — dispara fetchNextPage cuando entra en viewport */}
+            <div ref={sentinelRef} className="h-px" aria-hidden />
+
+            {/* Skeletons de carga de siguiente página */}
+            {isFetchingNextPage && (
+              <div
+                className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+                aria-busy="true"
+                aria-label="Loading more markets"
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  aria-label="Previous page"
-                >
-                  Prev
-                </Button>
-                <div className="flex items-center gap-1">
-                  {pageNumbers.map((n: number) => (
-                    <Button
-                      key={n}
-                      variant={n === page ? "default" : "ghost"}
-                      size="sm"
-                      className="min-w-[2rem] font-mono"
-                      onClick={() => setPage(n)}
-                      aria-label={`Page ${n}`}
-                      aria-current={n === page ? "page" : undefined}
-                    >
-                      {n}
-                    </Button>
-                  ))}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  aria-label="Next page"
-                >
-                  Next
-                </Button>
-              </nav>
-            </div>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <MarketCardSkeleton key={`next-${i}`} />
+                ))}
+              </div>
+            )}
+
+            {/* Footer: todo cargado */}
+            {!hasNextPage && filteredAndSorted.length > 0 && (
+              <p className="mt-8 text-center font-mono text-xs text-text-muted" role="status">
+                All markets loaded • {filteredAndSorted.length} total
+              </p>
+            )}
           </>
         )}
       </section>

@@ -31,9 +31,35 @@ export interface MarketCardProps {
   market: MarketView;
   /** If > 70, show gold star before creator */
   creatorReputation?: number;
+  /** Highlight matching text in the question */
+  searchQuery?: string;
 }
 
-export function MarketCard({ market, creatorReputation }: MarketCardProps) {
+/** Splits `text` around `query` and wraps matches in a cyan <mark> */
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark
+            key={i}
+            className="bg-transparent text-cyan font-semibold not-italic"
+            style={{ textDecoration: "underline", textDecorationColor: "var(--cyan)" }}
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
+export function MarketCard({ market, creatorReputation, searchQuery = "" }: MarketCardProps) {
   const countdown = useCountdown(market.close_time);
   const [barMounted, setBarMounted] = useState(false);
 
@@ -97,7 +123,7 @@ export function MarketCard({ market, creatorReputation }: MarketCardProps) {
         className="mt-3 font-body font-medium text-[15px] text-foreground line-clamp-2 leading-snug"
         style={{ marginTop: 12 }}
       >
-        {market.question}
+        <HighlightedText text={market.question} query={searchQuery} />
       </h3>
 
       {/* ROW 3 — Stakes */}

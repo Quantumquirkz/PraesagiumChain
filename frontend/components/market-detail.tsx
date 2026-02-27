@@ -3,24 +3,22 @@
 // @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useAccount, useBalance, useWriteContract } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { formatEther } from "viem";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react";
 import type { MarketView, PredictionView } from "@/types/api";
-import { getSentiment, getHybridPrediction } from "@/lib/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
 import { predictionMarketContract, OUTCOME, EXPLORER_URL } from "@/lib/constants";
 import { OHLCVChart, type IndicatorId } from "@/components/ohlcv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
-import { WalletButton } from "@/components/wallet-button";
+import { BetForm } from "@/components/bet-form";
+import { CreatorReputationBadge } from "@/components/creator-reputation-badge";
+import { PHPEHistoryChart } from "@/components/phpe-history-chart";
+import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -29,15 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import {
-  LineChart,
-  Line,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { usePHPEPrediction } from "@/hooks/use-phpe-prediction";
 import type { Timeframe } from "@/lib/ohlcv-utils";
 
 export interface MarketOnChain {
@@ -55,18 +45,6 @@ export interface UserStakeOnChain {
   yesStake: bigint;
   noStake: bigint;
 }
-
-const betSchema = z.object({
-  amount: z.string().min(1, "Amount required"),
-}).refine(
-  (data) => {
-    const n = Number.parseFloat(data.amount);
-    return !Number.isNaN(n) && n >= 0.001;
-  },
-  { message: "Min 0.001 ETH", path: ["amount"] }
-);
-
-type BetFormValues = z.infer<typeof betSchema>;
 
 const BINANCE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"] as const;
 const TIMEFRAMES: Timeframe[] = ["15m", "1h", "4h", "24h", "1W", "1M"];
@@ -107,10 +85,6 @@ export function MarketDetail({
   userStake,
 }: MarketDetailProps) {
   const [aiCollapsed, setAiCollapsed] = useState(true);
-  const [sentimentLoading, setSentimentLoading] = useState(false);
-  const [sentimentResult, setSentimentResult] = useState<{ probability: number; sentiment_score?: number; provider?: string } | null>(null);
-  const [hybridLoading, setHybridLoading] = useState(false);
-  const [hybridResult, setHybridResult] = useState<{ probability: number; uncertainty?: number } | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe>("1h");
   const [indicators, setIndicators] = useState<Set<IndicatorId>>(new Set(["ma7", "volume"]));
   const [stakesMounted, setStakesMounted] = useState(false);
@@ -118,6 +92,7 @@ export function MarketDetail({
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
   const { writeContractAsync, isPending: writePending } = useWriteContract();
+  // balance y writePending se usan en CARD 2 (claimPayout) y CARD 3 (BetForm delegado)
 
   const totalYes = marketOnChain ? marketOnChain.totalYesStake : BigInt(Number(market.total_yes_stake));
   const totalNo = marketOnChain ? marketOnChain.totalNoStake : BigInt(Number(market.total_no_stake));
@@ -131,50 +106,10 @@ export function MarketDetail({
   const userWon = isResolved && userStake && ((outcomeYes && userStake.yesStake > BigInt(0)) || (outcomeNo && userStake.noStake > BigInt(0)));
   const claimable = userWon && userStake ? (outcomeYes ? userStake.yesStake : userStake.noStake) : BigInt(0);
 
-  const betForm = useForm<BetFormValues>({
-    resolver: zodResolver(betSchema),
-    defaultValues: { amount: "" },
-  });
-  const [selectedOutcome, setSelectedOutcome] = useState<"yes" | "no">("yes");
-  const amount = betForm.watch("amount");
-  const [gasEstimate, setGasEstimate] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!amount || Number.isNaN(Number(amount)) || Number(amount) < 0.001) {
-      setGasEstimate(null);
-      return;
-    }
-    setGasEstimate("≈ 0.002 ETH gas");
-  }, [amount]);
-
   useEffect(() => {
     const t = setTimeout(() => setStakesMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
-
-  const onPlaceBet = betForm.handleSubmit(async (data) => {
-    if (!address) return;
-    const amt = Number.parseFloat(data.amount);
-    if (balance && amt > Number(formatEther(balance.value))) {
-      betForm.setError("amount", { message: "Exceeds balance" });
-      return;
-    }
-    try {
-      toast.info("Confirm in wallet");
-      const hash = await writeContractAsync({
-        ...predictionMarketContract,
-        functionName: "placeBet",
-        args: [BigInt(marketId), selectedOutcome === "yes" ? OUTCOME.YES : OUTCOME.NO],
-        value: parseEther(data.amount),
-      });
-      toast.success("Bet placed!", {
-        action: hash ? { label: "View tx", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } : undefined,
-      });
-      betForm.reset();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Transaction failed");
-    }
-  });
 
   const onClaimPayout = async () => {
     try {
@@ -226,6 +161,7 @@ export function MarketDetail({
                 RESOLVED: {outcomeYes ? "YES ✓" : "NO ✗"}
               </span>
             )}
+            <ShareMarketButton market={market} className="ml-auto" />
           </div>
         </div>
 
@@ -279,7 +215,7 @@ export function MarketDetail({
               ))}
             </div>
           </div>
-          <div className="border border-border-bright rounded-b-md overflow-x-auto overflow-y-hidden md:overflow-visible" style={{ background: "#050810" }}>
+          <div className="border border-border-bright rounded-b-md overflow-x-auto overflow-y-hidden md:overflow-visible" style={{ background: "var(--bg-base)" }}>
             <div className="min-w-[480px]">
             <OHLCVChart
               height={380}
@@ -343,29 +279,6 @@ export function MarketDetail({
             <p className="font-mono text-sm text-text-muted">No predictions yet</p>
           ) : predictions.length > 1 ? (
             <div className="space-y-4">
-              <div className="h-48 w-full rounded-md border border-border bg-elevated/50 p-2">
-                {/* Tipos de recharts pueden fallar con React namespace; componentes son válidos en runtime */}
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={predictions.slice().reverse().map((p, i) => ({
-                      index: i,
-                      time: p.timestamp,
-                      probability: p.probability * 100,
-                    }))}
-                  >
-                    {/* @ts-expect-error recharts components types vs React */}
-                    <XAxis dataKey="index" hide />
-                    {/* @ts-expect-error recharts */}
-                    <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} width={32} stroke="#666" fontSize={10} />
-                    {/* @ts-expect-error recharts */}
-                    <RechartsTooltip formatter={(v: number) => [`${v.toFixed(1)}%`, "Probability"]} />
-                    {/* @ts-expect-error recharts */}
-                    <Area type="monotone" dataKey="probability" fill="var(--violet)" fillOpacity={0.15} stroke="none" />
-                    {/* @ts-expect-error recharts */}
-                    <Line type="monotone" dataKey="probability" stroke="var(--cyan)" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
               <ul className="space-y-3">
                 {predictions.map((p, i) => (
                   <PredictionRow key={i} p={p} />
@@ -376,6 +289,9 @@ export function MarketDetail({
             <PredictionRow p={predictions[0]} />
           )}
         </div>
+
+        {/* SECCIÓN 5 — PHPE Probability Trend */}
+        <PHPEHistoryChart predictions={predictions} />
       </div>
 
       {/* ——— SIDEBAR ——— */}
@@ -387,6 +303,21 @@ export function MarketDetail({
             <CountdownBlocks targetUnix={resolveUnix} label="RESOLVES IN" urgentClassName="border-violet bg-violet-dim text-violet" />
           </div>
         </div>
+
+        {/* CARD 1b — Creator */}
+        {(market.creator || marketOnChain?.creator) && (
+          <div className="rounded-md border border-border bg-surface p-4">
+            <h3
+              className="mb-3 font-display font-bold tracking-widest text-text-muted"
+              style={{ fontSize: 12 }}
+            >
+              CREATOR
+            </h3>
+            <CreatorReputationBadge
+              address={(market.creator || marketOnChain!.creator) as string}
+            />
+          </div>
+        )}
 
         {/* CARD 2 — User Position */}
         {isConnected && userStake !== null && (
@@ -422,91 +353,14 @@ export function MarketDetail({
         )}
 
         {/* CARD 3 — Bet Form */}
-        {market.status === "Open" && (
-          <div className="rounded-md border border-border bg-surface p-4">
-            <h3 className="font-display font-bold text-[13px] text-text-muted tracking-widest mb-4">
-              PLACE BET
-            </h3>
-            {!isConnected ? (
-              <div className="flex flex-col items-center gap-3">
-                <p className="font-mono text-sm text-text-muted">Connect your wallet to place a bet</p>
-                <WalletButton />
-              </div>
-            ) : (
-              <form onSubmit={onPlaceBet} className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOutcome("yes")}
-                    className={cn(
-                      "h-12 rounded-md border font-display font-extrabold text-[20px] transition-colors",
-                      selectedOutcome === "yes" ? "bg-green-dim border-green text-green" : "bg-elevated border-border text-text-muted"
-                    )}
-                    aria-pressed={selectedOutcome === "yes"}
-                  >
-                    YES
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOutcome("no")}
-                    className={cn(
-                      "h-12 rounded-md border font-display font-extrabold text-[20px] transition-colors",
-                      selectedOutcome === "no" ? "bg-red-dim border-red text-red" : "bg-elevated border-border text-text-muted"
-                    )}
-                    aria-pressed={selectedOutcome === "no"}
-                  >
-                    NO
-                  </button>
-                </div>
-                <div>
-                  <div className="flex rounded-md border border-border bg-elevated overflow-hidden">
-                    <span className="flex items-center pl-3 font-mono text-cyan">Ξ</span>
-                    <Input
-                      type="text"
-                      placeholder="0.01"
-                      className="border-0 bg-transparent font-mono text-[18px] focus-visible:ring-0"
-                      {...betForm.register("amount")}
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {["0.01", "0.05", "0.1", "0.5"].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => betForm.setValue("amount", v)}
-                        className="rounded-md border border-border bg-elevated px-2 py-1 font-mono text-xs text-text-secondary hover:text-foreground"
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                  {gasEstimate && (
-                    <p className="mt-1 font-mono text-[11px] text-text-muted">{gasEstimate}</p>
-                  )}
-                  {betForm.formState.errors.amount && (
-                    <p className="mt-1 text-xs text-red">{betForm.formState.errors.amount.message}</p>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  disabled={writePending}
-                  className="w-full h-12 font-display font-extrabold text-base bg-gradient-to-br from-cyan to-violet text-black hover:brightness-110 border-0"
-                >
-                  {writePending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
-                      Confirming...
-                    </>
-                  ) : (
-                    "PLACE BET"
-                  )}
-                </Button>
-              </form>
-            )}
-          </div>
-        )}
+        <div className="rounded-md border border-border bg-surface p-4">
+          <h3 className="font-display font-bold text-[13px] text-text-muted tracking-widest mb-4">
+            PLACE BET
+          </h3>
+          <BetForm marketId={marketId} marketStatus={market.status} question={market.question} />
+        </div>
 
-        {/* CARD 4 — AI Preview */}
+        {/* CARD 4 — PHPE AI Preview */}
         <div className="rounded-md border border-border bg-surface overflow-hidden">
           <button
             type="button"
@@ -519,73 +373,7 @@ export function MarketDetail({
           </button>
           {!aiCollapsed && (
             <div className="border-t border-border p-4">
-              <Tabs defaultValue="sentiment" className="w-full">
-                <TabsList className="mb-3 bg-elevated border border-border">
-                  <TabsTrigger value="sentiment" className="font-body text-xs">Sentiment</TabsTrigger>
-                  <TabsTrigger value="hybrid" className="font-body text-xs">Hybrid</TabsTrigger>
-                </TabsList>
-                <TabsContent value="sentiment" className="mt-0 space-y-3">
-                  <Textarea placeholder="Paste text (news, tweet...)" className="font-mono text-sm min-h-[80px] bg-elevated border-border" id="sentiment-text" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-cyan text-cyan hover:bg-cyan-dim"
-                    disabled={sentimentLoading}
-                    onClick={async () => {
-                      const el = document.getElementById("sentiment-text") as HTMLTextAreaElement | null;
-                      const text = el?.value?.trim();
-                      if (!text) { toast.error("Enter some text"); return; }
-                      setSentimentLoading(true);
-                      setSentimentResult(null);
-                      try {
-                        const res = await getSentiment(text);
-                        setSentimentResult({ probability: res.probability, sentiment_score: res.sentiment_score, provider: res.provider });
-                      } catch (e) { toast.error(e instanceof Error ? e.message : "Analysis failed"); }
-                      finally { setSentimentLoading(false); }
-                    }}
-                  >
-                    {sentimentLoading ? "Analyzing..." : "ANALYZE"}
-                  </Button>
-                  {sentimentResult && (
-                    <p className="font-mono text-sm text-violet">Probability: {Math.round(sentimentResult.probability * 100)}%</p>
-                  )}
-                </TabsContent>
-                <TabsContent value="hybrid" className="mt-0 space-y-3">
-                  <Input placeholder="Sentiment text (optional)" className="font-mono text-sm bg-elevated border-border" id="hybrid-sentiment" />
-                  <Select defaultValue="ETHUSDT">
-                    <SelectTrigger className="font-mono text-sm bg-elevated border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {BINANCE_SYMBOLS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-violet text-violet hover:bg-violet-dim"
-                    disabled={hybridLoading}
-                    onClick={async () => {
-                      const el = document.getElementById("hybrid-sentiment") as HTMLInputElement | null;
-                      setHybridLoading(true);
-                      setHybridResult(null);
-                      try {
-                        const res = await getHybridPrediction({ market_id: marketId, sentiment_text: el?.value?.trim(), social_texts: [] });
-                        setHybridResult({ probability: res.probability, uncertainty: res.uncertainty });
-                      } catch (e) { toast.error(e instanceof Error ? e.message : "Prediction failed"); }
-                      finally { setHybridLoading(false); }
-                    }}
-                  >
-                    {hybridLoading ? "Predicting..." : "PREDICT"}
-                  </Button>
-                  {hybridResult && (
-                    <p className="font-mono text-sm text-violet">
-                      {Math.round(hybridResult.probability * 100)}% ±{hybridResult.uncertainty != null ? Math.round(hybridResult.uncertainty * 100) : "?"}%
-                    </p>
-                  )}
-                </TabsContent>
-              </Tabs>
-              <p className="mt-3 font-body text-[10px] text-text-muted italic">Preview only — not stored on-chain</p>
+              <PHPEWidget marketId={marketId} />
             </div>
           )}
         </div>
@@ -593,6 +381,199 @@ export function MarketDetail({
     </div>
   );
 }
+
+// ─── PHPE Components ──────────────────────────────────────────────────────────
+
+const BINANCE_SYMBOLS_PHPE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"] as const;
+
+interface PHPEResultProps {
+  probability: number;
+  uncertainty?: number;
+}
+
+function PHPEResult({ probability, uncertainty }: PHPEResultProps) {
+  const [displayed, setDisplayed] = useState(0);
+
+  useEffect(() => {
+    const target = probability * 100;
+    let current = 0;
+    let rafId: number;
+    const step = () => {
+      current = Math.min(current + 2, target);
+      setDisplayed(current);
+      if (current < target) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [probability]);
+
+  const low = uncertainty != null ? Math.max(0, probability - uncertainty) * 100 : null;
+  const high = uncertainty != null ? Math.min(1, probability + uncertainty) * 100 : null;
+  const isPositive = displayed >= 50;
+
+  return (
+    <div className="mt-4 space-y-2">
+      {/* Número grande + incertidumbre */}
+      <div className="flex items-baseline gap-2">
+        <span
+          className={cn(
+            "font-mono text-3xl font-bold tabular-nums transition-colors",
+            isPositive ? "text-green" : "text-red"
+          )}
+        >
+          {displayed.toFixed(1)}%
+        </span>
+        {uncertainty != null && (
+          <span className="font-mono text-sm text-violet">
+            ± {(uncertainty * 100).toFixed(1)}%
+          </span>
+        )}
+      </div>
+
+      {/* Barra con banda de incertidumbre */}
+      <div
+        className="relative h-3 w-full rounded-full bg-surface overflow-hidden"
+        role="progressbar"
+        aria-valuenow={Math.round(displayed)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        {/* Banda de incertidumbre */}
+        {low != null && high != null && (
+          <div
+            className="absolute top-0 h-full rounded-sm"
+            style={{
+              left: `${low}%`,
+              width: `${high - low}%`,
+              background: "var(--violet-dim, rgba(139,92,246,0.2))",
+              border: "1px solid var(--violet, #8b5cf6)",
+              transition: "all 0.5s ease",
+            }}
+            aria-hidden
+          />
+        )}
+        {/* Barra principal */}
+        <div
+          className="absolute top-0 left-0 h-full rounded-full"
+          style={{
+            width: `${displayed}%`,
+            background: isPositive ? "var(--green, #22c55e)" : "var(--red, #ef4444)",
+            transition: "width 0.05s linear",
+          }}
+          aria-hidden
+        />
+      </div>
+
+      <p className="font-mono text-[10px] text-text-muted italic">
+        Model: PHPE v2 • Not stored on-chain
+      </p>
+    </div>
+  );
+}
+
+function PHPEWidget({ marketId }: { marketId: number }) {
+  const [sentimentText, setSentimentText] = useState("");
+  const [binanceSymbol, setBinanceSymbol] = useState("ETHUSDT");
+  const [useChainlink, setUseChainlink] = useState(true);
+
+  const { mutate: predict, data, isPending, error, reset } = usePHPEPrediction(marketId);
+
+  const handlePredict = () => {
+    reset();
+    predict({
+      sentimentText: sentimentText.trim() || undefined,
+      binanceSymbol,
+      useChainlink,
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Sentiment text */}
+      <div>
+        <label className="mb-1 block font-mono text-[11px] text-text-muted uppercase tracking-widest">
+          Sentiment text (optional)
+        </label>
+        <Textarea
+          placeholder="Paste news, tweet, or any text context..."
+          value={sentimentText}
+          onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
+          className="font-mono text-sm min-h-[72px] bg-elevated border-border resize-none"
+          disabled={isPending}
+        />
+      </div>
+
+      {/* Controls row */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Binance symbol */}
+        <Select
+          value={binanceSymbol}
+          onValueChange={setBinanceSymbol}
+          disabled={isPending}
+        >
+          <SelectTrigger className="font-mono text-xs bg-elevated border-border h-8 w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BINANCE_SYMBOLS_PHPE.map((s) => (
+              <SelectItem key={s} value={s} className="font-mono text-xs">
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Chainlink toggle */}
+        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={useChainlink}
+            onChange={(e) => setUseChainlink(e.target.checked)}
+            disabled={isPending}
+            className="h-3.5 w-3.5 accent-cyan"
+          />
+          <span className="font-mono text-xs text-text-muted">Chainlink</span>
+        </label>
+
+        {/* Predict button */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handlePredict}
+          disabled={isPending}
+          className="ml-auto border-violet text-violet hover:bg-violet-dim font-display font-bold tracking-widest h-8 px-4"
+          aria-label="Get AI prediction"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+              Analyzing…
+            </>
+          ) : (
+            "GET AI PREDICTION"
+          )}
+        </Button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <p className="font-mono text-xs text-red" role="alert">
+          {error instanceof Error ? error.message : "Prediction failed"}
+        </p>
+      )}
+
+      {/* Resultado animado */}
+      {data && !isPending && (
+        <PHPEResult probability={data.probability} uncertainty={data.uncertainty} />
+      )}
+    </div>
+  );
+}
+
+// ─── PredictionRow ────────────────────────────────────────────────────────────
 
 function PredictionRow({ p }: { p: PredictionView }) {
   const unc = p.uncertainty ?? 0;
