@@ -27,6 +27,28 @@
   --font-body: 'DM Sans', sans-serif;
 }
 
+/* ─── Light theme ─────────────────────────────────────────────────────────── */
+.light {
+  --bg-base:      #F0F2F7;
+  --bg-surface:   #FFFFFF;
+  --bg-elevated:  #E8ECF4;
+  --border:       #D1D9E6;
+  --border-bright:#B8C4D8;
+  --text-primary: #0D1117;
+  --text-secondary:#4A5568;
+  --text-muted:   #9AA5B4;
+  /* Acentos ligeramente más oscuros para contraste sobre fondo claro */
+  --cyan:         #0099BB;
+  --cyan-dim:     rgba(0, 153, 187, 0.12);
+  --violet:       #6D28D9;
+  --violet-dim:   rgba(109, 40, 217, 0.12);
+  --green:        #059669;
+  --green-dim:    rgba(5, 150, 105, 0.12);
+  --red:          #DC2626;
+  --red-dim:      rgba(220, 38, 38, 0.12);
+  --gold:         #D97706;
+}
+
 * { box-sizing: border-box; }
 
 /* Reseteo de enlaces para que no se vean como enlaces por defecto si Tailwind no carga */
@@ -147,7 +169,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.06) 50%,
+    rgba(128, 128, 128, 0.08) 50%,
     transparent 100%
   );
   animation: shimmer 1.8s ease-in-out infinite;
