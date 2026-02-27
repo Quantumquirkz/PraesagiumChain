@@ -61,6 +61,35 @@ export function formatCountdown(unix: number): string {
   return parts.join(" ");
 }
 
+// ─── Category detection ───────────────────────────────────────────────────────
+
+export type MarketCategory = "Crypto" | "Sports" | "Weather" | "Other";
+
+const CATEGORY_RULES: { category: MarketCategory; keywords: RegExp }[] = [
+  {
+    category: "Crypto",
+    keywords:
+      /\b(btc|eth|bitcoin|ethereum|crypto|defi|nft|solana|sol|bnb|usdt|usdc|chainlink|link|polygon|matic|avax|avalanche|dao|web3|blockchain|token|coin|altcoin|stablecoin)\b/i,
+  },
+  {
+    category: "Sports",
+    keywords:
+      /\b(win|wins|winning|match|matches|score|scores|league|leagues|championship|tournament|team|teams|player|players|game|games|cup|final|playoff|season|goal|goals|nba|nfl|fifa|ufc|mls|mlb|nhl|f1|formula)\b/i,
+  },
+  {
+    category: "Weather",
+    keywords:
+      /\b(rain|rains|raining|rainfall|weather|temperature|degrees|celsius|fahrenheit|storm|hurricane|tornado|flood|drought|snow|snowing|sunshine|climate|forecast|heatwave|frost)\b/i,
+  },
+];
+
+export function detectCategory(question: string): MarketCategory {
+  for (const { category, keywords } of CATEGORY_RULES) {
+    if (keywords.test(question)) return category;
+  }
+  return "Other";
+}
+
 export function statusColor(status: string): string {
   const s = status.toLowerCase();
   if (s === "open") return "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30";

@@ -1,5 +1,12 @@
 export const predictionMarketAbi = [
   {
+    inputs: [],
+    name: "creationFee",
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [{ name: "marketId", type: "uint256" }],
     name: "getMarket",
     outputs: [
