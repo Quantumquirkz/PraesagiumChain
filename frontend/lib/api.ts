@@ -6,12 +6,23 @@ import type {
   CreatorReputation,
   SentimentResponse,
   HybridPredictResponse,
+  ConditionalConditionView,
+  SourceInfo,
+  FetchResponse,
 } from "@/types/api";
 
+// En el navegador usamos rutas relativas (/api/...) para que pasen por el proxy
+// de Next.js (next.config.js rewrites → backend). Esto evita problemas de CORS,
+// rate limiting directo y exponer la URL del backend en el cliente.
+// En SSR (servidor de Next.js) usamos la URL absoluta del backend.
 const getBaseUrl = (): string => {
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!url) throw new Error("NEXT_PUBLIC_API_BASE_URL no está definida");
-  return url.replace(/\/$/, "");
+  if (typeof window === "undefined") {
+    // Contexto servidor (SSR/RSC): necesita URL absoluta
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+    return url.replace(/\/$/, "");
+  }
+  // Contexto cliente: rutas relativas → proxy de Next.js
+  return "";
 };
 
 async function fetchApi<T>(
@@ -98,10 +109,36 @@ export async function getReputation(address: string): Promise<CreatorReputation>
   return fetchApi<CreatorReputation>(`/api/reputation/${address}`);
 }
 
+export async function getLeaderboard(
+  limit = 20,
+  offset = 0
+): Promise<CreatorReputation[]> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return fetchApi<CreatorReputation[]>(`/api/reputation?${params}`);
+}
+
+export async function getMarketConditions(
+  id: number
+): Promise<ConditionalConditionView[]> {
+  return fetchApi<ConditionalConditionView[]>(`/api/markets/${id}/conditions`);
+}
+
+export async function getSources(): Promise<SourceInfo[]> {
+  return fetchApi<SourceInfo[]>("/api/sources");
+}
+
+export async function fetchSource(
+  source: string,
+  params: Record<string, string>
+): Promise<FetchResponse> {
+  const searchParams = new URLSearchParams({ source, ...params });
+  return fetchApi<FetchResponse>(`/api/sources/fetch?${searchParams}`);
+}
+
 export async function checkHealth(): Promise<boolean> {
   try {
-    const base = getBaseUrl();
-    const res = await fetch(`${base}/health`);
+    // Usa ruta relativa → proxy de Next.js → backend
+    const res = await fetch("/health");
     return res.ok;
   } catch {
     return false;

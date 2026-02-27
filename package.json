@@ -13,7 +13,6 @@
     "verify:sepolia": "hardhat run scripts/verify/verify.js --network sepolia",
     "verify:polygon": "hardhat run scripts/verify/verify.js --network polygonAmoy",
     "backend": "node scripts/run-backend.js",
-    "db:push": "npx supabase db push",
     "demo": "hardhat run scripts/demo/demoE2E.js --network localhost",
     "test:backend": "cd backend-rust && cargo test",
     "test:all": "npm test && npm run test:backend",

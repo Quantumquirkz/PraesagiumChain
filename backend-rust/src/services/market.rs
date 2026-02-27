@@ -4,15 +4,64 @@ use crate::models::{
     ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, Market,
     MarketStats, MarketView, PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
 };
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing::{debug, info};
+
+const LIST_CACHE_TTL_SECS: u64 = 15;
+const MARKET_CACHE_TTL_SECS: u64 = 20;
+const STATS_CACHE_TTL_SECS: u64 = 30;
+
+#[derive(Clone)]
+struct TimedEntry<T: Clone> {
+    value: T,
+    expires_at: u64,
+}
+
+impl<T: Clone> TimedEntry<T> {
+    fn new(value: T, ttl: u64) -> Self {
+        let now = chrono::Utc::now().timestamp() as u64;
+        Self { value, expires_at: now + ttl }
+    }
+    fn is_valid(&self) -> bool {
+        (chrono::Utc::now().timestamp() as u64) < self.expires_at
+    }
+}
 
 pub struct MarketService {
     db: Database,
+    market_cache: Arc<RwLock<HashMap<i64, TimedEntry<MarketView>>>>,
+    list_cache: Arc<RwLock<HashMap<String, TimedEntry<PaginatedResponse<MarketView>>>>>,
+    stats_cache: Arc<RwLock<Option<TimedEntry<MarketStats>>>>,
 }
 
 impl MarketService {
     pub fn new(db: Database) -> Self {
-        Self { db }
+        Self {
+            db,
+            market_cache: Arc::new(RwLock::new(HashMap::new())),
+            list_cache: Arc::new(RwLock::new(HashMap::new())),
+            stats_cache: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    fn list_cache_key(page: i64, limit: i64, status: Option<&str>) -> String {
+        format!("{}:{}:{}", page, limit, status.unwrap_or(""))
+    }
+
+    async fn invalidate_list_cache(&self) {
+        let mut cache = self.list_cache.write().await;
+        cache.clear();
+        let mut stats = self.stats_cache.write().await;
+        *stats = None;
+    }
+
+    pub async fn invalidate_market_cache(&self, id: i64) {
+        let mut cache = self.market_cache.write().await;
+        cache.remove(&id);
+        drop(cache);
+        self.invalidate_list_cache().await;
     }
 
     pub async fn list(
@@ -21,6 +70,19 @@ impl MarketService {
         limit: i64,
         status: Option<&str>,
     ) -> Result<PaginatedResponse<MarketView>> {
+        let cache_key = Self::list_cache_key(page, limit, status);
+
+        // Cache read
+        {
+            let cache = self.list_cache.read().await;
+            if let Some(entry) = cache.get(&cache_key) {
+                if entry.is_valid() {
+                    debug!("List cache hit: {}", cache_key);
+                    return Ok(entry.value.clone());
+                }
+            }
+        }
+
         let offset = (page - 1) * limit;
         debug!("Listing markets: page={}, limit={}, status={:?}", page, limit, status);
 
@@ -67,15 +129,29 @@ impl MarketService {
             }
         }
 
-        Ok(PaginatedResponse {
-            items,
-            total,
-            page,
-            limit,
-        })
+        let result = PaginatedResponse { items, total, page, limit };
+
+        // Cache write
+        {
+            let mut cache = self.list_cache.write().await;
+            cache.insert(cache_key, TimedEntry::new(result.clone(), LIST_CACHE_TTL_SECS));
+        }
+
+        Ok(result)
     }
 
     pub async fn get_by_id(&self, id: i64) -> Result<MarketView> {
+        // Cache read
+        {
+            let cache = self.market_cache.read().await;
+            if let Some(entry) = cache.get(&id) {
+                if entry.is_valid() {
+                    debug!("Market cache hit: {}", id);
+                    return Ok(entry.value.clone());
+                }
+            }
+        }
+
         debug!("Getting market by id: {}", id);
         let market = sqlx::query_as::<_, Market>(
             "SELECT * FROM markets WHERE id = $1"
@@ -90,6 +166,12 @@ impl MarketService {
 
         if let Ok(Some(pred)) = self.get_latest_prediction(id).await {
             market_view.latest_prediction = Some(pred);
+        }
+
+        // Cache write
+        {
+            let mut cache = self.market_cache.write().await;
+            cache.insert(id, TimedEntry::new(market_view.clone(), MARKET_CACHE_TTL_SECS));
         }
 
         Ok(market_view)
@@ -167,11 +249,11 @@ impl MarketService {
         let id: i64 = sqlx::query_scalar(
             r#"
             INSERT INTO markets (question, close_time, resolve_time, status, created_at, market_type, on_chain_market_id, creator)
-             VALUES ($1, $2, $3, 'Open', $4, 'base', $5, $6)
-             ON CONFLICT (on_chain_market_id) DO UPDATE SET
-               question = EXCLUDED.question,
-               close_time = EXCLUDED.close_time,
-               resolve_time = EXCLUDED.resolve_time
+             VALUES (?1, ?2, ?3, 'Open', ?4, 'base', ?5, ?6)
+             ON CONFLICT(on_chain_market_id) DO UPDATE SET
+               question = excluded.question,
+               close_time = excluded.close_time,
+               resolve_time = excluded.resolve_time
              RETURNING id
             "#
         )
@@ -315,7 +397,7 @@ impl MarketService {
         Ok(pred.map(PredictionView::from))
     }
 
-    /// Fetches latest prediction per market in one query (avoids N+1).
+    /// Fetches latest prediction per market (SQLite: correlated subquery per market_id).
     pub async fn get_latest_predictions_bulk(
         &self,
         market_ids: &[i64],
@@ -323,22 +405,19 @@ impl MarketService {
         if market_ids.is_empty() {
             return Ok(std::collections::HashMap::new());
         }
-        let rows = sqlx::query_as::<_, Prediction>(
-            r#"
-            SELECT DISTINCT ON (market_id) *
-            FROM predictions
-            WHERE market_id = ANY($1)
-            ORDER BY market_id, timestamp DESC
-            "#,
-        )
-        .bind(market_ids)
-        .fetch_all(self.db.pool())
-        .await?;
-
-        Ok(rows
-            .into_iter()
-            .map(|p| (p.market_id, PredictionView::from(p)))
-            .collect())
+        let mut map = std::collections::HashMap::new();
+        for &mid in market_ids {
+            let pred = sqlx::query_as::<_, Prediction>(
+                "SELECT * FROM predictions WHERE market_id = ?1 ORDER BY timestamp DESC LIMIT 1"
+            )
+            .bind(mid)
+            .fetch_optional(self.db.pool())
+            .await?;
+            if let Some(p) = pred {
+                map.insert(mid, PredictionView::from(p));
+            }
+        }
+        Ok(map)
     }
 
     pub async fn get_predictions(&self, market_id: i64, limit: i64) -> Result<Vec<PredictionView>> {
@@ -376,23 +455,39 @@ impl MarketService {
     }
 
     pub async fn get_stats(&self) -> Result<MarketStats> {
-        let row: (i64, i64, i64, i64) = sqlx::query_as(
-            r#"
-            SELECT
-                (SELECT COUNT(*)::bigint FROM markets),
-                (SELECT COUNT(*) FILTER (WHERE status = 'Open')::bigint FROM markets),
-                (SELECT COUNT(*) FILTER (WHERE status = 'Resolved')::bigint FROM markets),
-                (SELECT COUNT(*)::bigint FROM predictions)
-            "#,
-        )
-        .fetch_one(self.db.pool())
-        .await?;
+        // Cache read
+        {
+            let cache = self.stats_cache.read().await;
+            if let Some(entry) = cache.as_ref() {
+                if entry.is_valid() {
+                    debug!("Stats cache hit");
+                    return Ok(entry.value.clone());
+                }
+            }
+        }
 
-        Ok(MarketStats {
-            total_markets: row.0,
-            open_markets: row.1,
-            resolved_markets: row.2,
-            total_predictions: row.3,
-        })
+        let total_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets")
+            .fetch_one(self.db.pool()).await?;
+        let open_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = 'Open'")
+            .fetch_one(self.db.pool()).await?;
+        let resolved_markets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM markets WHERE status = 'Resolved'")
+            .fetch_one(self.db.pool()).await?;
+        let total_predictions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM predictions")
+            .fetch_one(self.db.pool()).await?;
+
+        let result = MarketStats {
+            total_markets,
+            open_markets,
+            resolved_markets,
+            total_predictions,
+        };
+
+        // Cache write
+        {
+            let mut cache = self.stats_cache.write().await;
+            *cache = Some(TimedEntry::new(result.clone(), STATS_CACHE_TTL_SECS));
+        }
+
+        Ok(result)
     }
 }

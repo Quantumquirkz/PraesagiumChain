@@ -35,7 +35,7 @@
 
 The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Gemini / Hugging Face), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
 
-The backend is a production-grade **Rust/Axum** REST API backed by PostgreSQL (Supabase), with a built-in on-chain event indexer, rate limiting, and 7 external data source integrations. The smart contract layer includes standard markets, private commit-reveal markets (Confidential Compute), conditional markets, tokenized (ERC-721) markets, and an on-chain reputation system.
+The backend is a production-grade **Rust/Axum** REST API backed by PostgreSQL, with a built-in on-chain event indexer, rate limiting, and 7 external data source integrations. The smart contract layer includes standard markets, private commit-reveal markets (Confidential Compute), conditional markets, tokenized (ERC-721) markets, and an on-chain reputation system.
 
 ---
 
@@ -93,7 +93,7 @@ flowchart TB
         HF[Hugging Face]
         Binance[Binance API]
         CL[Chainlink Data Feed]
-        News[NewsAPI / Finnhub]
+        News[Finnhub]
     end
 
     UI <-->|HTTP REST| API
@@ -181,11 +181,11 @@ flowchart LR
 | **Contract Tooling** | Hardhat | ^2.22.0 |
 | **Backend** | Rust + Axum + Tokio | 1.70+ / 0.7 / 1.0 |
 | **Prediction Engine** | PHPE (ndarray, MC dropout, isotonic calibration) | internal |
-| **Database** | PostgreSQL via SQLx + Supabase | 0.7 |
+| **Database** | PostgreSQL via SQLx | 0.7 |
 | **On-chain Indexer** | ethers-rs | 2.0 |
 | **AI Providers** | Gemini API / Hugging Face Inference API | gemini-2.0-flash |
 | **CRE Workflow** | TypeScript + @chainlink/cre-sdk | ^1.0.7 |
-| **Frontend** | Next.js 14 + wagmi v2 + Tailwind CSS | 14.2.15 / 2.12 / 3.4 |
+| **Frontend** | Next.js 14 + wagmi v2 + Tailwind CSS + lightweight-charts | 14.2.15 / 2.12 / 3.4 / 5.1 |
 
 ---
 
@@ -204,7 +204,6 @@ Before running the project, ensure you have the following installed:
 
 **Accounts / Services required:**
 
-- [Supabase](https://supabase.com) account (free tier is sufficient) — for PostgreSQL
 - [Google AI Studio](https://aistudio.google.com/api-keys) — for `GEMINI_API_KEY` (optional, mock provider available)
 - Ethereum wallet with [Sepolia ETH](https://sepoliafaucet.com) — for testnet deployment
 
@@ -237,13 +236,13 @@ cd ..
 cp config/env.example .env
 
 # Frontend
-cp frontend/.env.example frontend/.env.local
+cp config/frontend.env.example frontend/.env.local
 ```
 
 Edit `.env` with at minimum these values:
 
 ```env
-DATABASE_URL=postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+DATABASE_URL=sqlite://praesagium.db
 AI_PROVIDER=gemini          # or "mock" to skip AI key
 GEMINI_API_KEY=your_key     # skip if AI_PROVIDER=mock
 PRIVATE_KEY=your_hardhat_or_wallet_key
@@ -261,16 +260,13 @@ NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0xf2397b5827860b361427240d1D1F6F89e9bF197f
 NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 ```
 
-> **Supabase on WSL / IPv4-only networks:** Use the **Session pooler** URI from Supabase Dashboard → Connect. Encode `#` in passwords as `%23`.
+**Step 3 — Apply database migrations**
 
-**Step 3 — Apply database schema**
+The backend uses SQLite by default (zero-config for local development). Migrations run automatically on startup via SQLx.
 
 ```bash
-# Option A: Supabase CLI
-npx supabase link --project-ref <your-project-ref>
-npm run db:push
-
-# Option B: Paste supabase/schema.sql in the Supabase SQL Editor
+# Backend will auto-migrate on first run; no separate step needed.
+# To verify: check that praesagium.db is created in backend-rust/ after Step 5.
 ```
 
 **Step 4 — Start the local blockchain**
@@ -351,11 +347,11 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | HTTP port for the backend | `4000` |
-| `DATABASE_URL` | PostgreSQL connection string (Supabase) | required |
+| `DATABASE_URL` | PostgreSQL connection string | required |
 | `DB_POOL_SIZE` | Connection pool size | `10` |
 | `PREDICTION_CACHE_TTL` | Prediction cache TTL in seconds | `300` |
-| `RATE_LIMIT_PER_SECOND` | Requests per second per IP | `60` |
-| `RATE_LIMIT_BURST` | Burst size for rate limiting | `30` |
+| `RATE_LIMIT_PER_SECOND` | Requests per second per IP | `300` |
+| `RATE_LIMIT_BURST` | Burst size for rate limiting | `200` |
 | `CORS_ORIGINS` | Comma-separated allowed origins (production) | all allowed |
 
 ### AI Providers
@@ -400,7 +396,6 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 | Variable | Description |
 |----------|-------------|
 | `FINNHUB_API_KEY` | Finnhub stocks/crypto data |
-| `NEWSAPI_KEY` | NewsAPI headlines |
 | `FUNCTIONS_ROUTER` | Chainlink Functions Router address |
 
 ---
@@ -449,7 +444,6 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 
 | Command | Description |
 |---------|-------------|
-| `npm run db:push` | Apply Supabase schema migrations |
 | `npm run sync:cre-abi` | Sync OracleConsumer ABI to CRE workflow directory |
 
 ### CRE CLI
@@ -558,8 +552,6 @@ curl "http://localhost:4000/api/sources/fetch?source=chainlink"
 # CryptoCompare
 curl "http://localhost:4000/api/sources/fetch?source=cryptocompare&fsym=BTC&tsym=USD"
 
-# NewsAPI headlines
-curl "http://localhost:4000/api/sources/fetch?source=newsapi&query=bitcoin&country=us"
 ```
 
 **Sentiment + hybrid examples:**
@@ -588,7 +580,6 @@ curl -X POST http://localhost:4000/api/predict/hybrid \
 | **Kraken** | Crypto prices (public API) | No |
 | **ExchangeRate API** | Forex EUR/USD | No |
 | **Finnhub** | Stocks + crypto prices | Yes (`FINNHUB_API_KEY`) |
-| **NewsAPI** | News headlines | Yes (`NEWSAPI_KEY`) |
 | **Open-Meteo** | Weather / precipitation | No |
 | **CoinGecko** | Prices (price-above endpoint) | No |
 | **API-Football** | Sports match results | No |
@@ -669,7 +660,7 @@ PraesagiumChain/
 │   │   ├── api/                  # Route handlers (markets, ai, hybrid, report, reputation, sources, metrics)
 │   │   ├── services/             # Business logic + data sources (7 sources) + AI providers
 │   │   │   ├── ai/               # Gemini, HuggingFace, Mock providers
-│   │   │   └── sources/          # Binance, Chainlink, CryptoCompare, Kraken, ExchangeRate, Finnhub, NewsAPI
+│   │   │   └── sources/          # Binance, Chainlink, CryptoCompare, Kraken, ExchangeRate, Finnhub
 │   │   ├── main.rs               # App entrypoint, router, service wiring
 │   │   ├── config.rs             # Typed config from env
 │   │   ├── db.rs                 # PostgreSQL pool + migrations
@@ -687,31 +678,41 @@ PraesagiumChain/
 │   ├── app/                      # Pages (App Router)
 │   │   ├── page.tsx              # Dashboard — market list + stats
 │   │   ├── layout.tsx            # Root layout (Header, LiveTicker, Footer)
-│   │   ├── markets/create/       # Create market wizard (3-step)
-│   │   ├── markets/[id]/         # Market detail + bet form
+│   │   ├── globals.css           # CSS variables, design tokens, animations
+│   │   ├── markets/create/       # Create market wizard (3-step, Sepolia-enforced)
+│   │   ├── markets/[id]/         # Market detail + interactive chart + bet form
 │   │   ├── positions/            # My positions + payout claiming
-│   │   └── reputation/           # Creator reputation profiles
+│   │   ├── reputation/           # Creator reputation profiles + leaderboard
+│   │   └── signals/              # Live signals dashboard (PHPE + hybrid)
 │   ├── components/               # Reusable UI components
 │   │   ├── ui/                   # shadcn/ui primitives (Button, Card, Dialog, etc.)
-│   │   ├── market-card.tsx       # Market list item
-│   │   ├── market-detail.tsx     # Full market view with bet form
-│   │   ├── create-market-form.tsx
-│   │   ├── live-ticker.tsx       # Price ticker bar
-│   │   ├── ohlcv-chart.tsx       # Candlestick chart (Recharts)
-│   │   ├── stakes-chart.tsx      # Yes/No stakes bar chart
+│   │   ├── market-card.tsx       # Market list item with YES/NO stake bar
+│   │   ├── market-detail.tsx     # Full market view (CoinGecko-inspired layout)
+│   │   ├── tv-chart.tsx          # Interactive candlestick chart (lightweight-charts v5)
+│   │   ├── bet-form.tsx          # Yes/No bet form with payout estimation
+│   │   ├── live-ticker.tsx       # Live price ticker bar
+│   │   ├── countdown.tsx         # Countdown blocks (days/hours/min/sec)
+│   │   ├── stats-cards.tsx       # Dashboard statistics cards
+│   │   ├── header.tsx            # Navigation header with wallet + network guard
+│   │   ├── footer.tsx            # API health status + explorer link
 │   │   └── providers.tsx         # WagmiProvider + QueryClientProvider + ThemeProvider
+│   ├── hooks/
+│   │   ├── use-markets.ts        # React Query hook for market list + stats
+│   │   ├── use-network-guard.ts  # Enforces Sepolia; reads chainId from window.ethereum
+│   │   ├── use-place-bet.ts      # wagmi writeContract wrapper for placeBet
+│   │   ├── use-ohlcv-history.ts  # Fetches OHLCV data for tv-chart
+│   │   └── use-signal-fusion.ts  # Hybrid prediction signal aggregation
 │   ├── lib/
 │   │   ├── api.ts                # All backend API calls (fetch wrapper)
 │   │   ├── wagmi.ts              # wagmi config (Sepolia, injected connector)
-│   │   ├── constants.ts          # Contract addresses, OUTCOME enum
+│   │   ├── constants.ts          # Contract addresses, OUTCOME enum, EXPECTED_CHAIN_ID
+│   │   ├── utils.ts              # cn, formatEth, truncateAddress, formatRelativeTime
 │   │   └── abis/                 # PredictionMarket ABI
 │   ├── types/api.ts              # TypeScript types for API responses
 │   ├── next.config.js            # Rewrites: /api/* → backend :4000
-│   ├── tailwind.config.ts        # Custom design tokens (dark theme)
+│   ├── tailwind.config.ts        # Custom design tokens (dark/light theme)
 │   ├── tsconfig.json             # TypeScript config (@/* alias)
-│   ├── package.json              # Frontend dependencies
-│   ├── .env.local                # gitignored — copy from .env.example
-│   └── .env.example              # Template for frontend env vars
+│   └── package.json              # Frontend dependencies
 ├── cre/
 │   ├── praesagium-resolver/      # Standard market CRE workflow (TypeScript)
 │   │   ├── main.ts               # CRON → HTTP → outcome → oracleCallback
@@ -724,9 +725,6 @@ PraesagiumChain/
 │   ├── verify/verify.js          # Etherscan/Polygonscan verification
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
-├── supabase/
-│   ├── schema.sql                # Full DB schema (markets, predictions, reputation, conditions)
-│   └── migrations/               # Migration files
 ├── notebook/                     # Python simulation notebooks
 ├── docs/
 │   ├── phpe-and-hybrid-prediction.md
@@ -769,14 +767,17 @@ npm run audit
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `EADDRINUSE 127.0.0.1:8545` | Hardhat node already running | Do not start another; use the existing terminal |
+| `Address already in use (os error 98)` | Backend already running on port 4000 | Run `kill $(lsof -ti:4000)` then restart |
 | `Set in .env: PREDICTION_MARKET_ADDRESS` | Missing post-deploy addresses | Copy printed addresses from `npm run deploy` to `.env` |
 | `CRE callback failed` | `block.timestamp < resolveTime` | The demo script advances time with `evm_increaseTime`; ensure you have the latest version |
 | `Backend not responding` | Backend not started | Run `npm run backend` in a separate terminal |
-| `DB connection failed` | Wrong `DATABASE_URL` | On WSL/IPv4, use Supabase **Session pooler** URI; encode `#` as `%23` |
-| `Migration failed` | Schema not applied | Run `npm run db:push` or paste `supabase/schema.sql` in Supabase SQL Editor |
+| `database is locked` | Corrupted SQLite DB (interrupted process) | Delete `backend-rust/praesagium.db*` and restart the backend |
+| `no such table: markets` | Migrations not applied | Restart the backend; SQLx auto-migrates on startup |
+| `Too Many Requests` | Rate limit exceeded | Increase `RATE_LIMIT_BURST` in `.env`; default is 200 |
 | `cargo build` fails | Rust not installed or outdated | Run `rustup update stable` |
 | `cre workflow simulate` fails | CRE CLI not installed or backend down | Install CRE CLI; ensure `npm run backend` is running |
 | `Only resolver` revert | Wrong resolver address | Ensure `ORACLE_CONSUMER_ADDRESS` is set as resolver in `PredictionMarket` |
+| Wrong network in MetaMask | Wallet on Mainnet or wrong chain | The app auto-detects and prompts to switch to Sepolia (chain ID 11155111) |
 
 Enable verbose backend logging:
 
@@ -807,9 +808,37 @@ npm run dev        # http://localhost:3000
 - My positions and payout claiming
 - Creator reputation profiles with on-chain score visualization
 
-**Stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · Recharts
+**Stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · lightweight-charts (TradingView)
 
 The full frontend specification — including all API endpoints, contract ABIs, TypeScript types, component structure, and UX requirements — is documented in [`docs/frontend-project.md`](docs/frontend-project.md).
+
+---
+
+## Recent Improvements
+
+The following improvements were implemented after the initial release:
+
+### UI/UX Overhaul
+- **Pure dark/light theme** — dark mode uses `#000000` background; light mode uses `#ffffff`. Toggled via `next-themes`.
+- **Interactive candlestick chart** — replaced Recharts with [lightweight-charts v5](https://tradingview.github.io/lightweight-charts/) (TradingView). Supports zoom, pan, multi-pane indicators (RSI, MACD, Bollinger Bands), and auto-follow mode that scrolls to the latest prediction as new data arrives.
+- **CoinGecko-inspired market detail layout** — full-width chart with a sticky sidebar for the bet form, countdown, and creator info. Stats row (Total Pool, YES/NO odds, close/resolve dates) above the chart.
+- **Network enforcement** — `useNetworkGuard` hook reads `chainId` directly from `window.ethereum` and subscribes to MetaMask's `chainChanged` event. Persistent banner on the Create Market page with a "Switch to Sepolia" button.
+- **Navigation redesign** — pill-style active indicator, Lucide icons per nav item, drawer slide-in animation on mobile.
+- **Empty state redesign** — illustrated onboarding steps with call-to-action buttons.
+- **Bet form** — gradient YES/NO buttons, payout estimation, quick-amount pills.
+
+### Codebase Cleanup (~1,622 lines removed)
+- Deleted 5 dead frontend components: `ohlcv-chart.tsx`, `create-market-form.tsx`, `stakes-chart.tsx`, `network-switcher.tsx`, `resolution-source-badge.tsx`.
+- Deleted unused hook `use-create-market.ts`.
+- Removed stale npm dependencies: `@radix-ui/react-toast`, `recharts`.
+- Removed redundant TypeScript type shims in `frontend/types/`.
+- Removed unused Rust crates: `config`, `url`.
+- Removed dead Rust code: `run_prediction_with_context()` in `prediction.rs`, unused `cache` field in `HybridPredictor`.
+- Standardized ETH formatting: all display uses `formatEth` from `@/lib/utils`.
+
+### Backend Stability
+- Migrated from PostgreSQL to **SQLite** for zero-config local development (`DATABASE_URL=sqlite://praesagium.db`).
+- Increased default rate limits: `RATE_LIMIT_PER_SECOND=300`, `RATE_LIMIT_BURST=200`.
 
 ---
 

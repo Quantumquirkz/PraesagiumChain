@@ -50,6 +50,7 @@ pub async fn create(
     Json(req): Json<CreateMarketRequest>,
 ) -> Result<impl IntoResponse> {
     let market = state.market_service.create(req).await?;
+    state.market_service.invalidate_market_cache(market.id).await;
     if let Some(ref creator) = market.creator {
         let _ = state.reputation_service.on_market_created(creator).await;
     }
@@ -74,6 +75,7 @@ pub async fn update_status(
 ) -> Result<Json<MarketView>> {
     let market = state.market_service.update_status(id, req.clone()).await?;
     state.cache.invalidate_market(id).await;
+    state.market_service.invalidate_market_cache(id).await;
     if req.status == "Resolved" {
         if let (Some(ref creator), Some(ref outcome)) = (&market.creator, &req.outcome) {
             let _ = state.reputation_service.on_market_resolved(creator, id, outcome).await;
@@ -92,6 +94,7 @@ pub async fn set_prediction(
         .set_prediction(id, req.probability, req.uncertainty, req.model_version, req.model_hash)
         .await?;
     state.cache.invalidate_market(id).await;
+    state.market_service.invalidate_market_cache(id).await;
     Ok(Json(market))
 }
 

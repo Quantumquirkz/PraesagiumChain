@@ -52,8 +52,10 @@ These can be added later using the same patterns described here.
 | **State** | React Query (TanStack Query) | Server state (API + chain reads), cache, refetch, optimistic updates |
 | **Forms** | React Hook Form + Zod | Create market form, bet form, validation with clear error messages |
 | **Notifications** | sonner or react-hot-toast | Success/error for tx and API; persistent for tx confirmation |
-| **Charts** | Recharts or lightweight-charts | Stakes visualization, prediction history, price context |
-| **Animations** | Framer Motion (optional) | Smooth transitions, page load, list animations |
+| **Charts** | lightweight-charts v5 (TradingView) | Interactive candlestick chart with zoom/pan, multi-pane indicators (RSI, MACD, BB) |
+| **Animations** | CSS keyframes (`globals.css`) | Page fade-up, drawer slide-in, ticker scroll |
+
+**Charting note:** `recharts` has been removed from the project. All charting is handled by `lightweight-charts` v5 via the `TVChart` component (`frontend/components/tv-chart.tsx`). The old `ohlcv-chart.tsx` (Recharts) has been deleted.
 
 **Reference:** [web3-hackathon-starter](https://github.com/envoy1084/web3-hackathon-starter) (Next.js + thirdweb + Tailwind).
 
@@ -68,7 +70,7 @@ These can be added later using the same patterns described here.
 
 ### 3.2 Environment variables
 
-Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. Define every variable used by the app.
+Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. The `frontend/.env.example` file has been removed; use `config/frontend.env.example` as the canonical template. Define every variable used by the app.
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
@@ -76,8 +78,6 @@ Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. Define ever
 | `NEXT_PUBLIC_CHAIN_ID` | Yes | EVM Chain ID for the app | `11155111` (Sepolia), `31337` (Hardhat local) |
 | `NEXT_PUBLIC_RPC_URL` | Yes | RPC URL for that chain | `https://rpc.sepolia.org` or `http://127.0.0.1:8545` |
 | `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` | Yes | PredictionMarket contract address | `0xf2397b5827860b361427240d1D1F6F89e9bF197f` (Sepolia) |
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL (if using Auth/Realtime) | `https://xxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | No | Supabase anon/publishable key | From Supabase Dashboard → API |
 | `NEXT_PUBLIC_BLOCK_EXPLORER_URL` | No | Base URL for block explorer (tx and address links) | `https://sepolia.etherscan.io` |
 
 **Contract ABIs:** Use compiled artifacts from this repo:
@@ -212,6 +212,10 @@ export interface MarketViewOnChain {
 }
 ```
 
+### ETH formatting convention
+
+All ETH display values use `formatEth(wei: bigint): string` from `@/lib/utils`. This function formats a `bigint` wei value as `"X.XXXX ETH"` with up to 4 significant decimal places. **Do not import `formatEther` from `viem` for display purposes** — use `formatEth` from utils instead. The viem `formatEther` is only used internally for numeric conversions (e.g., computing a `max` float for input validation).
+
 ---
 
 ## 5. API reference (every endpoint used by the frontend)
@@ -279,7 +283,7 @@ Base URL: `process.env.NEXT_PUBLIC_API_BASE_URL`. All requests with a body must 
 | Method | Path | Query | Response | Use in UI |
 |--------|------|-------|----------|-----------|
 | GET | `/api/sources` | — | `SourceInfo[]` | List available sources for hybrid widget |
-| GET | `/api/sources/fetch` | `source`, `symbol?`, `fsym?`, `tsym?`, `pair?`, `query?`, `country?` | `SourceFetchResponse` | Fetch live data (Binance, Chainlink, Cryptocompare, Kraken, ExchangeRate, Finnhub, NewsAPI) |
+| GET | `/api/sources/fetch` | `source`, `symbol?`, `fsym?`, `tsym?`, `pair?` | `SourceFetchResponse` | Fetch live data (Binance, Chainlink, Cryptocompare, Kraken, ExchangeRate, Finnhub) |
 
 **Sources and params:**
 
@@ -291,7 +295,6 @@ Base URL: `process.env.NEXT_PUBLIC_API_BASE_URL`. All requests with a body must 
 | kraken | pair | `pair=XBTUSD` |
 | exchangerate | — | — |
 | finnhub | symbol | `symbol=AAPL` or `symbol=BTC` |
-| newsapi | query, country | `query=bitcoin&country=us` |
 
 ### 5.7 Report endpoints (resolution source display)
 
@@ -339,10 +342,10 @@ Contract: **PredictionMarket** at `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. Use v
 
 - **Layout:** Persistent header and footer.
 - **Header:**
-  - Logo and app name ("PraesagiumChain" or similar)
-  - Nav links: Markets, Create Market, My Positions, Reputation, (optional) Data Sources
-  - Wallet button: Connect / Disconnect; when connected: short address (e.g. `0x1234...5678`), chain name, balance (optional)
-  - Wrong-network banner: if `chainId !== NEXT_PUBLIC_CHAIN_ID`, show "Switch to Sepolia" (or current chain) with button to switch via wagmi
+  - Logo and app name ("PraesagiumChain")
+  - Nav links with Lucide icons: Markets, Create, Positions, Reputation, Signals
+  - Wallet button: Connect / Disconnect; when connected: short address, chain name, balance
+  - Network guard: `useNetworkGuard` reads `chainId` directly from `window.ethereum` (not wagmi's `useChainId`) and subscribes to MetaMask's `chainChanged` event. If wallet is on the wrong chain, a persistent banner with a "Switch to Sepolia" button is shown. The hook also calls `wallet_addEthereumChain` as a fallback if the chain is not yet in MetaMask.
 - **Footer:**
   - API status indicator (from `/health`): green dot if ok, red if error
   - Link to block explorer
@@ -397,9 +400,18 @@ Contract: **PredictionMarket** at `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. Use v
 3. **Times:**
    - Close time, Resolve time (human-readable)
    - Countdown: "Closes in X days/hours" or "Resolves in X hours"
-4. **Stakes:**
+4. **Interactive Chart (`TVChart`):**
+   - Full-width candlestick chart powered by `lightweight-charts` v5 (TradingView library).
+   - Pane 0: Candlesticks + Volume histogram + MA7/MA25/MA99 lines + Bollinger Bands.
+   - Pane 1: RSI line with overbought (70) / oversold (30) reference lines.
+   - Pane 2: MACD histogram + MACD/Signal lines.
+   - Timeframe selector: 15m, 1h, 4h, 24h, 1W, 1M.
+   - Indicator toggles: MA, BB, MACD, RSI, Volume, and more.
+   - Auto-follow mode: chart scrolls to the latest candle as new predictions arrive. User can override by scrolling manually; a "▶ Follow" button re-enables auto-follow.
+   - Hover tooltip: OHLCV info bar updates in real time as the crosshair moves.
+5. **Stakes:**
    - Total Yes, Total No (ETH)
-   - Visual: two horizontal bars or a simple pie chart
+   - Combined YES/NO bar with implied probability cards
 5. **User position (when connected):**
    - "Your Yes: X ETH", "Your No: X ETH"
    - "Claimable: X ETH" when resolved and user won
@@ -475,52 +487,67 @@ For demo only: "Resolve (demo)" button that opens modal: "Run `node scripts/reso
 
 ---
 
-## 8. Component and file structure (suggested)
+## 8. Component and file structure (current implementation)
 
 ```
 frontend/
-├── .env.local
+├── .env.local                        # gitignored — copy from config/frontend.env.example
 ├── app/
-│   ├── layout.tsx           # Root: header, wallet provider, theme
-│   ├── page.tsx             # Dashboard
+│   ├── globals.css                   # CSS variables, design tokens, keyframe animations
+│   ├── layout.tsx                    # Root: header, wallet provider, theme, live ticker
+│   ├── page.tsx                      # Dashboard — stats + market list
 │   ├── markets/
-│   │   ├── page.tsx         # Redirect to /
-│   │   ├── create/page.tsx
-│   │   └── [id]/page.tsx
-│   ├── positions/page.tsx
-│   ├── reputation/
-│   │   └── [address]/page.tsx
-│   └── sources/page.tsx     # Optional: data sources explorer
+│   │   ├── create/page.tsx           # Create market wizard (3-step, Sepolia-enforced)
+│   │   └── [id]/
+│   │       ├── page.tsx              # SSR wrapper
+│   │       └── market-page-client.tsx # Client component for market detail
+│   ├── positions/page.tsx            # My positions + payout claiming
+│   ├── reputation/page.tsx           # Reputation leaderboard + profile search
+│   └── signals/page.tsx              # Live signals dashboard
 ├── components/
-│   ├── header.tsx
-│   ├── footer.tsx
-│   ├── wallet-button.tsx
-│   ├── wrong-network-banner.tsx
-│   ├── market-card.tsx
-│   ├── market-detail.tsx
-│   ├── create-market-form.tsx
-│   ├── stats-cards.tsx
-│   ├── sentiment-preview.tsx
-│   ├── hybrid-preview.tsx
-│   ├── countdown.tsx
-│   ├── stakes-chart.tsx     # Yes/No bars or pie
-│   └── ui/                  # shadcn/ui primitives
+│   ├── header.tsx                    # Nav with pill-style active state, Lucide icons, wallet
+│   ├── footer.tsx                    # API health indicator, explorer link
+│   ├── wallet-button.tsx             # Connect/disconnect wallet button
+│   ├── market-card.tsx               # Market list item with YES/NO stake bar
+│   ├── market-detail.tsx             # Full market view (CoinGecko-inspired layout)
+│   ├── tv-chart.tsx                  # Interactive chart (lightweight-charts v5)
+│   ├── bet-form.tsx                  # Yes/No bet form with payout estimation
+│   ├── stats-cards.tsx               # Dashboard statistics (4 cards)
+│   ├── countdown.tsx                 # Countdown blocks (days/hours/min/sec)
+│   ├── live-ticker.tsx               # Scrolling price ticker bar
+│   ├── tx-status.tsx                 # Transaction status display
+│   ├── creator-reputation-badge.tsx  # Reputation badge for market cards
+│   ├── share-market-button.tsx       # Copy link / share to X
+│   ├── signal-fusion-panel.tsx       # Hybrid prediction signal panel
+│   ├── signals-dashboard.tsx         # Signals page content
+│   ├── commit-reveal-wizard.tsx      # Private market commit-reveal UI
+│   ├── model-verifier.tsx            # PHPE model hash verifier
+│   ├── resolution-source-picker.tsx  # Resolution source selection
+│   ├── reputation-leaderboard.tsx    # Leaderboard table component
+│   ├── uncertainty-bar.tsx           # PHPE uncertainty visualization bar
+│   ├── conditional-tree.tsx          # Conditional market tree visualization
+│   ├── empty-states/
+│   │   └── no-markets.tsx            # Empty state with onboarding steps
+│   └── ui/                           # shadcn/ui primitives (Button, Card, Dialog, etc.)
+├── hooks/
+│   ├── use-markets.ts                # React Query: market list + stats
+│   ├── use-network-guard.ts          # Sepolia enforcement via window.ethereum
+│   ├── use-place-bet.ts              # wagmi writeContract for placeBet
+│   ├── use-ohlcv-history.ts          # OHLCV data for tv-chart
+│   ├── use-commit-reveal.ts          # Commit-reveal flow for private markets
+│   └── use-signal-fusion.ts          # Hybrid prediction aggregation
 ├── lib/
-│   ├── api.ts               # fetch wrappers
-│   ├── contracts.ts         # wagmi configs, read/write
-│   ├── abis/
-│   │   └── prediction-market.ts
-│   └── utils.ts             # formatEth, formatTime, truncateAddress
-├── types/
-│   ├── api.ts
-│   └── contracts.ts
-└── hooks/
-    ├── use-markets.ts
-    ├── use-market-on-chain.ts
-    ├── use-user-stake.ts
-    ├── use-reputation.ts
-    └── use-sources.ts       # Optional
+│   ├── api.ts                        # All backend API calls (typed fetch wrapper)
+│   ├── wagmi.ts                      # wagmi config (Sepolia, injected connector)
+│   ├── constants.ts                  # Contract addresses, OUTCOME enum, EXPECTED_CHAIN_ID
+│   ├── contract-errors.ts            # parseContractError utility
+│   ├── utils.ts                      # cn, formatEth, truncateAddress, formatRelativeTime
+│   └── abis/                         # PredictionMarket ABI
+└── types/
+    └── api.ts                        # TypeScript types for all API responses
 ```
+
+> **Removed files (dead code cleanup):** `ohlcv-chart.tsx`, `create-market-form.tsx`, `stakes-chart.tsx`, `network-switcher.tsx`, `resolution-source-badge.tsx`, `hooks/use-create-market.ts`, `types/jsx.d.ts`, `types/next.d.ts`, `types/react.d.ts`.
 
 ---
 

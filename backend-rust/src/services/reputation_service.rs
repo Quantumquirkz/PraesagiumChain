@@ -95,15 +95,15 @@ impl ReputationService {
         sqlx::query(
             "INSERT INTO creator_reputation \
                 (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) \
-             VALUES ($1, 0, 1, $2, $3, $4) \
-             ON CONFLICT (creator_address) DO UPDATE \
+             VALUES (?1, 0, 1, ?2, ?3, ?4) \
+             ON CONFLICT(creator_address) DO UPDATE \
              SET markets_resolved    = creator_reputation.markets_resolved + 1, \
-                 correct_predictions = creator_reputation.correct_predictions + $2, \
+                 correct_predictions = creator_reputation.correct_predictions + ?2, \
                  reputation_score    = CASE \
                      WHEN (creator_reputation.markets_resolved + 1) > 0 \
-                     THEN (creator_reputation.correct_predictions + $2)::float8 / (creator_reputation.markets_resolved + 1)::float8 \
+                     THEN CAST(creator_reputation.correct_predictions + ?2 AS REAL) / CAST(creator_reputation.markets_resolved + 1 AS REAL) \
                      ELSE 0.0 END, \
-                 updated_at = $4",
+                 updated_at = ?4",
         )
         .bind(&normalized)
         .bind(correct_delta)
@@ -152,21 +152,23 @@ impl ReputationService {
         .await?;
 
         let market_ids: Vec<i64> = rows.iter().map(|(id, _)| *id).collect();
+        // SQLite: fetch latest prediction per market using a correlated subquery
         let preds: std::collections::HashMap<i64, f32> = if market_ids.is_empty() {
             std::collections::HashMap::new()
         } else {
-            let pred_rows = sqlx::query_as::<_, (i64, f32)>(
-                r#"
-                SELECT DISTINCT ON (market_id) market_id, probability
-                FROM predictions
-                WHERE market_id = ANY($1)
-                ORDER BY market_id, timestamp DESC
-                "#,
-            )
-            .bind(&market_ids)
-            .fetch_all(self.db.pool())
-            .await?;
-            pred_rows.into_iter().collect()
+            let mut map = std::collections::HashMap::new();
+            for mid in &market_ids {
+                let row: Option<f32> = sqlx::query_scalar(
+                    "SELECT probability FROM predictions WHERE market_id = ?1 ORDER BY timestamp DESC LIMIT 1"
+                )
+                .bind(mid)
+                .fetch_optional(self.db.pool())
+                .await?;
+                if let Some(prob) = row {
+                    map.insert(*mid, prob);
+                }
+            }
+            map
         };
 
         let mut correct = 0i64;

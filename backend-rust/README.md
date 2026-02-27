@@ -1,6 +1,6 @@
 # PraesagiumChain — Backend (Rust / Axum)
 
-REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL (Supabase)**.
+REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL**.
 
 ---
 
@@ -12,7 +12,7 @@ REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation ser
   ```
   Then open a new terminal or run: `source "$HOME/.cargo/env"`.
 
-- **PostgreSQL**: use **Supabase** or any Postgres. The backend does not use SQLite.
+- **PostgreSQL** (any standard Postgres instance).
 
 - **OpenSSL** (system) for building. On Ubuntu/Debian/WSL:
   ```bash
@@ -32,22 +32,7 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
    ```
 
 2. Edit `.env` and set at least:
-   - **`DATABASE_URL`**: PostgreSQL connection string (Supabase).
-
-### Supabase: Session pooler (recommended for IPv4)
-
-Supabase’s **direct** connection is IPv6-only. On IPv4-only networks (e.g. many WSL setups), use the **Session pooler**:
-
-1. In **Supabase Dashboard** → your project → **Connect** (top right).
-2. Choose **Session pooler** (or Connection pooling → Session).
-3. Copy the **URI**. It looks like:
-   ```text
-   postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
-   ```
-4. In `DATABASE_URL`, use that URI. If your password contains `#`, encode it as `%23`.
-5. **Region**: The host includes the region (e.g. `aws-0-us-west-2`). Find yours in the Dashboard (e.g. Project Settings → Database or the Connect dialog). Wrong region causes “Tenant or user not found”.
-
-If you use the **direct** connection URL (`db.PROJECT_REF.supabase.co:5432`), the backend will try to resolve the host to IPv4 when possible; if the host has no IPv4, you’ll get a clear error asking you to switch to the Session pooler.
+   - **`DATABASE_URL`**: PostgreSQL connection string, e.g. `postgresql://postgres:PASSWORD@localhost:5432/praesagium`.
 
 3. Optional variables:
    - `PORT` (default `4000`)
@@ -113,12 +98,6 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 
 - **“Invalid input length”**  
   This usually means the backend tried to parse `PREDICTION_MARKET_ADDRESS` as an Ethereum address but it was empty or invalid. Ensure `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are either **unset** or **valid** (non-empty; address = 0x + 40 hex chars). Empty strings are now ignored (indexer is skipped).
-
-- **“Tenant or user not found”**  
-  The Session pooler host/region does not match your project. Copy the exact Session pooler URI from Dashboard → Connect → Session pooler (check the region in the hostname).
-
-- **“El host '...' no tiene IPv4”**  
-  The direct connection host has no IPv4. Use the Session pooler URI in `DATABASE_URL` (see above).
 
 - **Other DB errors**  
   To see where the error occurs (connection vs migrations) and a full backtrace:

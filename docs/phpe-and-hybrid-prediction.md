@@ -230,11 +230,21 @@ let ctx = PredictionContext::try_from(json.as_str())?;
 
 The `SavedContext` struct mirrors `PredictionContext` exactly and is fully serializable via `serde`. Storing the context in a file or environment variable allows the backend to load a pre-trained model without retraining on each request.
 
+> **Implementation note:** In the current backend, `HybridPredictor` uses the lazy-init pattern (`get_or_init_context`) to build and cache the context on first use. `PredictionService::run_prediction` always calls `default_context()` per request and caches the serialized `PredictionResult` (not the context) via the application `Cache` with a configurable TTL (`PREDICTION_CACHE_TTL`, default 300 s).
+
 ---
 
 ## 6. Hybrid Prediction — Fusion Algorithm
 
 The hybrid predictor is defined in [`backend-rust/src/services/hybrid.rs`](../backend-rust/src/services/hybrid.rs). It fuses up to three independent signals into a single probability.
+
+`HybridPredictor` is constructed with a single dependency — the `AiService`:
+
+```rust
+let predictor = HybridPredictor::new(ai_service.clone());
+```
+
+The PHPE context (`PredictionContext`) is cached internally in an `Arc<RwLock<Option<PredictionContext>>>` field (`phpe_ctx`). It is built once from the first time series seen and reused across all subsequent requests, eliminating the cost of re-running `default_context()` on every call. This is distinct from the application-level `Cache` (used by `PredictionService` for storing serialized `PredictionResult` objects with a TTL).
 
 ### 6.1 Default Weights
 

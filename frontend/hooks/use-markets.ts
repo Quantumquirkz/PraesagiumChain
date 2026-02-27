@@ -8,8 +8,8 @@ export function useMarkets(page: number, limit: number, status?: string) {
   return useQuery({
     queryKey: ['markets', page, limit, status],
     queryFn: () => getMarkets(page, limit, status),
-    staleTime: 15_000,
-    refetchInterval: 10_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
 }
@@ -19,8 +19,8 @@ export function useMarket(id: number) {
     queryKey: ['market', id],
     queryFn: () => getMarket(id),
     enabled: Number.isInteger(id) && id > 0,
-    staleTime: 10_000,
-    refetchInterval: 10_000,
+    staleTime: 20_000,
+    refetchInterval: 20_000,
     refetchIntervalInBackground: false,
   })
 }
@@ -34,8 +34,8 @@ export function useInfiniteMarkets(status?: string) {
       return lastPage.page < totalPages ? lastPage.page + 1 : undefined
     },
     initialPageParam: 1,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
   })
 }
@@ -44,8 +44,8 @@ export function useMarketStats() {
   return useQuery({
     queryKey: ['stats'],
     queryFn: getStats,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
   })
 }

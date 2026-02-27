@@ -1,6 +1,6 @@
 # Smart Contracts and Database — Technical Reference
 
-This document provides a complete technical reference for all PraesagiumChain smart contracts, their interactions, the oracle resolution flow, and the PostgreSQL database schema. It is intended for developers integrating with the contracts or extending the backend.
+This document provides a complete technical reference for all PraesagiumChain smart contracts, their interactions, the oracle resolution flow, and the database schema. It is intended for developers integrating with the contracts or extending the backend.
 
 ---
 
@@ -470,9 +470,13 @@ The contract verifies `keccak256(abi.encode(outcome, amount, nonce)) == stored_c
 
 ## 8. Database Schema
 
-**File:** [`supabase/schema.sql`](../supabase/schema.sql)
+**File:** `backend-rust/migrations/`
 
-The PostgreSQL schema mirrors on-chain state and stores off-chain data (predictions, reputation). The backend's `EventIndexer` keeps it synchronized with the blockchain.
+The database schema mirrors on-chain state and stores off-chain data (predictions, reputation). The backend's `EventIndexer` keeps it synchronized with the blockchain.
+
+> **Database engine:** The backend uses **SQLite** by default (`DATABASE_URL=sqlite://praesagium.db`), which requires zero configuration for local development. The schema is compatible with PostgreSQL for production deployments — simply change `DATABASE_URL` to a PostgreSQL connection string. Migrations are applied automatically by SQLx on backend startup.
+>
+> Migration files are located in `backend-rust/migrations/`. Migrations 002–006 are intentional stubs that preserve SQLx migration history; the full schema is defined in `001_initial.sql`.
 
 ### 8.1 Entity Relationship
 

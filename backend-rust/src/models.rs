@@ -244,7 +244,7 @@ pub struct MarketResolution {
     pub id: i64,
     pub market_id: i64,
     pub resolution_type: String,
-    pub outcome: i16,
+    pub outcome: i64,
     pub confidence: Option<f64>,
     pub source: Option<String>,
     pub raw_value: Option<f64>,
