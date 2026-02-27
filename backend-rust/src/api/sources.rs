@@ -44,12 +44,6 @@ pub async fn list_sources() -> Json<Vec<SourceInfo>> {
             desc: "Stocks/crypto. Requires FINNHUB_API_KEY.".to_string(),
             params: vec!["symbol (e.g. AAPL, BTC)".to_string()],
         },
-        SourceInfo {
-            id: "newsapi".to_string(),
-            name: "NewsAPI".to_string(),
-            desc: "News headlines. Requires NEWSAPI_KEY.".to_string(),
-            params: vec!["query".to_string(), "country (e.g. us)".to_string()],
-        },
     ])
 }
 
@@ -68,8 +62,6 @@ pub struct FetchQuery {
     fsym: Option<String>,
     tsym: Option<String>,
     pair: Option<String>,
-    query: Option<String>,
-    country: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -144,18 +136,6 @@ pub async fn fetch(
         "finnhub" => {
             let sym = q.symbol.as_deref().unwrap_or("AAPL");
             let sig = state.sources_registry.finnhub.fetch_quote(sym).await?;
-            FetchResponse {
-                source: sig.source,
-                price: sig.price,
-                price_change_24h: sig.price_change_24h,
-                volume_24h: sig.volume_24h,
-                sentiment: sig.sentiment,
-            }
-        }
-        "newsapi" => {
-            let query = q.query.as_deref().unwrap_or("bitcoin");
-            let country = q.country.as_deref().unwrap_or("us");
-            let sig = state.sources_registry.newsapi.fetch_headlines(query, country).await?;
             FetchResponse {
                 source: sig.source,
                 price: sig.price,

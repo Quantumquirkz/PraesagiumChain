@@ -55,7 +55,7 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
         _ => Arc::new(MockAiProvider),
     };
     let ai_service = Arc::new(AiService::new(ai_provider));
-    let hybrid_predictor = Arc::new(HybridPredictor::new(ai_service.clone(), cache.clone()));
+    let hybrid_predictor = Arc::new(HybridPredictor::new(ai_service.clone()));
 
     let http_client = Arc::new(
         reqwest::Client::builder()
@@ -67,7 +67,6 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     let sources_registry = Arc::new(SourcesRegistry::new(
         (*http_client).clone(),
         config.finnhub_api_key.clone(),
-        config.newsapi_key.clone(),
     ));
 
     // Spawn event indexer if RPC and contract address are configured

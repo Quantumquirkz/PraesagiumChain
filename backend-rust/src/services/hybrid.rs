@@ -10,7 +10,6 @@ use predictor::{default_context, predict, PredictionContext, TimeSeriesSample};
 use crate::error::Result;
 use crate::services::ai::AiService;
 use crate::services::sources::{BinanceSource, ChainlinkSource};
-use crate::services::Cache;
 use tracing::debug;
 
 /// Weights for hybrid fusion (must sum to 1.0 when all signals are present).
@@ -36,20 +35,17 @@ pub struct HybridPredictor {
     ai: Arc<AiService>,
     binance: BinanceSource,
     chainlink: ChainlinkSource,
-    #[allow(dead_code)]
-    cache: Arc<Cache>,
     weights: HybridWeights,
     /// Persistent PHPE context — built once from the first time series seen, then reused.
     phpe_ctx: Arc<RwLock<Option<PredictionContext>>>,
 }
 
 impl HybridPredictor {
-    pub fn new(ai: Arc<AiService>, cache: Arc<Cache>) -> Self {
+    pub fn new(ai: Arc<AiService>) -> Self {
         Self {
             ai,
             binance: BinanceSource::new(),
             chainlink: ChainlinkSource::new(),
-            cache,
             weights: HybridWeights::default(),
             phpe_ctx: Arc::new(RwLock::new(None)),
         }

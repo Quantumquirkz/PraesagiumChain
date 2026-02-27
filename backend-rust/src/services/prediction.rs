@@ -1,6 +1,6 @@
 use crate::db::Database;
 use crate::services::Cache;
-use predictor::{default_context, predict, PredictionContext, TimeSeriesSample};
+use predictor::{default_context, predict, TimeSeriesSample};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
@@ -40,41 +40,6 @@ impl PredictionService {
 
         let ctx = default_context(time_series);
         let result = predict(time_series, &ctx);
-        
-        if let Some(id) = market_id {
-            self.cache.set_prediction(id, &result, self.cache_ttl).await;
-        }
-        
-        debug!(
-            "Prediction completed: probability={:.3}, uncertainty={:.3}, model_version={}",
-            result.probability, result.uncertainty, result.model_version
-        );
-
-        result
-    }
-
-    /// Runs a prediction with a trained context (for production).
-    #[allow(dead_code)]
-    pub async fn run_prediction_with_context(
-        &self,
-        time_series: &TimeSeriesSample,
-        ctx: &PredictionContext,
-        market_id: Option<i64>,
-    ) -> predictor::PredictionResult {
-        debug!("Running prediction with trained context: version={}", ctx.model_metadata.version);
-        
-        if time_series.is_empty() {
-            warn!("Empty time series provided, returning default prediction");
-            return self.default_prediction();
-        }
-
-        if let Some(id) = market_id {
-            if let Some(cached) = self.cache.get_prediction(id).await {
-                return cached;
-            }
-        }
-
-        let result = predict(time_series, ctx);
         
         if let Some(id) = market_id {
             self.cache.set_prediction(id, &result, self.cache_ttl).await;

@@ -142,17 +142,6 @@ mod error_tests {
 }
 
 #[cfg(test)]
-mod newsapi_sentiment_tests {
-    use crate::services::sources::NewsApiSource;
-
-    /// Verifies the source can be instantiated without a key (will error on fetch, not on new).
-    #[test]
-    fn newsapi_source_no_key_instantiates() {
-        let _src = NewsApiSource::new(None);
-    }
-}
-
-#[cfg(test)]
 mod signal_price_tests {
     use crate::services::sources::types::Signal;
 
@@ -206,12 +195,10 @@ mod api_markets_tests {
         )));
         let hybrid_predictor = std::sync::Arc::new(crate::services::HybridPredictor::new(
             ai_service.clone(),
-            cache.clone(),
         ));
         let http_client = std::sync::Arc::new(reqwest::Client::new());
         let sources_registry = std::sync::Arc::new(crate::services::SourcesRegistry::new(
             (*http_client).clone(),
-            None,
             None,
         ));
         let config = std::sync::Arc::new(crate::config::Config {
@@ -230,7 +217,6 @@ mod api_markets_tests {
             rate_limit_per_second: 100,
             rate_limit_burst: 200,
             finnhub_api_key: None,
-            newsapi_key: None,
             api_football_key: None,
             cors_origins: None,
             jwt_secret: None,

@@ -7,10 +7,10 @@ fn default_prediction_cache_ttl() -> u64 {
     300
 }
 fn default_rate_limit_per_second() -> u64 {
-    60
+    300
 }
 fn default_rate_limit_burst() -> u32 {
-    30
+    200
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -32,7 +32,6 @@ pub struct Config {
     pub gemini_api_key: Option<String>,
     pub gemini_model: Option<String>,
     pub finnhub_api_key: Option<String>,
-    pub newsapi_key: Option<String>,
     pub api_football_key: Option<String>,
     /// Comma-separated origins for CORS (e.g. "https://app.example.com,http://localhost:3000"). If unset, allows all.
     pub cors_origins: Option<Vec<String>>,
@@ -53,16 +52,8 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(4000);
 
-        let database_url = std::env::var("DATABASE_URL").map_err(|_| {
-            anyhow::anyhow!(
-                "DATABASE_URL is not set. Create .env in repo root or backend-rust/ with:\n  DATABASE_URL=postgresql://postgres:PASSWORD@host:5432/postgres"
-            )
-        })?;
-        if database_url.starts_with("postgres://localhost") {
-            anyhow::bail!(
-                "DATABASE_URL cannot be postgres://localhost (use your Supabase URI in .env)"
-            );
-        }
+        let database_url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "sqlite:./praesagium.db".to_string());
 
         let cors_origins = std::env::var("CORS_ORIGINS").ok().map(|s| {
             s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()
@@ -101,7 +92,6 @@ impl Config {
             gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
             finnhub_api_key: std::env::var("FINNHUB_API_KEY").ok(),
-            newsapi_key: std::env::var("NEWSAPI_KEY").ok(),
             api_football_key: std::env::var("API_FOOTBALL_KEY").ok(),
             cors_origins,
             rate_limit_per_second,
