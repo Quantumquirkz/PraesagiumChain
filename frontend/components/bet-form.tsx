@@ -13,7 +13,7 @@ import { WalletButton } from "@/components/wallet-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TxStatus } from "@/components/tx-status";
-import { cn } from "@/lib/utils";
+import { cn, formatEth } from "@/lib/utils";
 import { EXPLORER_URL } from "@/lib/constants";
 import { parseContractError } from "@/lib/contract-errors";
 import {
@@ -211,7 +211,7 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
       const amtWei = BigInt(Math.floor(Number(amount) * 1e18));
       if (amtWei > balance.value) {
         setFieldError(
-          `Insufficient balance (${Number(formatEther(balance.value)).toFixed(4)} ETH).`
+          `Insufficient balance (${formatEth(balance.value)}).`
         );
         return false;
       }
@@ -285,53 +285,56 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
   // ── Formulario principal ──────────────────────────────────────────────────────
 
   const isDisabled = isPending || isConfirming || btnState === "success";
+  const amountNum = Number.parseFloat(amount) || 0;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-3" noValidate>
       {/* Selector Yes / No */}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={() => {
-            setSelectedOutcome(1);
-            setFieldError(null);
-          }}
+          onClick={() => { setSelectedOutcome(1); setFieldError(null); }}
           disabled={isDisabled}
           aria-pressed={selectedOutcome === 1}
           className={cn(
-            "h-12 rounded-md border font-display font-extrabold text-[20px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden",
             selectedOutcome === 1
-              ? "bg-green-dim border-green text-green"
+              ? "bg-green-dim border-green text-green shadow-[0_0_12px_rgba(0,232,122,0.2)]"
               : "bg-elevated border-border text-text-muted hover:border-green/50 hover:text-green/80"
           )}
         >
+          {selectedOutcome === 1 && (
+            <span className="absolute inset-0 bg-gradient-to-br from-green/10 to-transparent" />
+          )}
           YES
         </button>
         <button
           type="button"
-          onClick={() => {
-            setSelectedOutcome(2);
-            setFieldError(null);
-          }}
+          onClick={() => { setSelectedOutcome(2); setFieldError(null); }}
           disabled={isDisabled}
           aria-pressed={selectedOutcome === 2}
           className={cn(
-            "h-12 rounded-md border font-display font-extrabold text-[20px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden",
             selectedOutcome === 2
-              ? "bg-red-dim border-red text-red"
+              ? "bg-red-dim border-red text-red shadow-[0_0_12px_rgba(255,61,90,0.2)]"
               : "bg-elevated border-border text-text-muted hover:border-red/50 hover:text-red/80"
           )}
         >
+          {selectedOutcome === 2 && (
+            <span className="absolute inset-0 bg-gradient-to-br from-red/10 to-transparent" />
+          )}
           NO
         </button>
       </div>
 
       {/* Input de cantidad */}
       <div>
-        <div className="flex rounded-md border border-border bg-elevated overflow-hidden focus-within:border-cyan/60 transition-colors">
-          <span className="flex items-center pl-3 font-mono text-cyan select-none" aria-hidden>
-            Ξ
-          </span>
+        <div className={cn(
+          "flex rounded-lg border bg-elevated overflow-hidden transition-all",
+          "focus-within:border-cyan/60 focus-within:shadow-[0_0_0_2px_rgba(0,212,255,0.1)]",
+          fieldError ? "border-red/60" : "border-border"
+        )}>
+          <span className="flex items-center pl-3 font-mono text-lg text-cyan select-none" aria-hidden>Ξ</span>
           <Input
             type="text"
             inputMode="decimal"
@@ -344,7 +347,7 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
             }}
             disabled={isDisabled}
             aria-label="Bet amount in ETH"
-            className="border-0 bg-transparent font-mono text-[18px] focus-visible:ring-0 disabled:opacity-40"
+            className="border-0 bg-transparent font-mono text-xl focus-visible:ring-0 disabled:opacity-40"
           />
         </div>
 
@@ -356,7 +359,12 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
               type="button"
               onClick={() => { setAmount(v); setFieldError(null); }}
               disabled={isDisabled}
-              className="rounded-md border border-border bg-elevated px-2 py-1 font-mono text-xs text-text-secondary hover:text-foreground hover:border-cyan/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className={cn(
+                "rounded-md border px-2.5 py-1 font-mono text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                amount === v
+                  ? "border-cyan/60 bg-cyan-dim text-cyan"
+                  : "border-border bg-elevated text-text-secondary hover:text-foreground hover:border-cyan/40"
+              )}
             >
               {v}
             </button>
@@ -370,44 +378,49 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
                 setFieldError(null);
               }}
               disabled={isDisabled}
-              className="rounded-md border border-border bg-elevated px-2 py-1 font-mono text-xs text-cyan hover:border-cyan/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-md border border-cyan/30 bg-cyan-dim px-2.5 py-1 font-mono text-xs text-cyan hover:border-cyan/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               MAX
             </button>
           )}
         </div>
 
-        {/* Balance disponible */}
+        {/* Balance */}
         {balance && (
           <p className="mt-1.5 font-mono text-[11px] text-text-muted">
-            Balance: {Number(formatEther(balance.value)).toFixed(4)} ETH
+            Balance: <span className="text-foreground">{formatEth(balance.value)}</span>
           </p>
         )}
 
-        {/* Error de validación */}
+        {/* Payout estimado */}
+        {amountNum > 0 && selectedOutcome && (
+          <div className={cn(
+            "mt-2 rounded-lg border p-2.5 flex items-center justify-between",
+            selectedOutcome === 1 ? "border-green/20 bg-green-dim" : "border-red/20 bg-red-dim"
+          )}>
+            <span className="font-mono text-[11px] text-text-muted">Est. payout if {selectedOutcome === 1 ? "YES" : "NO"}</span>
+            <span className={cn("font-display font-bold text-sm", selectedOutcome === 1 ? "text-green" : "text-red")}>
+              ~{(amountNum * 1.9).toFixed(4)} ETH
+            </span>
+          </div>
+        )}
+
+        {/* Errores */}
         {fieldError && (
-          <p className="mt-1 text-xs text-red" role="alert">
-            {fieldError}
+          <p className="mt-1.5 text-xs text-red flex items-center gap-1" role="alert">
+            <span>⚠</span> {fieldError}
           </p>
         )}
-
-        {/* Error de contrato */}
         {btnState === "error" && error && !fieldError && (
-          <p className="mt-1 text-xs text-red" role="alert">
-            {parseContractError(error)}
-          </p>
+          <p className="mt-1.5 text-xs text-red" role="alert">{parseContractError(error)}</p>
         )}
       </div>
 
-      {/* Botón con estados */}
+      {/* Botón */}
       <BetButton state={btnState} disabled={isDisabled} />
 
-      {/* Progreso de la transacción */}
-      <TxStatus
-        hash={hash}
-        requiredConfirmations={3}
-        dismissAfterMs={5_000}
-      />
+      {/* Progreso tx */}
+      <TxStatus hash={hash} requiredConfirmations={3} dismissAfterMs={5_000} />
     </form>
   );
 }

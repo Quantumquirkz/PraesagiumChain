@@ -4,7 +4,6 @@
 import { useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useAccount, useReadContracts } from "wagmi";
-import { formatEther } from "viem";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, Wallet } from "lucide-react";
 import { getMarkets } from "@/lib/api";
@@ -659,7 +658,7 @@ interface ActionCellProps {
 
 function ActionCell({ marketId, result, estimatedPayout }: ActionCellProps) {
   if (result === "won" && estimatedPayout > 0n) {
-    const ethStr = `${Number(formatEther(estimatedPayout)).toFixed(4)} ETH`;
+    const ethStr = formatEth(estimatedPayout);
     return <ClaimButton marketId={marketId} claimableEth={ethStr} />;
   }
   if (result === "claimed") {

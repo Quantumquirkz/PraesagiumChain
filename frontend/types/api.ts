@@ -17,7 +17,30 @@ export interface PredictionView {
   probability: number;
   uncertainty?: number;
   model_version?: string;
+  model_hash?: string;
   timestamp: number;
+}
+
+export interface ConditionalConditionView {
+  id: number;
+  condition_contract: string;
+  condition_market_id: number;
+  expected_outcome: string;
+}
+
+export interface SourceInfo {
+  id: string;
+  name: string;
+  desc: string;
+  params: string[];
+}
+
+export interface FetchResponse {
+  source: string;
+  price: number | null;
+  price_change_24h: number | null;
+  volume_24h: number | null;
+  sentiment: number | null;
 }
 
 export interface MarketStats {
