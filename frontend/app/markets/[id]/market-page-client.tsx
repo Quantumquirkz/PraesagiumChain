@@ -111,8 +111,8 @@ export function MarketPageClient() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] p-6" style={{ padding: 24 }}>
-      <div className="flex justify-end mb-3">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-6">
+      <div className="flex justify-end mb-2">
         <LastUpdated updatedAt={marketUpdatedAt || undefined} freshThresholdMs={10_000} />
       </div>
 

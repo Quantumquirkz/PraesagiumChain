@@ -6,18 +6,28 @@ import Link from "next/link";
 import { useAccount, useBalance, useWriteContract } from "wagmi";
 import { formatEther } from "viem";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Info,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  BarChart2,
+  ExternalLink,
+  Trophy,
+  Clock,
+} from "lucide-react";
 import type { MarketView, PredictionView } from "@/types/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
 import { predictionMarketContract, OUTCOME, EXPLORER_URL } from "@/lib/constants";
-import { OHLCVChart, type IndicatorId } from "@/components/ohlcv-chart";
+import { TVChart, type IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
 import { CreatorReputationBadge } from "@/components/creator-reputation-badge";
 import { PHPEHistoryChart } from "@/components/phpe-history-chart";
 import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -29,6 +39,12 @@ import {
 import { cn } from "@/lib/utils";
 import { usePHPEPrediction } from "@/hooks/use-phpe-prediction";
 import type { Timeframe } from "@/lib/ohlcv-utils";
+
+import { UncertaintyBar } from "@/components/uncertainty-bar";
+import { ModelVerifier } from "@/components/model-verifier";
+import { SignalFusionPanel } from "@/components/signal-fusion-panel";
+import { ConditionalTree } from "@/components/conditional-tree";
+import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
 
 export interface MarketOnChain {
   question: string;
@@ -46,20 +62,15 @@ export interface UserStakeOnChain {
   noStake: bigint;
 }
 
-const BINANCE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"] as const;
 const TIMEFRAMES: Timeframe[] = ["15m", "1h", "4h", "24h", "1W", "1M"];
-const INDICATOR_PILLS: { id: IndicatorId; label: string }[] = [
-  { id: "ma7", label: "MA" },
-  { id: "bb", label: "BB" },
-  { id: "macd", label: "MACD" },
-  { id: "rsi", label: "RSI" },
-  { id: "stochRsi", label: "Stoch RSI" },
-  { id: "stoch", label: "Stochastic" },
-  { id: "ichimoku", label: "Ichimoku" },
-  { id: "atr", label: "ATR" },
-  { id: "volume", label: "Volume" },
-  { id: "obv", label: "OBV" },
-  { id: "bop", label: "BOP" },
+const INDICATOR_PILLS: { id: IndicatorId; label: string; color: string }[] = [
+  { id: "ma7",    label: "MA7",    color: "#FFD700" },
+  { id: "ma25",   label: "MA25",   color: "#00D4FF" },
+  { id: "ma99",   label: "MA99",   color: "#8B5CF6" },
+  { id: "bb",     label: "BB",     color: "#8B5CF6" },
+  { id: "volume", label: "Volume", color: "#00E87A" },
+  { id: "macd",   label: "MACD",   color: "#00D4FF" },
+  { id: "rsi",    label: "RSI",    color: "#00D4FF" },
 ];
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -86,13 +97,12 @@ export function MarketDetail({
 }: MarketDetailProps) {
   const [aiCollapsed, setAiCollapsed] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>("1h");
-  const [indicators, setIndicators] = useState<Set<IndicatorId>>(new Set(["ma7", "volume"]));
+  const [indicators, setIndicators] = useState<Set<IndicatorId>>(new Set<IndicatorId>(["ma7", "volume"]));
   const [stakesMounted, setStakesMounted] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
   const { writeContractAsync, isPending: writePending } = useWriteContract();
-  // balance y writePending se usan en CARD 2 (claimPayout) y CARD 3 (BetForm delegado)
 
   const totalYes = marketOnChain ? marketOnChain.totalYesStake : BigInt(Number(market.total_yes_stake));
   const totalNo = marketOnChain ? marketOnChain.totalNoStake : BigInt(Number(market.total_no_stake));
@@ -101,10 +111,14 @@ export function MarketDetail({
   const noPct = 100 - yesPct;
 
   const isResolved = market.status === "Resolved";
+  const isOpen = market.status === "Open";
   const outcomeYes = market.outcome === "Yes" || marketOnChain?.outcome === OUTCOME.YES;
   const outcomeNo = market.outcome === "No" || marketOnChain?.outcome === OUTCOME.NO;
   const userWon = isResolved && userStake && ((outcomeYes && userStake.yesStake > BigInt(0)) || (outcomeNo && userStake.noStake > BigInt(0)));
   const claimable = userWon && userStake ? (outcomeYes ? userStake.yesStake : userStake.noStake) : BigInt(0);
+
+  const totalStakeEth = Number(formatEther(totalStake));
+  const userTotalStake = userStake ? Number(formatEther(userStake.yesStake + userStake.noStake)) : 0;
 
   useEffect(() => {
     const t = setTimeout(() => setStakesMounted(true), 50);
@@ -131,253 +145,420 @@ export function MarketDetail({
   const resolveUnix = market.resolve_time;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.86fr_1fr] lg:gap-6" style={{ gap: 24 }}>
-      {/* ——— MAIN COLUMN ——— */}
-      <div className="min-w-0 space-y-6" style={{ gap: 24 }}>
-        {/* SECCIÓN 1 — Market Header */}
-        <div>
-          <nav className="font-mono text-xs text-text-muted mb-2" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-foreground">Markets</Link>
-            <span className="mx-1">/</span>
-            <span>#{marketId}</span>
-          </nav>
-          <h1 className="font-display font-extrabold text-[28px] leading-tight text-foreground line-clamp-3">
-            {market.question}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={cn("rounded-md px-2 py-0.5 font-mono text-[11px] uppercase", STATUS_BADGE_CLASS[market.status] ?? "badge-cancelled")}>
+    <div className="space-y-0">
+
+      {/* ══════════════════════════════════════════════════════════
+          ZONA 1 — HEADER + STATS (full width, estilo CoinGecko)
+      ══════════════════════════════════════════════════════════ */}
+      <div className="pb-5 border-b border-border">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 font-mono text-xs text-text-muted mb-3" aria-label="Breadcrumb">
+          <Link href="/" className="hover:text-foreground transition-colors">Markets</Link>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <span className="text-text-secondary">#{marketId}</span>
+        </nav>
+
+        {/* Título + badges + share */}
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <h1 className="font-display font-extrabold text-[22px] leading-tight text-foreground">
+              {market.question}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={cn("rounded-full px-3 py-1 font-mono text-[11px] uppercase font-bold", STATUS_BADGE_CLASS[market.status] ?? "badge-cancelled")}>
               {market.status}
             </span>
-            <span className="rounded-md border border-border bg-elevated px-2 py-0.5 font-mono text-[11px] uppercase text-text-secondary">
+            <span className="rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] uppercase text-text-secondary">
               {market.market_type || "Base"}
             </span>
             {isResolved && (
-              <span
-                className={cn(
-                  "rounded-md px-3 py-1 font-display font-bold text-[18px]",
-                  outcomeYes ? "bg-green-dim text-green border border-green/30" : "bg-red-dim text-red border border-red/30"
-                )}
-              >
-                RESOLVED: {outcomeYes ? "YES ✓" : "NO ✗"}
+              <span className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1 font-display font-bold text-sm",
+                outcomeYes ? "bg-green-dim text-green border border-green/30" : "bg-red-dim text-red border border-red/30"
+              )}>
+                {outcomeYes ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                {outcomeYes ? "YES" : "NO"}
               </span>
             )}
-            <ShareMarketButton market={market} className="ml-auto" />
+            <ShareMarketButton market={market} />
           </div>
         </div>
 
-        {/* SECCIÓN 2 — OHLCV Chart */}
-        <div className="scanlines relative rounded-md border border-border bg-surface overflow-hidden">
-          <div className="border-b border-border p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="font-display font-bold text-[13px] text-text-muted tracking-widest">
-                ODDS CHART
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf}
-                    type="button"
-                    onClick={() => setTimeframe(tf)}
-                    className={cn(
-                      "rounded px-2.5 py-1 font-mono text-xs transition-colors",
-                      timeframe === tf ? "bg-cyan-dim border border-cyan text-cyan" : "bg-transparent border border-border text-text-muted hover:text-foreground"
-                    )}
-                    aria-pressed={timeframe === tf}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {INDICATOR_PILLS.map(({ id, label }) => (
-                <label
-                  key={id}
-                  className={cn(
-                    "cursor-pointer rounded-md border px-2.5 py-1 font-mono text-xs transition-colors",
-                    indicators.has(id) ? "bg-violet-dim border-violet text-violet" : "bg-transparent border-border text-text-muted hover:text-foreground"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={indicators.has(id)}
-                    onChange={() => {
-                      const next = new Set(indicators);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      setIndicators(next);
-                    }}
-                    className="sr-only"
-                    aria-label={label}
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="border border-border-bright rounded-b-md overflow-x-auto overflow-y-hidden md:overflow-visible" style={{ background: "var(--bg-base)" }}>
-            <div className="min-w-[480px]">
-            <OHLCVChart
-              height={380}
-              embedded
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-              indicators={indicators}
-              onIndicatorsChange={setIndicators}
-            />
-            </div>
-          </div>
+        {/* Stats row — 5 pills estilo CoinGecko */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          <StatPill icon={<BarChart2 className="h-3.5 w-3.5" />} label="Total Pool" value={`${totalStakeEth.toFixed(4)} ETH`} accent="cyan" />
+          <StatPill icon={<TrendingUp className="h-3.5 w-3.5" />} label="YES Odds" value={`${yesPct}%`} accent="green" />
+          <StatPill icon={<TrendingDown className="h-3.5 w-3.5" />} label="NO Odds" value={`${noPct}%`} accent="red" />
+          <StatPill icon={<Clock className="h-3.5 w-3.5" />} label="Closes" value={formatDate(closeUnix)} accent="violet" />
+          <StatPill icon={<Clock className="h-3.5 w-3.5" />} label="Resolves" value={formatDate(resolveUnix)} accent="violet" />
         </div>
-
-        {/* SECCIÓN 3 — Stakes */}
-        <div>
-          <h2 className="font-display font-bold text-[13px] text-text-muted tracking-widest mb-3">
-            MARKET STAKES
-          </h2>
-          <div className="space-y-3">
-            <div className="relative h-10 overflow-hidden rounded-md bg-elevated" style={{ height: 40 }}>
-              <div
-                className="absolute inset-y-0 left-0 rounded-l-md bg-gradient-to-r from-green to-green/80 transition-[width] duration-1000 ease-out"
-                style={{ width: stakesMounted ? `${yesPct}%` : "0%" }}
-              />
-              {yesPct > 30 && (
-                <span className="absolute inset-0 flex items-center justify-center font-mono text-sm font-medium text-foreground mix-blend-difference pointer-events-none">
-                  YES — {formatEth(totalYes)} — {yesPct}%
-                </span>
-              )}
-            </div>
-            <div className="relative h-10 overflow-hidden rounded-md bg-elevated" style={{ height: 40 }}>
-              <div
-                className="absolute inset-y-0 left-0 rounded-l-md bg-gradient-to-r from-red to-red/80 transition-[width] duration-1000 ease-out"
-                style={{ width: stakesMounted ? `${noPct}%` : "0%" }}
-              />
-              {noPct > 30 && (
-                <span className="absolute inset-0 flex items-center justify-center font-mono text-sm font-medium text-foreground mix-blend-difference pointer-events-none">
-                  NO — {formatEth(totalNo)} — {noPct}%
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* SECCIÓN 4 — PHPE */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="font-display font-bold text-[13px] text-text-muted tracking-widest">
-              PHPE ANALYSIS
-            </h2>
-            <button
-              type="button"
-              className="text-text-muted hover:text-foreground"
-              title="Probabilistic Hybrid Prediction Engine — combines sentiment, market data and on-chain signals with calibrated uncertainty."
-              aria-label="What is PHPE?"
-            >
-              <Info className="h-4 w-4" />
-            </button>
-          </div>
-          {predictions.length === 0 ? (
-            <p className="font-mono text-sm text-text-muted">No predictions yet</p>
-          ) : predictions.length > 1 ? (
-            <div className="space-y-4">
-              <ul className="space-y-3">
-                {predictions.map((p, i) => (
-                  <PredictionRow key={i} p={p} />
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <PredictionRow p={predictions[0]} />
-          )}
-        </div>
-
-        {/* SECCIÓN 5 — PHPE Probability Trend */}
-        <PHPEHistoryChart predictions={predictions} />
       </div>
 
-      {/* ——— SIDEBAR ——— */}
-      <aside className="space-y-6 min-w-0" style={{ gap: 24 }}>
-        {/* CARD 1 — Times & Countdown */}
-        <div className="rounded-md border border-border bg-surface p-4">
-          <CountdownBlocks targetUnix={closeUnix} label="CLOSES IN" />
-          <div className="mt-4 pt-4 border-t border-border">
-            <CountdownBlocks targetUnix={resolveUnix} label="RESOLVES IN" urgentClassName="border-violet bg-violet-dim text-violet" />
-          </div>
-        </div>
+      {/* ══════════════════════════════════════════════════════════
+          ZONA 2 — GRÁFICA FULL WIDTH + SIDEBAR ACCIÓN
+          Layout: [gráfica grande] | [sidebar estrecho]
+      ══════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0 pt-0">
 
-        {/* CARD 1b — Creator */}
-        {(market.creator || marketOnChain?.creator) && (
-          <div className="rounded-md border border-border bg-surface p-4">
-            <h3
-              className="mb-3 font-display font-bold tracking-widest text-text-muted"
-              style={{ fontSize: 12 }}
-            >
-              CREATOR
-            </h3>
-            <CreatorReputationBadge
-              address={(market.creator || marketOnChain!.creator) as string}
-            />
-          </div>
-        )}
+        {/* ── GRÁFICA (columna izquierda, full height) ── */}
+        <div className="min-w-0 border-r border-border pr-0 lg:pr-5 pt-5">
 
-        {/* CARD 2 — User Position */}
-        {isConnected && userStake !== null && (
-          <div className="card-gradient-border rounded-md p-4">
-            <h3 className="font-display font-bold text-[13px] text-text-muted tracking-widest mb-3">
-              YOUR POSITION
-            </h3>
-            <p className="font-mono text-sm text-foreground">
-              YES: {formatEth(userStake.yesStake)} · NO: {formatEth(userStake.noStake)}
-            </p>
-            {userWon && claimable > BigInt(0) && (
-              <div className="mt-4 rounded-md border border-green/40 bg-green-dim p-4">
-                <p className="font-display font-bold text-green mb-1">🎉 WINNER</p>
-                <p className="font-mono text-sm text-foreground mb-3">Claimable: {formatEth(claimable)}</p>
-                <Button
-                  onClick={onClaimPayout}
-                  disabled={writePending}
-                  className="w-full h-12 font-display font-bold text-base bg-green text-black hover:brightness-110 hover:scale-[1.02] transition-all"
-                  aria-label="Claim payout"
-                >
-                  {writePending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
-                      Claiming...
-                    </>
-                  ) : (
-                    "CLAIM PAYOUT"
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* CARD 3 — Bet Form */}
-        <div className="rounded-md border border-border bg-surface p-4">
-          <h3 className="font-display font-bold text-[13px] text-text-muted tracking-widest mb-4">
-            PLACE BET
-          </h3>
-          <BetForm marketId={marketId} marketStatus={market.status} question={market.question} />
-        </div>
-
-        {/* CARD 4 — PHPE AI Preview */}
-        <div className="rounded-md border border-border bg-surface overflow-hidden">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between p-4 text-left font-display font-bold text-[13px] text-text-muted tracking-widest"
-            onClick={() => setAiCollapsed(!aiCollapsed)}
-            aria-expanded={!aiCollapsed}
-          >
-            AI PREVIEW
-            {aiCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-          {!aiCollapsed && (
-            <div className="border-t border-border p-4">
-              <PHPEWidget marketId={marketId} />
+          {/* Árbol de condiciones */}
+          {market.market_type === "conditional" && (
+            <div className="mb-4">
+              <ConditionalTree marketId={marketId} />
             </div>
           )}
+
+          {/* Timeframes */}
+          <div className="flex items-center gap-1 bg-elevated rounded-lg p-1 mb-3 w-fit">
+            {TIMEFRAMES.map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => setTimeframe(tf)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 font-mono text-xs transition-all",
+                  timeframe === tf
+                    ? "bg-surface border border-border text-foreground font-bold shadow-sm"
+                    : "text-text-muted hover:text-foreground"
+                )}
+                aria-pressed={timeframe === tf}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          {/* Indicator pills */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {INDICATOR_PILLS.map(({ id, label, color }) => (
+              <label
+                key={id}
+                className={cn(
+                  "cursor-pointer rounded-full border px-2.5 py-0.5 font-mono text-[11px] transition-all select-none",
+                  indicators.has(id)
+                    ? "border-current opacity-100"
+                    : "bg-transparent border-border text-text-muted hover:text-foreground hover:border-border-bright"
+                )}
+                style={indicators.has(id) ? { color, borderColor: color, background: `${color}18` } : {}}
+              >
+                <input
+                  type="checkbox"
+                  checked={indicators.has(id)}
+                  onChange={() => {
+                    const next = new Set<IndicatorId>(indicators);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    setIndicators(next);
+                  }}
+                  className="sr-only"
+                  aria-label={label}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+
+          {/* LA GRÁFICA — lightweight-charts con zoom/pan nativo */}
+          <TVChart
+            height={480}
+            embedded
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+            indicators={indicators}
+            onIndicatorsChange={setIndicators}
+          />
+
+          {/* ── MARKET STAKES (debajo de la gráfica, full width) ── */}
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-bold text-[12px] text-text-muted tracking-widest uppercase">
+                Market Stakes
+              </h2>
+              <span className="font-mono text-xs text-text-muted">{totalStakeEth.toFixed(4)} ETH total</span>
+            </div>
+
+            {/* Barra combinada */}
+            <div className="space-y-1.5">
+              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-elevated">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-l-full bg-gradient-to-r from-green to-green/60 transition-[width] duration-1000 ease-out"
+                  style={{ width: stakesMounted ? `${yesPct}%` : "0%" }}
+                />
+                <div
+                  className="absolute inset-y-0 right-0 rounded-r-full bg-gradient-to-l from-red to-red/60 transition-[width] duration-1000 ease-out"
+                  style={{ width: stakesMounted ? `${noPct}%` : "0%" }}
+                />
+              </div>
+              <div className="flex justify-between font-mono text-xs">
+                <span className="flex items-center gap-1.5 text-green">
+                  <span className="h-2 w-2 rounded-full bg-green" />
+                  YES — {formatEth(totalYes)} ETH ({yesPct}%)
+                </span>
+                <span className="flex items-center gap-1.5 text-red">
+                  NO — {formatEth(totalNo)} ETH ({noPct}%)
+                  <span className="h-2 w-2 rounded-full bg-red" />
+                </span>
+              </div>
+            </div>
+
+            {/* Cards YES/NO */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className={cn(
+                "rounded-xl border p-4 text-center transition-all",
+                yesPct >= noPct ? "border-green/40 bg-green-dim" : "border-border bg-elevated"
+              )}>
+                <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">YES Implied</p>
+                <p className={cn("font-display font-extrabold text-3xl", yesPct >= noPct ? "text-green" : "text-foreground")}>{yesPct}%</p>
+                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalYes)} ETH staked</p>
+              </div>
+              <div className={cn(
+                "rounded-xl border p-4 text-center transition-all",
+                noPct > yesPct ? "border-red/40 bg-red-dim" : "border-border bg-elevated"
+              )}>
+                <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">NO Implied</p>
+                <p className={cn("font-display font-extrabold text-3xl", noPct > yesPct ? "text-red" : "text-foreground")}>{noPct}%</p>
+                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalNo)} ETH staked</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── PHPE ANALYSIS ── */}
+          <div className="mt-6 rounded-xl border border-border bg-surface p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display font-bold text-[12px] text-text-muted tracking-widest uppercase">PHPE Analysis</h2>
+              <button
+                type="button"
+                className="text-text-muted hover:text-foreground transition-colors"
+                title="Probabilistic Hybrid Prediction Engine — combines sentiment, market data and on-chain signals with calibrated uncertainty."
+                aria-label="What is PHPE?"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {predictions.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <BarChart2 className="h-8 w-8 text-text-muted opacity-30" />
+                <p className="font-mono text-sm text-text-muted">No predictions yet</p>
+                <p className="font-mono text-xs text-text-muted opacity-60">Use the AI Preview in the sidebar to generate one</p>
+              </div>
+            ) : predictions.length > 1 ? (
+              <ul className="space-y-3">
+                {predictions.map((p, i) => <PredictionRow key={i} p={p} />)}
+              </ul>
+            ) : (
+              <PredictionRow p={predictions[0]} />
+            )}
+          </div>
+
+          {/* ── SIGNAL FUSION ── */}
+          <div className="mt-6">
+            <SignalFusionPanel defaultParams={{ binanceSymbol: "BTCUSDT", marketId }} />
+          </div>
+
+          {/* ── PHPE HISTORY ── */}
+          <div className="mt-6">
+            <PHPEHistoryChart predictions={predictions} />
+          </div>
         </div>
-      </aside>
+
+        {/* ── SIDEBAR (columna derecha, sticky) ── */}
+        <aside className="lg:pl-5 pt-5 space-y-4 min-w-0">
+          <div className="lg:sticky lg:top-4 space-y-4">
+
+            {/* COUNTDOWN */}
+            <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
+              <CountdownBlocks targetUnix={closeUnix} label="CLOSES IN" />
+              <div className="border-t border-border pt-4">
+                <CountdownBlocks targetUnix={resolveUnix} label="RESOLVES IN" urgentClassName="border-violet/60 bg-violet-dim text-violet" />
+              </div>
+              <TimelineBar closeUnix={closeUnix} resolveUnix={resolveUnix} />
+            </div>
+
+            {/* CREATOR */}
+            {(market.creator || marketOnChain?.creator) && (
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <h3 className="mb-3 font-display font-bold text-[11px] tracking-widest text-text-muted uppercase">Creator</h3>
+                <CreatorReputationBadge address={(market.creator || marketOnChain!.creator) as string} />
+              </div>
+            )}
+
+            {/* USER POSITION */}
+            {isConnected && userStake !== null && (
+              <div className="rounded-xl border border-cyan/20 bg-surface p-4" style={{ background: "linear-gradient(135deg, var(--bg-surface) 0%, rgba(0,212,255,0.03) 100%)" }}>
+                <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-3">Your Position</h3>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="rounded-lg border border-green/20 bg-green-dim p-2.5 text-center">
+                    <p className="font-mono text-[10px] text-text-muted mb-0.5">YES</p>
+                    <p className="font-display font-bold text-green text-lg">{formatEth(userStake.yesStake)}</p>
+                    <p className="font-mono text-[10px] text-text-muted">ETH</p>
+                  </div>
+                  <div className="rounded-lg border border-red/20 bg-red-dim p-2.5 text-center">
+                    <p className="font-mono text-[10px] text-text-muted mb-0.5">NO</p>
+                    <p className="font-display font-bold text-red text-lg">{formatEth(userStake.noStake)}</p>
+                    <p className="font-mono text-[10px] text-text-muted">ETH</p>
+                  </div>
+                </div>
+                {userTotalStake > 0 && (
+                  <p className="font-mono text-xs text-text-muted text-center">Total: {userTotalStake.toFixed(4)} ETH</p>
+                )}
+                {userWon && claimable > BigInt(0) && (
+                  <div className="mt-3 rounded-lg border border-green/40 bg-green-dim p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="h-4 w-4 text-green" />
+                      <p className="font-display font-bold text-green text-sm">WINNER!</p>
+                    </div>
+                    <p className="font-mono text-xs text-foreground mb-3">
+                      Claimable: <span className="text-green font-bold">{formatEth(claimable)} ETH</span>
+                    </p>
+                    <Button
+                      onClick={onClaimPayout}
+                      disabled={writePending}
+                      className="w-full h-10 font-display font-bold text-sm bg-green text-black hover:brightness-110 transition-all"
+                      aria-label="Claim payout"
+                    >
+                      {writePending
+                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />Claiming...</>
+                        : "CLAIM PAYOUT"
+                      }
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* BET FORM */}
+            {market.market_type === "private" ? (
+              <CommitRevealWizard marketId={marketId} />
+            ) : (
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-4">Place Bet</h3>
+                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} />
+              </div>
+            )}
+
+            {/* AI PREVIEW */}
+            <div className="rounded-xl border border-border bg-surface overflow-hidden">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between p-4 text-left"
+                onClick={() => setAiCollapsed(!aiCollapsed)}
+                aria-expanded={!aiCollapsed}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase">AI Preview</span>
+                  <span className="rounded-full border border-violet/30 bg-violet-dim px-2 py-0.5 font-mono text-[9px] text-violet uppercase">PHPE v2</span>
+                </div>
+                {aiCollapsed
+                  ? <ChevronRight className="h-4 w-4 text-text-muted" />
+                  : <ChevronDown className="h-4 w-4 text-text-muted" />
+                }
+              </button>
+              {!aiCollapsed && (
+                <div className="border-t border-border p-4">
+                  <PHPEWidget marketId={marketId} />
+                </div>
+              )}
+            </div>
+
+            {/* MARKET INFO */}
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-3">Market Info</h3>
+              <div className="space-y-2">
+                <InfoRow label="Market ID" value={`#${marketId}`} />
+                <InfoRow label="Type" value={market.market_type || "Base"} />
+                <InfoRow label="Status" value={market.status} />
+                <InfoRow label="Close" value={formatDate(closeUnix)} />
+                <InfoRow label="Resolve" value={formatDate(resolveUnix)} />
+                {market.creator && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] text-text-muted">Creator</span>
+                    <a
+                      href={`${EXPLORER_URL}/address/${market.creator}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 font-mono text-[11px] text-cyan hover:underline"
+                    >
+                      {market.creator.slice(0, 6)}…{market.creator.slice(-4)}
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ────────────────────────────────────────────────────────────
+
+function StatPill({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent: "cyan" | "green" | "red" | "violet";
+}) {
+  const accentClasses = {
+    cyan: "text-cyan border-cyan/20 bg-cyan/5",
+    green: "text-green border-green/20 bg-green/5",
+    red: "text-red border-red/20 bg-red/5",
+    violet: "text-violet border-violet/20 bg-violet/5",
+  };
+  return (
+    <div className={cn("rounded-xl border p-3 space-y-1", accentClasses[accent])}>
+      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider opacity-70">
+        {icon}
+        {label}
+      </div>
+      <p className="font-display font-bold text-sm text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[11px] text-text-muted">{label}</span>
+      <span className="font-mono text-[11px] text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function TimelineBar({ closeUnix, resolveUnix }: { closeUnix: number; resolveUnix: number }) {
+  const now = Math.floor(Date.now() / 1000);
+  const total = resolveUnix - closeUnix;
+  const elapsed = now - closeUnix;
+  const pct = total > 0 ? Math.max(0, Math.min(100, (elapsed / total) * 100)) : 0;
+  const isBeforeClose = now < closeUnix;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between font-mono text-[10px] text-text-muted">
+        <span>Close</span>
+        <span>Resolve</span>
+      </div>
+      <div className="relative h-1 w-full rounded-full bg-elevated overflow-hidden">
+        {!isBeforeClose && (
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan to-violet transition-[width] duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        )}
+      </div>
+      <div className="flex justify-between font-mono text-[10px] text-text-muted">
+        <span>{new Date(closeUnix * 1000).toLocaleDateString()}</span>
+        <span>{new Date(resolveUnix * 1000).toLocaleDateString()}</span>
+      </div>
     </div>
   );
 }
@@ -386,12 +567,7 @@ export function MarketDetail({
 
 const BINANCE_SYMBOLS_PHPE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"] as const;
 
-interface PHPEResultProps {
-  probability: number;
-  uncertainty?: number;
-}
-
-function PHPEResult({ probability, uncertainty }: PHPEResultProps) {
+function PHPEResult({ probability, uncertainty }: { probability: number; uncertainty?: number }) {
   const [displayed, setDisplayed] = useState(0);
 
   useEffect(() => {
@@ -401,9 +577,7 @@ function PHPEResult({ probability, uncertainty }: PHPEResultProps) {
     const step = () => {
       current = Math.min(current + 2, target);
       setDisplayed(current);
-      if (current < target) {
-        rafId = requestAnimationFrame(step);
-      }
+      if (current < target) rafId = requestAnimationFrame(step);
     };
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
@@ -414,61 +588,23 @@ function PHPEResult({ probability, uncertainty }: PHPEResultProps) {
   const isPositive = displayed >= 50;
 
   return (
-    <div className="mt-4 space-y-2">
-      {/* Número grande + incertidumbre */}
+    <div className="mt-3 space-y-2">
       <div className="flex items-baseline gap-2">
-        <span
-          className={cn(
-            "font-mono text-3xl font-bold tabular-nums transition-colors",
-            isPositive ? "text-green" : "text-red"
-          )}
-        >
+        <span className={cn("font-mono text-3xl font-bold tabular-nums", isPositive ? "text-green" : "text-red")}>
           {displayed.toFixed(1)}%
         </span>
-        {uncertainty != null && (
-          <span className="font-mono text-sm text-violet">
-            ± {(uncertainty * 100).toFixed(1)}%
-          </span>
-        )}
+        {uncertainty != null && <span className="font-mono text-sm text-violet">± {(uncertainty * 100).toFixed(1)}%</span>}
+        <span className={cn("ml-auto font-display font-bold text-xs rounded-full px-2 py-0.5", isPositive ? "bg-green-dim text-green" : "bg-red-dim text-red")}>
+          {isPositive ? "YES likely" : "NO likely"}
+        </span>
       </div>
-
-      {/* Barra con banda de incertidumbre */}
-      <div
-        className="relative h-3 w-full rounded-full bg-surface overflow-hidden"
-        role="progressbar"
-        aria-valuenow={Math.round(displayed)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        {/* Banda de incertidumbre */}
+      <div className="relative h-2.5 w-full rounded-full bg-surface overflow-hidden" role="progressbar" aria-valuenow={Math.round(displayed)} aria-valuemin={0} aria-valuemax={100}>
         {low != null && high != null && (
-          <div
-            className="absolute top-0 h-full rounded-sm"
-            style={{
-              left: `${low}%`,
-              width: `${high - low}%`,
-              background: "var(--violet-dim, rgba(139,92,246,0.2))",
-              border: "1px solid var(--violet, #8b5cf6)",
-              transition: "all 0.5s ease",
-            }}
-            aria-hidden
-          />
+          <div className="absolute top-0 h-full rounded-sm" style={{ left: `${low}%`, width: `${high - low}%`, background: "var(--violet-dim)", border: "1px solid var(--violet)", transition: "all 0.5s ease" }} aria-hidden />
         )}
-        {/* Barra principal */}
-        <div
-          className="absolute top-0 left-0 h-full rounded-full"
-          style={{
-            width: `${displayed}%`,
-            background: isPositive ? "var(--green, #22c55e)" : "var(--red, #ef4444)",
-            transition: "width 0.05s linear",
-          }}
-          aria-hidden
-        />
+        <div className="absolute top-0 left-0 h-full rounded-full" style={{ width: `${displayed}%`, background: isPositive ? "var(--green)" : "var(--red)", transition: "width 0.05s linear" }} aria-hidden />
       </div>
-
-      <p className="font-mono text-[10px] text-text-muted italic">
-        Model: PHPE v2 • Not stored on-chain
-      </p>
+      <p className="font-mono text-[10px] text-text-muted italic">Model: PHPE v2 · Not stored on-chain</p>
     </div>
   );
 }
@@ -477,125 +613,61 @@ function PHPEWidget({ marketId }: { marketId: number }) {
   const [sentimentText, setSentimentText] = useState("");
   const [binanceSymbol, setBinanceSymbol] = useState("ETHUSDT");
   const [useChainlink, setUseChainlink] = useState(true);
-
   const { mutate: predict, data, isPending, error, reset } = usePHPEPrediction(marketId);
-
-  const handlePredict = () => {
-    reset();
-    predict({
-      sentimentText: sentimentText.trim() || undefined,
-      binanceSymbol,
-      useChainlink,
-    });
-  };
 
   return (
     <div className="space-y-3">
-      {/* Sentiment text */}
       <div>
-        <label className="mb-1 block font-mono text-[11px] text-text-muted uppercase tracking-widest">
-          Sentiment text (optional)
-        </label>
+        <label className="mb-1 block font-mono text-[11px] text-text-muted uppercase tracking-widest">Sentiment context (optional)</label>
         <Textarea
           placeholder="Paste news, tweet, or any text context..."
           value={sentimentText}
           onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
-          className="font-mono text-sm min-h-[72px] bg-elevated border-border resize-none"
+          className="font-mono text-sm min-h-[64px] bg-elevated border-border resize-none"
           disabled={isPending}
         />
       </div>
-
-      {/* Controls row */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Binance symbol */}
-        <Select
-          value={binanceSymbol}
-          onValueChange={setBinanceSymbol}
-          disabled={isPending}
-        >
-          <SelectTrigger className="font-mono text-xs bg-elevated border-border h-8 w-[120px]">
+        <Select value={binanceSymbol} onValueChange={setBinanceSymbol} disabled={isPending}>
+          <SelectTrigger className="font-mono text-xs bg-elevated border-border h-8 w-[110px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {BINANCE_SYMBOLS_PHPE.map((s) => (
-              <SelectItem key={s} value={s} className="font-mono text-xs">
-                {s}
-              </SelectItem>
+              <SelectItem key={s} value={s} className="font-mono text-xs">{s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        {/* Chainlink toggle */}
         <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={useChainlink}
-            onChange={(e) => setUseChainlink(e.target.checked)}
-            disabled={isPending}
-            className="h-3.5 w-3.5 accent-cyan"
-          />
+          <input type="checkbox" checked={useChainlink} onChange={(e) => setUseChainlink(e.target.checked)} disabled={isPending} className="h-3.5 w-3.5 accent-cyan" />
           <span className="font-mono text-xs text-text-muted">Chainlink</span>
         </label>
-
-        {/* Predict button */}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={handlePredict}
+          onClick={() => { reset(); predict({ sentimentText: sentimentText.trim() || undefined, binanceSymbol, useChainlink }); }}
           disabled={isPending}
-          className="ml-auto border-violet text-violet hover:bg-violet-dim font-display font-bold tracking-widest h-8 px-4"
+          className="ml-auto border-violet text-violet hover:bg-violet-dim font-display font-bold tracking-widest h-8 px-3 text-xs"
           aria-label="Get AI prediction"
         >
-          {isPending ? (
-            <>
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-              Analyzing…
-            </>
-          ) : (
-            "GET AI PREDICTION"
-          )}
+          {isPending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" aria-hidden />Analyzing…</> : "ANALYZE"}
         </Button>
       </div>
-
-      {/* Error */}
-      {error && (
-        <p className="font-mono text-xs text-red" role="alert">
-          {error instanceof Error ? error.message : "Prediction failed"}
-        </p>
-      )}
-
-      {/* Resultado animado */}
-      {data && !isPending && (
-        <PHPEResult probability={data.probability} uncertainty={data.uncertainty} />
-      )}
+      {error && <p className="font-mono text-xs text-red" role="alert">{error instanceof Error ? error.message : "Prediction failed"}</p>}
+      {data && !isPending && <PHPEResult probability={data.probability} uncertainty={data.uncertainty} />}
     </div>
   );
 }
 
-// ─── PredictionRow ────────────────────────────────────────────────────────────
-
 function PredictionRow({ p }: { p: PredictionView }) {
-  const unc = p.uncertainty ?? 0;
-  const low = Math.max(0, (p.probability - unc) * 100);
-  const high = Math.min(100, (p.probability + unc) * 100);
-  const mid = p.probability * 100;
   return (
-    <div className="rounded-md border border-border bg-elevated/50 p-3">
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-2xl text-cyan tabular-nums shrink-0">{Math.round(mid)}%</span>
-        <div className="flex-1 min-w-0">
-          <div className="relative h-3 w-full rounded-full bg-surface overflow-hidden">
-            <div className="absolute inset-y-0 left-0 bg-cyan/30 rounded-full" style={{ left: `${low}%`, width: `${high - low}%` }} />
-            <div className="absolute inset-y-0 left-0 w-0.5 h-full bg-cyan rounded-full" style={{ left: `${mid}%` }} />
-          </div>
-          {unc > 0 && (
-            <p className="font-mono text-[11px] text-text-muted mt-1">±{Math.round(unc * 100)}%</p>
-          )}
-        </div>
+    <div className="rounded-lg border border-border bg-elevated/50 p-3 space-y-2">
+      <UncertaintyBar probability={p.probability} uncertainty={p.uncertainty} label="PHPE Probability" />
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[11px] text-text-muted">{formatRelativeTime(p.timestamp)}</p>
+        {(p.model_version || p.model_hash) && <ModelVerifier modelVersion={p.model_version} modelHash={p.model_hash} />}
       </div>
-      {p.model_version && <p className="font-mono text-[11px] text-text-muted mt-1">v{p.model_version}</p>}
-      <p className="font-mono text-[11px] text-text-muted">{formatRelativeTime(p.timestamp)}</p>
     </div>
   );
 }
