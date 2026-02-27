@@ -81,40 +81,47 @@ const CARDS: {
   subtext: (stats: MarketStats | null) => string;
   icon: React.ReactNode;
   accentClass: string;
+  iconBgClass: string;
   numberClass?: string;
   staggerClass: string;
+  highlight?: boolean;
 }[] = [
   {
     key: "total_markets",
     label: "Total Markets",
     subtext: () => "Across all statuses",
-    icon: <IconGridDots />,
+    icon: <IconGridDots className="w-[18px] h-[18px]" />,
     accentClass: "text-foreground",
+    iconBgClass: "bg-elevated",
     staggerClass: "fade-up fade-up-delay-1",
   },
   {
     key: "open_markets",
     label: "Open Markets",
     subtext: () => "Accepting bets",
-    icon: <IconPulsingCircle />,
+    icon: <IconPulsingCircle className="w-[18px] h-[18px]" />,
     accentClass: "text-green",
+    iconBgClass: "bg-green-dim",
     numberClass: "text-green",
     staggerClass: "fade-up fade-up-delay-2",
+    highlight: true,
   },
   {
     key: "resolved_markets",
     label: "Resolved",
     subtext: (stats) => (stats ? `${stats.total_markets ? Math.round((stats.resolved_markets / stats.total_markets) * 100) : 0}% of total` : "Outcome decided"),
-    icon: <IconCheck />,
+    icon: <IconCheck className="w-[18px] h-[18px]" />,
     accentClass: "text-cyan",
+    iconBgClass: "bg-cyan-dim",
     staggerClass: "fade-up fade-up-delay-3",
   },
   {
     key: "total_predictions",
     label: "Total Predictions",
     subtext: () => "AI + user predictions",
-    icon: <IconBrain />,
+    icon: <IconBrain className="w-[18px] h-[18px]" />,
     accentClass: "text-violet",
+    iconBgClass: "bg-violet-dim",
     staggerClass: "fade-up fade-up-delay-4",
   },
 ];
@@ -125,25 +132,28 @@ interface StatCardProps {
   subtext: string;
   icon: React.ReactNode;
   accentClass: string;
+  iconBgClass: string;
   numberClass?: string;
   enabled: boolean;
   staggerClass: string;
+  highlight?: boolean;
 }
 
-function StatCard({ label, value, subtext, icon, accentClass, numberClass, enabled, staggerClass }: StatCardProps) {
+function StatCard({ label, value, subtext, icon, accentClass, iconBgClass, numberClass, enabled, staggerClass, highlight }: StatCardProps) {
   const displayValue = useCountUp(value, enabled);
   return (
     <div
       className={cn(
-        "bg-surface rounded-md",
+        "card-glow rounded-md",
+        highlight && "card-gradient-border",
         staggerClass
       )}
       style={{ padding: "20px 24px" }}
       role="article"
       aria-label={`${label}: ${displayValue}`}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <span className={cn("shrink-0", accentClass)}>{icon}</span>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className={cn("shrink-0 rounded-full p-2", iconBgClass, accentClass)}>{icon}</span>
         <span className="font-body font-medium text-[11px] uppercase tracking-[0.1em] text-text-muted">
           {label}
         </span>
@@ -167,7 +177,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   const enabled = !isLoading && stats != null;
   return (
     <section
-      className="grid grid-cols-2 gap-px lg:grid-cols-4 bg-border rounded-md overflow-hidden"
+      className="grid grid-cols-2 gap-3 lg:grid-cols-4"
       aria-label="Market statistics"
     >
       {CARDS.map((card) => (
@@ -178,9 +188,11 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
           subtext={card.subtext(stats ?? null)}
           icon={card.icon}
           accentClass={card.accentClass}
+          iconBgClass={card.iconBgClass}
           numberClass={card.numberClass}
           enabled={enabled}
           staggerClass={card.staggerClass}
+          highlight={card.highlight}
         />
       ))}
     </section>

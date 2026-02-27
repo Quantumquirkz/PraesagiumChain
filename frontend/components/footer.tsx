@@ -16,15 +16,16 @@ export function Footer() {
   });
 
   return (
-    <footer className="border-t border-border card-bg mt-auto">
+    <footer className="border-t border-border bg-surface mt-auto">
       <div className="container flex flex-wrap items-center justify-between gap-4 px-4 py-4">
         <div className="flex items-center gap-4 font-mono text-sm text-text-secondary">
           <span className="flex items-center gap-2">
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
-                isHealthy ? "bg-green-500" : "bg-red-500"
+                isHealthy ? "bg-green" : "bg-red"
               )}
+              style={isHealthy ? { boxShadow: "0 0 6px var(--green)" } : { boxShadow: "0 0 6px var(--red)" }}
               aria-hidden
             />
             <span>{isHealthy ? "API Online" : "API Offline"}</span>
@@ -33,7 +34,7 @@ export function Footer() {
             href={EXPLORER_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="text-cyan hover:underline"
           >
             Block Explorer
           </Link>

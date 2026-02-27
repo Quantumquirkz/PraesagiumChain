@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Toaster as SonnerToaster, toast as sonnerToast, type ExternalToast } from "sonner";
 
 const TOAST_CLASS =
@@ -45,45 +46,55 @@ function LoadingSpinner() {
   );
 }
 
+const TOAST_STYLES = `
+  @keyframes toast-check-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  [data-sonner-toast][data-type="success"] {
+    border-left-width: 3px !important;
+    border-left-color: var(--green) !important;
+  }
+  [data-sonner-toast][data-type="error"] {
+    border-left-width: 3px !important;
+    border-left-color: var(--red) !important;
+  }
+  [data-sonner-toast][data-type="loading"] {
+    border-left-width: 3px !important;
+    border-left-color: var(--cyan) !important;
+  }
+  [data-sonner-toast] {
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+  }
+  [data-sonner-toast] [data-title] {
+    font-family: var(--font-body), DM Sans, sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: var(--text-primary) !important;
+  }
+  [data-sonner-toast] [data-description] {
+    font-size: 12px !important;
+    color: var(--text-secondary) !important;
+  }
+  [data-sonner-toast] a {
+    color: var(--cyan) !important;
+    font-size: 12px !important;
+  }
+`;
+
 export function CustomToaster() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
     <>
-      <style>{`
-        @keyframes toast-check-draw {
-          to { stroke-dashoffset: 0; }
-        }
-        [data-sonner-toast][data-type="success"] {
-          border-left-width: 3px !important;
-          border-left-color: var(--green) !important;
-        }
-        [data-sonner-toast][data-type="error"] {
-          border-left-width: 3px !important;
-          border-left-color: var(--red) !important;
-        }
-        [data-sonner-toast][data-type="loading"] {
-          border-left-width: 3px !important;
-          border-left-color: var(--cyan) !important;
-        }
-        [data-sonner-toast] {
-          background: var(--bg-elevated) !important;
-          border: 1px solid var(--border) !important;
-          border-radius: 6px !important;
-        }
-        [data-sonner-toast] [data-title] {
-          font-family: var(--font-body), DM Sans, sans-serif !important;
-          font-weight: 600 !important;
-          font-size: 14px !important;
-          color: var(--text-primary) !important;
-        }
-        [data-sonner-toast] [data-description] {
-          font-size: 12px !important;
-          color: var(--text-secondary) !important;
-        }
-        [data-sonner-toast] a {
-          color: var(--cyan) !important;
-          font-size: 12px !important;
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{ __html: TOAST_STYLES }} />
       <SonnerToaster
         position="top-right"
         toastOptions={{

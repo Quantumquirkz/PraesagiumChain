@@ -84,7 +84,7 @@ export function Countdown({ targetUnix, className, pulseWhenUrgent = true }: Cou
 export function CountdownBlocks({
   targetUnix,
   label,
-  urgentClassName = "border-red bg-red-dim text-red",
+  urgentClassName = "border-red/60 bg-red-dim text-red",
 }: {
   targetUnix: number;
   label: string;
@@ -93,27 +93,46 @@ export function CountdownBlocks({
   const value = useCountdown(targetUnix);
   const isUrgent = !value.expired && value.totalSeconds < URGENT_THRESHOLD_SEC;
   const blocks = [
-    { v: value.days, s: "d" },
-    { v: value.hours, s: "h" },
-    { v: value.minutes, s: "m" },
-    { v: value.seconds, s: "s" },
+    { v: value.days, s: "d", full: "days" },
+    { v: value.hours, s: "h", full: "hrs" },
+    { v: value.minutes, s: "m", full: "min" },
+    { v: value.seconds, s: "s", full: "sec" },
   ];
+
+  if (value.expired) {
+    return (
+      <div className="space-y-1.5">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-text-muted">{label}</p>
+        <p className="font-display font-bold text-sm text-text-muted">Expired</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-2">
-      <p className="font-body text-xs font-medium uppercase tracking-wider text-text-muted">{label}</p>
-      <div className="flex flex-wrap gap-2" role="status" aria-live="polite">
-        {blocks.map(({ v, s }) => (
-          <span
+    <div className="space-y-2" role="status" aria-live="polite">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-widest text-text-muted">{label}</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {blocks.map(({ v, s, full }) => (
+          <div
             key={s}
             className={cn(
-              "inline-flex items-center justify-center rounded font-display font-extrabold text-[32px] tabular-nums",
-              "border bg-elevated px-3 py-2",
-              isUrgent && !value.expired ? urgentClassName : "border-border text-foreground"
+              "flex flex-col items-center justify-center rounded-lg border py-2 px-1 transition-colors",
+              isUrgent ? urgentClassName : "border-border bg-elevated"
             )}
-            style={{ padding: "8px 12px", borderRadius: 4 }}
           >
-            {String(v).padStart(2, "0")}{s}
-          </span>
+            <span className={cn(
+              "font-display font-extrabold text-[22px] tabular-nums leading-none",
+              isUrgent ? "" : "text-foreground"
+            )}>
+              {String(v).padStart(2, "0")}
+            </span>
+            <span className={cn(
+              "font-mono text-[9px] uppercase tracking-wider mt-0.5",
+              isUrgent ? "opacity-80" : "text-text-muted"
+            )}>
+              {full}
+            </span>
+          </div>
         ))}
       </div>
     </div>

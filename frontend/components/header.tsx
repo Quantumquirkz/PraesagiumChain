@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 // @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, Loader2 } from "lucide-react";
+import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Star, Radio } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,10 +25,11 @@ const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
   : 11155111;
 
 const NAV_LINKS = [
-  { href: "/", label: "Markets" },
-  { href: "/markets/create", label: "Create" },
-  { href: "/positions", label: "Positions" },
-  { href: "/reputation", label: "Reputation" },
+  { href: "/",               label: "Markets",    icon: LayoutGrid,  accent: "cyan"   },
+  { href: "/markets/create", label: "Create",     icon: PlusCircle,  accent: "violet" },
+  { href: "/positions",      label: "Positions",  icon: Wallet,      accent: "green"  },
+  { href: "/reputation",     label: "Reputation", icon: Star,        accent: "gold"   },
+  { href: "/signals",        label: "Signals",    icon: Radio,       accent: "cyan"   },
 ] as const;
 
 function LogoIcon({ className }: { className?: string }) {
@@ -367,31 +368,56 @@ export function Header() {
 
           {/* Center — Nav (hidden on mobile) */}
           <nav
-            className="hidden md:flex items-center gap-0"
+            className="hidden md:flex items-center gap-0.5 rounded-xl border border-border bg-elevated p-1"
             aria-label="Main navigation"
           >
-            {NAV_LINKS.map(({ href, label }, i) => (
-              <span key={href} className="flex items-center gap-0">
-                {i > 0 && (
-                  <span
-                    className="h-4 w-[1px] shrink-0 mx-1"
-                    style={{ backgroundColor: "var(--border)" }}
-                    aria-hidden
-                  />
-                )}
+            {NAV_LINKS.map(({ href, label, icon: Icon, accent }) => {
+              const isActive = pathname === href;
+              return (
                 <Link
+                  key={href}
                   href={href}
+                  title={label}
                   className={cn(
-                    "font-body font-medium text-[13px] px-2 py-1 rounded transition-colors duration-150",
-                    pathname === href
-                      ? "text-cyan border-b-2 border-cyan"
-                      : "text-text-secondary hover:text-foreground"
+                    "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+                    isActive
+                      ? cn(
+                          "text-foreground",
+                          accent === "cyan"   && "bg-cyan-dim text-cyan",
+                          accent === "violet" && "bg-violet-dim text-violet",
+                          accent === "green"  && "bg-green-dim text-green",
+                          accent === "gold"   && "bg-[rgba(245,166,35,0.12)] text-gold",
+                        )
+                      : "text-text-secondary hover:text-foreground hover:bg-surface"
                   )}
                 >
-                  {label}
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110",
+                      isActive && accent === "cyan"   && "text-cyan",
+                      isActive && accent === "violet" && "text-violet",
+                      isActive && accent === "green"  && "text-green",
+                      isActive && accent === "gold"   && "text-gold",
+                    )}
+                    aria-hidden
+                  />
+                  <span className="hidden lg:inline">{label}</span>
+                  {/* Punto indicador activo en md (cuando el label está oculto) */}
+                  {isActive && (
+                    <span
+                      className={cn(
+                        "absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full lg:hidden",
+                        accent === "cyan"   && "bg-cyan",
+                        accent === "violet" && "bg-violet",
+                        accent === "green"  && "bg-green",
+                        accent === "gold"   && "bg-gold",
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </Link>
-              </span>
-            ))}
+              );
+            })}
           </nav>
 
           {/* Right */}
@@ -432,28 +458,37 @@ export function Header() {
               aria-hidden
             />
             <div
-              className="absolute right-0 top-0 bottom-0 w-64 border-l bg-surface"
+              className="absolute right-0 top-0 bottom-0 w-64 border-l bg-surface drawer-slide-in"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border)",
               }}
             >
               <div className="flex flex-col gap-1 p-4 pt-14">
-                {NAV_LINKS.map(({ href, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "font-body font-medium text-[13px] py-3 px-3 rounded-lg transition-colors",
-                      pathname === href
-                        ? "text-cyan bg-cyan-dim"
-                        : "text-text-secondary hover:text-foreground hover:bg-elevated"
-                    )}
-                  >
-                    {label}
-                  </Link>
-                ))}
+                {NAV_LINKS.map(({ href, label, icon: Icon, accent }) => {
+                  const isActive = pathname === href;
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 font-body font-medium text-sm py-3 px-3 rounded-lg transition-colors",
+                        isActive
+                          ? cn(
+                              accent === "cyan"   && "text-cyan bg-cyan-dim",
+                              accent === "violet" && "text-violet bg-violet-dim",
+                              accent === "green"  && "text-green bg-green-dim",
+                              accent === "gold"   && "text-gold bg-[rgba(245,166,35,0.12)]",
+                            )
+                          : "text-text-secondary hover:text-foreground hover:bg-elevated"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                      {label}
+                    </Link>
+                  );
+                })}
                 <div className="mt-4 pt-4 border-t border-border">
                   <WalletButtonMobile />
                 </div>

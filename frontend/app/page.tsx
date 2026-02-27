@@ -188,7 +188,12 @@ export default function DashboardPage() {
           </div>
         ) : isEmpty ? (
           <NoMarkets
-            className="rounded-xl border border-border bg-surface py-16"
+            className={cn(
+              "rounded-xl py-12",
+              isFirstEmpty
+                ? "border border-border-bright bg-surface card-gradient-border"
+                : "border border-border bg-surface"
+            )}
             description={isFirstEmpty ? undefined : "Try changing filters or search."}
           />
         ) : (

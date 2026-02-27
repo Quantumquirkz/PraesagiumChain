@@ -83,11 +83,10 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
     <Link
       href={`/markets/${market.id}`}
       className={cn(
-        "block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
+        "group block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
         "transition-all duration-200 ease-out",
         "hover:border-border-bright hover:shadow-[0_0_0_1px_var(--border-bright),0_0_24px_var(--cyan-dim),0_8px_32px_rgba(0,0,0,0.4)] hover:-translate-y-0.5"
       )}
-      style={{ padding: 20 }}
       aria-label={`View market: ${market.question}`}
     >
       {/* ROW 1 — Header */}
@@ -107,11 +106,11 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
               <span className="text-gold text-sm leading-none" aria-hidden>★</span>
             )}
             <div
-              className="h-5 w-5 shrink-0 rounded"
+              className="h-6 w-6 shrink-0 rounded"
               style={{ background: addressToGradient(market.creator) }}
               aria-hidden
             />
-            <span className="font-mono text-[10px] text-text-muted truncate">
+            <span className="font-mono text-xs text-text-muted truncate">
               {truncateAddress(market.creator)}
             </span>
           </div>
@@ -119,34 +118,24 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
       </div>
 
       {/* ROW 2 — Question */}
-      <h3
-        className="mt-3 font-body font-medium text-[15px] text-foreground line-clamp-2 leading-snug"
-        style={{ marginTop: 12 }}
-      >
+      <h3 className="mt-3 font-body font-medium text-[15px] text-foreground line-clamp-2 leading-snug">
         <HighlightedText text={market.question} query={searchQuery} />
       </h3>
 
       {/* ROW 3 — Stakes */}
-      <div className="mt-4 flex flex-col gap-2" style={{ marginTop: 16 }}>
+      <div className="mt-4 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <span className="font-mono text-xs text-green shrink-0">
             YES {formatEth(yesWei)}
           </span>
-          <div
-            className="flex-1 h-1.5 min-w-0 rounded-[3px] bg-elevated overflow-hidden flex"
-            style={{ height: 6, borderRadius: 3 }}
-          >
+          <div className="flex-1 h-2.5 min-w-0 rounded-full bg-elevated overflow-hidden flex">
             <div
-              className="h-full shrink-0 bg-green transition-[width] duration-[800ms] ease-out rounded-l-[3px]"
-              style={{
-                width: barMounted ? `${yesPct}%` : "0%",
-              }}
+              className="h-full shrink-0 bg-green transition-[width] duration-[800ms] ease-out rounded-l-full"
+              style={{ width: barMounted ? `${yesPct}%` : "0%" }}
             />
             <div
-              className="h-full shrink-0 bg-red transition-[width] duration-[800ms] ease-out rounded-r-[3px]"
-              style={{
-                width: barMounted ? `${noPct}%` : "0%",
-              }}
+              className="h-full shrink-0 bg-red transition-[width] duration-[800ms] ease-out rounded-r-full"
+              style={{ width: barMounted ? `${noPct}%` : "0%" }}
             />
           </div>
           <span className="font-mono text-xs text-red shrink-0">
@@ -156,7 +145,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
       </div>
 
       {/* ROW 4 — Footer */}
-      <div className="mt-4 flex items-center justify-between gap-3" style={{ marginTop: 16 }}>
+      <div className="mt-4 flex items-center justify-between gap-3">
         <span className="font-mono text-xs text-text-secondary shrink-0" role="status">
           {countdown.expired ? (
             <span className="text-text-muted">Closed</span>
@@ -175,7 +164,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
         ) : (
           <span className="flex-1" />
         )}
-        <span className="shrink-0 font-body text-xs border border-border-bright bg-transparent rounded px-2 py-1 text-foreground hover:bg-cyan-dim hover:border-cyan hover:text-cyan transition-all duration-200 group">
+        <span className="shrink-0 font-mono text-xs text-text-secondary group-hover:text-cyan transition-colors">
           View <span className="inline-block group-hover:translate-x-0.5 transition-transform">→</span>
         </span>
       </div>

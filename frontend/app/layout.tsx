@@ -26,7 +26,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Header />
         <WrongNetworkBanner />
         <LiveTicker />
-        <main className="container flex-1 px-4 py-6">
+        <main className="container flex-1 px-4 py-6 hero-gradient page-enter">
           {/* @ts-expect-error Next.js infiere children como unknown en root layout */}
           {children}
         </main>
