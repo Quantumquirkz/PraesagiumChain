@@ -127,6 +127,10 @@ pub struct CreateMarketRequest {
     /// For private markets.
     pub details_hash: Option<String>,
     pub encrypted_uri: Option<String>,
+    /// On-chain market ID (assigned by the smart contract). When provided,
+    /// the backend record is linked to this on-chain ID so the frontend can
+    /// detect it as "On-chain".
+    pub on_chain_market_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

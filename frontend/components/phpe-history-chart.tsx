@@ -4,12 +4,12 @@
 import {
   AreaChart,
   Area,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  CartesianGrid,
 } from "recharts";
 import type { PredictionView } from "@/types/api";
 import { formatRelativeTime } from "@/lib/utils";
@@ -36,17 +36,59 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
+  const prob  = payload[0]?.value;
+  const isAbove50 = prob >= 50;
+
   return (
     <div
-      className="rounded border border-border-bright bg-elevated font-mono text-[11px] shadow-lg"
-      style={{ padding: "8px 12px" }}
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-bright)",
+        borderRadius: 10,
+        padding: "10px 14px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        minWidth: 140,
+      }}
     >
-      <p className="text-text-muted mb-1">{label}</p>
-      <p style={{ color: "var(--cyan)" }}>
-        Probability: {payload[0]?.value}%
+      <p
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          color: "var(--text-muted)",
+          marginBottom: 6,
+          textTransform: "uppercase",
+          letterSpacing: "0.1em",
+        }}
+      >
+        {label}
       </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <div
+          style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: isAbove50 ? "var(--cyan)" : "var(--red)",
+            boxShadow: `0 0 6px ${isAbove50 ? "var(--cyan)" : "var(--red)"}`,
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 16,
+            fontWeight: 700,
+            color: isAbove50 ? "var(--cyan)" : "var(--red)",
+          }}
+        >
+          {prob}%
+        </span>
+      </div>
       {point?.upper != null && point?.lower != null && (
-        <p style={{ color: "var(--violet)" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--violet)",
+          }}
+        >
           Range: {point.lower}% – {point.upper}%
         </p>
       )}
@@ -74,86 +116,171 @@ export function PHPEHistoryChart({ predictions }: PHPEHistoryChartProps) {
     }));
 
   const hasUncertainty = data.some((d) => d.upper != null);
+  const maxProb = Math.max(...data.map((d) => d.probability));
+  const minProb = Math.min(...data.map((d) => d.probability));
+  const trend   = data[data.length - 1]?.probability > data[0]?.probability;
 
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <h2 className="mb-3 font-display font-bold text-[13px] text-text-muted tracking-widest">
-        PHPE PROBABILITY TREND
-      </h2>
-
-      <ResponsiveContainer width="100%" height={180}>
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="phpe-prob-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--cyan)" stopOpacity={0.18} />
-              <stop offset="100%" stopColor="var(--cyan)" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-
-          {/* @ts-expect-error recharts */}
-          <XAxis
-            dataKey="time"
-            tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-mono)" }}
-            axisLine={{ stroke: "var(--border)" }}
-            tickLine={false}
+    <div
+      className="rounded-2xl border border-border overflow-hidden"
+      style={{ background: "var(--bg-surface)" }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="h-2 w-2 rounded-full bg-cyan"
+            style={{ boxShadow: "0 0 6px var(--cyan)" }}
+            aria-hidden
           />
-          {/* @ts-expect-error recharts */}
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-mono)" }}
-            tickFormatter={(v: number) => `${v}%`}
-            width={34}
-            axisLine={false}
-            tickLine={false}
-          />
-          {/* @ts-expect-error recharts */}
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: "var(--cyan)", strokeWidth: 1, strokeDasharray: "4 2", strokeOpacity: 0.5 }} />
+          <span className="font-mono text-xs text-text-muted uppercase tracking-widest">
+            PHPE Probability Trend
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className="font-mono text-[10px] border rounded px-2 py-0.5"
+            style={{
+              color: trend ? "var(--green)" : "var(--red)",
+              borderColor: trend ? "rgba(0,232,122,0.3)" : "rgba(255,61,90,0.3)",
+              background: trend ? "var(--green-dim)" : "var(--red-dim)",
+            }}
+          >
+            {trend ? "▲" : "▼"} {Math.abs(maxProb - minProb)}pp range
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">{data.length} pts</span>
+        </div>
+      </div>
 
-          {/* Línea de referencia 50% */}
-          {/* @ts-expect-error recharts */}
-          <ReferenceLine y={50} stroke="var(--border-bright)" strokeDasharray="4 4" strokeWidth={1} />
+      {/* Chart */}
+      <div className="px-2 pt-4 pb-2">
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+            <defs>
+              {/* Main area gradient */}
+              <linearGradient id="phpe-prob-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="var(--cyan)"   stopOpacity={0.28} />
+                <stop offset="50%"  stopColor="var(--cyan)"   stopOpacity={0.08} />
+                <stop offset="100%" stopColor="var(--cyan)"   stopOpacity={0.01} />
+              </linearGradient>
+              {/* Uncertainty band gradient */}
+              <linearGradient id="phpe-uncertainty-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="var(--violet)" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="var(--violet)" stopOpacity={0.03} />
+              </linearGradient>
+            </defs>
 
-          {/* Banda de incertidumbre superior */}
-          {hasUncertainty && (
-            <>
-              {/* @ts-expect-error recharts */}
-              <Area
-                type="monotone"
-                dataKey="upper"
-                stroke="none"
-                fill="var(--violet)"
-                fillOpacity={0.08}
-                connectNulls
-                isAnimationActive={false}
-              />
-              {/* Capa inferior que "borra" el relleno por debajo de lower */}
-              {/* @ts-expect-error recharts */}
-              <Area
-                type="monotone"
-                dataKey="lower"
-                stroke="none"
-                fill="var(--bg-base)"
-                fillOpacity={1}
-                connectNulls
-                isAnimationActive={false}
-              />
-            </>
-          )}
+            {/* Subtle grid */}
+            <CartesianGrid
+              strokeDasharray="4 8"
+              stroke="var(--border)"
+              strokeOpacity={0.5}
+              vertical={false}
+            />
 
-          {/* Área de relleno de la línea principal */}
-          {/* @ts-expect-error recharts */}
-          <Area
-            type="monotone"
-            dataKey="probability"
-            stroke="var(--cyan)"
-            strokeWidth={2}
-            fill="url(#phpe-prob-fill)"
-            dot={{ fill: "var(--cyan)", r: 3, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "var(--cyan)", strokeWidth: 0 }}
-            connectNulls
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+            <XAxis
+              dataKey="time"
+              tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-mono)" }}
+              axisLine={{ stroke: "var(--border)" }}
+              tickLine={false}
+              dy={4}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-mono)" }}
+              tickFormatter={(v: number) => `${v}%`}
+              width={36}
+              axisLine={false}
+              tickLine={false}
+              ticks={[0, 25, 50, 75, 100]}
+            />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{
+                stroke: "var(--cyan)",
+                strokeWidth: 1,
+                strokeDasharray: "4 3",
+                strokeOpacity: 0.6,
+              }}
+            />
+
+            {/* 50% reference line */}
+            <ReferenceLine
+              y={50}
+              stroke="var(--border-bright)"
+              strokeDasharray="6 4"
+              strokeWidth={1}
+              label={{
+                value: "50%",
+                position: "insideTopRight",
+                fill: "var(--text-muted)",
+                fontSize: 9,
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+
+            {/* Uncertainty band */}
+            {hasUncertainty && (
+              <>
+                <Area
+                  type="monotone"
+                  dataKey="upper"
+                  stroke="none"
+                  fill="url(#phpe-uncertainty-fill)"
+                  fillOpacity={1}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="lower"
+                  stroke="none"
+                  fill="var(--bg-surface)"
+                  fillOpacity={1}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              </>
+            )}
+
+            {/* Main probability area */}
+            <Area
+              type="monotone"
+              dataKey="probability"
+              stroke="var(--cyan)"
+              strokeWidth={2.5}
+              fill="url(#phpe-prob-fill)"
+              dot={false}
+              activeDot={{
+                r: 5,
+                fill: "var(--cyan)",
+                stroke: "var(--bg-surface)",
+                strokeWidth: 2,
+                style: { filter: "drop-shadow(0 0 6px var(--cyan))" },
+              }}
+              connectNulls
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Footer legend */}
+      <div className="flex items-center gap-5 px-5 py-3 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <div className="h-0.5 w-6 rounded" style={{ background: "var(--cyan)" }} />
+          <span className="font-mono text-[10px] text-text-muted">Probability</span>
+        </div>
+        {hasUncertainty && (
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-6 rounded opacity-30" style={{ background: "var(--violet)" }} />
+            <span className="font-mono text-[10px] text-text-muted">Uncertainty band</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <div className="h-0.5 w-4 rounded" style={{ background: "var(--border-bright)", borderTop: "1px dashed" }} />
+          <span className="font-mono text-[10px] text-text-muted">50% baseline</span>
+        </div>
+      </div>
     </div>
   );
 }

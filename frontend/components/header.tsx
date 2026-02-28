@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Star, Radio } from "lucide-react";
+import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Star, Radio, Info, ShieldCheck } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -30,6 +29,8 @@ const NAV_LINKS = [
   { href: "/positions",      label: "Positions",  icon: Wallet,      accent: "green"  },
   { href: "/reputation",     label: "Reputation", icon: Star,        accent: "gold"   },
   { href: "/signals",        label: "Signals",    icon: Radio,       accent: "cyan"   },
+  { href: "/markets/private", label: "Private",    icon: ShieldCheck, accent: "violet" },
+  { href: "/about",          label: "About",      icon: Info,        accent: "violet" },
 ] as const;
 
 function LogoIcon({ className }: { className?: string }) {

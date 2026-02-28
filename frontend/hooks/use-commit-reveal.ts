@@ -1,53 +1,57 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useCallback } from "react";
-import { keccak256, encodePacked, parseEther } from "viem";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import {
+  keccak256,
+  encodeAbiParameters,
+  parseAbiParameters,
+  parseEther,
+} from "viem";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from "wagmi";
 import { toast } from "sonner";
 import { EXPLORER_URL } from "@/lib/constants";
+import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
-// ABI mínimo para PrivatePredictionMarket
-const PRIVATE_MARKET_ABI = [
-  {
-    name: "commitBet",
-    type: "function",
-    stateMutability: "payable",
-    inputs: [
-      { name: "marketId", type: "uint256" },
-      { name: "commitment", type: "bytes32" },
-    ],
-    outputs: [],
-  },
-  {
-    name: "revealBet",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "marketId", type: "uint256" },
-      { name: "outcome", type: "uint8" },
-      { name: "amount", type: "uint256" },
-      { name: "nonce", type: "bytes32" },
-    ],
-    outputs: [],
-  },
-] as const;
-
-const PRIVATE_MARKET_ADDRESS = (process.env
-  .NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS ??
-  process.env.NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS ??
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+const _privateMarketAddress = process.env.NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS;
+if (!_privateMarketAddress) {
+  throw new Error(
+    "NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS is not defined. Add it to .env.local."
+  );
+}
+const PRIVATE_MARKET_ADDRESS = _privateMarketAddress as `0x${string}`;
 
 const STORAGE_KEY = (marketId: number) => `praesagium_nonce_${marketId}`;
 
-export type CommitRevealStep = "idle" | "commit" | "committing" | "committed" | "reveal" | "revealing" | "done";
+export type CommitRevealStep =
+  | "idle"
+  | "commit"
+  | "committing"
+  | "committed"
+  | "reveal"
+  | "revealing"
+  | "done"
+  | "claiming"
+  | "claimed";
 
 export interface CommitRevealState {
   step: CommitRevealStep;
   commitment: `0x${string}` | null;
   nonce: `0x${string}` | null;
+  index: number | null;
   commitTxHash: `0x${string}` | null;
   revealTxHash: `0x${string}` | null;
+  claimTxHash: `0x${string}` | null;
+}
+
+interface StoredCommit {
+  nonce: string;
+  outcome: number;
+  amount: string;
+  index: number;
 }
 
 function generateNonce(): `0x${string}` {
@@ -58,13 +62,24 @@ function generateNonce(): `0x${string}` {
     .join("")}` as `0x${string}`;
 }
 
+/**
+ * Computes the commitment hash matching Solidity's:
+ *   keccak256(abi.encode(outcome, amount, nonce))
+ *
+ * Uses encodeAbiParameters (ABI encoding with 32-byte padding per slot),
+ * NOT encodePacked — the two produce different bytes for uint8/uint256.
+ */
 function computeCommitment(
   outcome: number,
   amountWei: bigint,
   nonce: `0x${string}`
 ): `0x${string}` {
   return keccak256(
-    encodePacked(["uint8", "uint256", "bytes32"], [outcome, amountWei, nonce as `0x${string}`])
+    encodeAbiParameters(parseAbiParameters("uint8, uint256, bytes32"), [
+      outcome,
+      amountWei,
+      nonce as `0x${string}`,
+    ])
   );
 }
 
@@ -73,8 +88,10 @@ export function useCommitReveal(marketId: number) {
     step: "idle",
     commitment: null,
     nonce: null,
+    index: null,
     commitTxHash: null,
     revealTxHash: null,
+    claimTxHash: null,
   });
 
   const { writeContractAsync } = useWriteContract();
@@ -87,29 +104,34 @@ export function useCommitReveal(marketId: number) {
     hash: state.revealTxHash ?? undefined,
   });
 
+  const { isLoading: isConfirmingClaim } = useWaitForTransactionReceipt({
+    hash: state.claimTxHash ?? undefined,
+  });
+
   const startCommit = useCallback(() => {
     setState((s) => ({ ...s, step: "commit" }));
   }, []);
 
   const executeCommit = useCallback(
-    async (outcome: number, amountEth: string) => {
+    async (outcome: number, amountEth: string, currentCommitCount: number) => {
       try {
         const nonce = generateNonce();
         const amountWei = parseEther(amountEth);
         const commitment = computeCommitment(outcome, amountWei, nonce);
 
-        setState((s) => ({ ...s, step: "committing", nonce, commitment }));
+        // The index this commitment will occupy = current count (0-based)
+        const index = currentCommitCount;
 
-        // Guardar nonce en localStorage para el reveal posterior
-        localStorage.setItem(
-          STORAGE_KEY(marketId),
-          JSON.stringify({ nonce, outcome, amount: amountEth })
-        );
+        setState((s) => ({ ...s, step: "committing", nonce, commitment, index }));
 
-        toast.info("Confirma el commit en tu wallet");
+        // Persist to localStorage so the reveal can recover after page reload
+        const stored: StoredCommit = { nonce, outcome, amount: amountEth, index };
+        localStorage.setItem(STORAGE_KEY(marketId), JSON.stringify(stored));
+
+        toast.info("Confirm the commit in your wallet");
         const hash = await writeContractAsync({
           address: PRIVATE_MARKET_ADDRESS,
-          abi: PRIVATE_MARKET_ABI,
+          abi: privatePredictionMarketAbi,
           functionName: "commitBet",
           args: [BigInt(marketId), commitment],
           value: amountWei,
@@ -121,17 +143,18 @@ export function useCommitReveal(marketId: number) {
           commitTxHash: hash as `0x${string}`,
         }));
 
-        toast.success("Commit enviado", {
+        toast.success("Commit submitted", {
           action: hash
             ? {
-                label: "Ver en Etherscan",
-                onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
+                label: "View on Etherscan",
+                onClick: () =>
+                  window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
               }
             : undefined,
         });
       } catch (e) {
         setState((s) => ({ ...s, step: "commit" }));
-        toast.error(e instanceof Error ? e.message : "Error al hacer commit");
+        toast.error(e instanceof Error ? e.message : "Error submitting commit");
       }
     },
     [marketId, writeContractAsync]
@@ -148,38 +171,46 @@ export function useCommitReveal(marketId: number) {
         let nonce: `0x${string}`;
         let outcome: number;
         let amount: string;
+        let index: number;
 
         if (stored) {
-          const parsed = JSON.parse(stored) as { nonce: string; outcome: number; amount: string };
+          const parsed = JSON.parse(stored) as StoredCommit;
           nonce = (manualNonce ?? parsed.nonce) as `0x${string}`;
           outcome = parsed.outcome;
           amount = parsed.amount;
+          index = parsed.index ?? 0;
         } else if (manualNonce) {
           nonce = manualNonce as `0x${string}`;
           outcome = 1;
           amount = "0";
+          index = 0;
         } else {
-          toast.error("No se encontró el nonce guardado. Ingresa el nonce manualmente.");
+          toast.error(
+            "Saved nonce not found. Enter the nonce manually."
+          );
           return;
         }
 
         const amountWei = parseEther(amount);
 
-        // Verificar commitment localmente antes de enviar
+        // Verify commitment locally before sending
         const expectedCommitment = computeCommitment(outcome, amountWei, nonce);
         if (state.commitment && expectedCommitment !== state.commitment) {
-          toast.error("El nonce no coincide con el commitment original. Verifica el valor.");
+          toast.error(
+            "Nonce does not match the original commitment. Check the value."
+          );
           return;
         }
 
         setState((s) => ({ ...s, step: "revealing" }));
 
-        toast.info("Confirma el reveal en tu wallet");
+        toast.info("Confirm the reveal in your wallet");
         const hash = await writeContractAsync({
           address: PRIVATE_MARKET_ADDRESS,
-          abi: PRIVATE_MARKET_ABI,
+          abi: privatePredictionMarketAbi,
           functionName: "revealBet",
-          args: [BigInt(marketId), outcome, amountWei, nonce],
+          // Contract signature: revealBet(marketId, index, outcome, amount, nonce)
+          args: [BigInt(marketId), BigInt(index), outcome, amountWei, nonce],
         });
 
         setState((s) => ({
@@ -190,21 +221,58 @@ export function useCommitReveal(marketId: number) {
 
         localStorage.removeItem(STORAGE_KEY(marketId));
 
-        toast.success("Reveal enviado", {
+        toast.success("Reveal submitted", {
           action: hash
             ? {
-                label: "Ver en Etherscan",
-                onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
+                label: "View on Etherscan",
+                onClick: () =>
+                  window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
               }
             : undefined,
         });
       } catch (e) {
         setState((s) => ({ ...s, step: "reveal" }));
-        toast.error(e instanceof Error ? e.message : "Error al hacer reveal");
+        toast.error(e instanceof Error ? e.message : "Error submitting reveal");
       }
     },
     [marketId, state.commitment, writeContractAsync]
   );
+
+  const startClaim = useCallback(() => {
+    setState((s) => ({ ...s, step: "claiming" }));
+  }, []);
+
+  const executeClaim = useCallback(async () => {
+    try {
+      setState((s) => ({ ...s, step: "claiming" }));
+      toast.info("Confirm the claim in your wallet");
+      const hash = await writeContractAsync({
+        address: PRIVATE_MARKET_ADDRESS,
+        abi: privatePredictionMarketAbi,
+        functionName: "claimPayout",
+        args: [BigInt(marketId)],
+      });
+
+      setState((s) => ({
+        ...s,
+        step: "claimed",
+        claimTxHash: hash as `0x${string}`,
+      }));
+
+      toast.success("Payout claimed!", {
+        action: hash
+          ? {
+              label: "View on Etherscan",
+              onClick: () =>
+                window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
+            }
+          : undefined,
+      });
+    } catch (e) {
+      setState((s) => ({ ...s, step: "done" }));
+      toast.error(e instanceof Error ? e.message : "Error claiming payout");
+    }
+  }, [marketId, writeContractAsync]);
 
   const hasSavedNonce = useCallback(() => {
     return !!localStorage.getItem(STORAGE_KEY(marketId));
@@ -214,10 +282,14 @@ export function useCommitReveal(marketId: number) {
     state,
     isConfirmingCommit,
     isConfirmingReveal,
+    isConfirmingClaim,
     startCommit,
     executeCommit,
     startReveal,
     executeReveal,
+    startClaim,
+    executeClaim,
     hasSavedNonce,
+    contractAddress: PRIVATE_MARKET_ADDRESS,
   };
 }

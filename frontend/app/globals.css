@@ -207,3 +207,167 @@ body {
 .drawer-slide-in {
   animation: slide-in-right 0.25s ease-out both;
 }
+
+/* Gradient text utility */
+.text-gradient-cyan-violet {
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hex float animation for hero background elements */
+@keyframes hex-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.04; }
+  50%       { transform: translateY(-12px) rotate(3deg); opacity: 0.1; }
+}
+.hex-float   { animation: hex-float 7s ease-in-out infinite; }
+.hex-float-2 { animation: hex-float 9s ease-in-out infinite 1.5s; }
+.hex-float-3 { animation: hex-float 11s ease-in-out infinite 3s; }
+
+/* Typewriter cursor blink */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.cursor-blink { animation: cursor-blink 1s step-end infinite; }
+
+/* Hero grid pulse */
+@keyframes grid-pulse {
+  0%, 100% { opacity: 0.03; }
+  50%       { opacity: 0.07; }
+}
+.hero-grid-bg {
+  background-image:
+    linear-gradient(var(--cyan) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: grid-pulse 6s ease-in-out infinite;
+}
+
+/* Orb glow pulse */
+@keyframes orb-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.5; }
+  50%       { transform: translate(-50%, -50%) scale(1.15); opacity: 0.8; }
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.hero-orb-cyan {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,212,255,0.12) 0%, transparent 70%);
+  top: 40%; left: 50%;
+  animation: orb-pulse 8s ease-in-out infinite;
+}
+.hero-orb-violet {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%);
+  top: 55%; left: 30%;
+  animation: orb-pulse 10s ease-in-out infinite 2s;
+}
+.hero-orb-green {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(0,232,122,0.07) 0%, transparent 70%);
+  top: 30%; left: 70%;
+  animation: orb-pulse 12s ease-in-out infinite 4s;
+}
+
+/* Particle float */
+@keyframes particle-drift {
+  0%   { transform: translateY(0px) translateX(0px);   opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-120px) translateX(20px); opacity: 0; }
+}
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: var(--cyan);
+  animation: particle-drift linear infinite;
+}
+
+/* Hero title — letra individual */
+@keyframes letter-drop {
+  0%   { opacity: 0; transform: translateY(-40px) rotateX(90deg); filter: blur(8px); }
+  60%  { opacity: 1; transform: translateY(4px)   rotateX(-8deg);  filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0)     rotateX(0deg);   filter: blur(0); }
+}
+@keyframes letter-rise {
+  0%   { opacity: 0; transform: translateY(40px) rotateX(-90deg); filter: blur(8px); }
+  60%  { opacity: 1; transform: translateY(-4px) rotateX(8deg);   filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0)    rotateX(0deg);   filter: blur(0); }
+}
+@keyframes letter-glow-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(0,212,255,0.0); }
+  50%       { text-shadow: 0 0 20px rgba(0,212,255,0.5), 0 0 40px rgba(139,92,246,0.3); }
+}
+@keyframes shimmer-text {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.hero-letter {
+  display: inline-block;
+  opacity: 0;
+  animation: letter-drop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center top;
+  perspective: 600px;
+}
+.hero-letter-rise {
+  display: inline-block;
+  opacity: 0;
+  animation: letter-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center bottom;
+  perspective: 600px;
+}
+.hero-letter-space { display: inline-block; width: 0.3em; }
+
+/* Línea 3 shimmer continuo — aplicado al wrapper, no a las letras */
+.hero-line3-shimmer {
+  display: block;
+}
+@keyframes letter-shimmer {
+  0%   { color: var(--text-primary); text-shadow: none; }
+  50%  { color: var(--cyan); text-shadow: 0 0 16px rgba(0,212,255,0.6), 0 0 32px rgba(139,92,246,0.3); }
+  100% { color: var(--text-primary); text-shadow: none; }
+}
+.hero-letter-rise.shimmer-loop {
+  animation:
+    letter-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both,
+    letter-shimmer 3s ease-in-out infinite;
+}
+
+/* Eyebrow + subtitle fades (se mantienen) */
+.hero-word   { display: block; }
+.hero-word-1 { }
+.hero-word-2 { }
+.hero-word-3 { }
+
+/* Hero subtitle fade */
+@keyframes hero-sub-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-sub { animation: hero-sub-fade 0.7s ease 0.6s both; }
+
+/* Hero CTA fade */
+.hero-cta { animation: hero-sub-fade 0.7s ease 0.8s both; }
+.hero-stats { animation: hero-sub-fade 0.7s ease 1s both; }
+
+/* Scan line sweep */
+@keyframes scan-sweep {
+  0%   { top: -10%; opacity: 0.6; }
+  100% { top: 110%;  opacity: 0; }
+}
+.hero-scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+  animation: scan-sweep 6s linear infinite;
+  pointer-events: none;
+}

@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
@@ -20,6 +19,7 @@ import {
   subscribeToMarketResolution,
   requestNotificationPermission,
 } from "@/lib/notifications";
+import { BET_TOKENS, type BetToken } from "@/app/markets/create/page";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,18 @@ export interface BetFormProps {
   marketId: number;
   marketStatus: string; // "Open" | "Locked" | "Resolved" | "Cancelled"
   question?: string;
+  /** JSON string from market.metadata — used to extract betToken */
+  metadata?: string;
+}
+
+function parseBetToken(metadata?: string): BetToken {
+  try {
+    const m = metadata ? JSON.parse(metadata) : {};
+    const sym: string = (m.betToken ?? "ETH").toUpperCase();
+    return BET_TOKENS.find((t) => t.symbol === sym) ?? BET_TOKENS[0]!;
+  } catch {
+    return BET_TOKENS[0]!;
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -121,11 +133,13 @@ function BetButton({ state, disabled }: BetButtonProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
+export function BetForm({ marketId, marketStatus, question, metadata }: BetFormProps) {
   const { address, isConnected } = useAccount();
   const { isWrongNetwork, switchToRequired, isSwitching } = useNetworkGuard();
   const { data: balance } = useBalance({ address });
   const queryClient = useQueryClient();
+
+  const betToken = parseBetToken(metadata);
 
   const { placeBet, hash, isPending, isConfirming, isSuccess, error, reset } =
     usePlaceBet();
@@ -289,6 +303,20 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+
+      {/* Token badge */}
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Bet with</span>
+        <span
+          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-display font-bold text-xs"
+          style={{ borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` }}
+        >
+          <span className="text-sm leading-none">{betToken.icon}</span>
+          {betToken.symbol}
+          <span className="font-mono font-normal text-[9px] opacity-70">· SepoliaETH</span>
+        </span>
+      </div>
+
       {/* Selector Yes / No */}
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -331,10 +359,19 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
       <div>
         <div className={cn(
           "flex rounded-lg border bg-elevated overflow-hidden transition-all",
-          "focus-within:border-cyan/60 focus-within:shadow-[0_0_0_2px_rgba(0,212,255,0.1)]",
-          fieldError ? "border-red/60" : "border-border"
-        )}>
-          <span className="flex items-center pl-3 font-mono text-lg text-cyan select-none" aria-hidden>Ξ</span>
+          "focus-within:shadow-[0_0_0_2px_rgba(0,212,255,0.1)]",
+          fieldError ? "border-red/60" : "border-border",
+          !fieldError && "focus-within:border-[var(--token-color,#00D4FF)]"
+        )}
+        style={{ "--token-color": betToken.color } as React.CSSProperties}
+        >
+          <span
+            className="flex items-center pl-3 font-mono text-lg select-none shrink-0"
+            style={{ color: betToken.color }}
+            aria-hidden
+          >
+            {betToken.icon}
+          </span>
           <Input
             type="text"
             inputMode="decimal"
@@ -346,9 +383,12 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
               if (btnState === "error") { reset(); setBtnState("idle"); }
             }}
             disabled={isDisabled}
-            aria-label="Bet amount in ETH"
+            aria-label={`Bet amount in ${betToken.symbol}`}
             className="border-0 bg-transparent font-mono text-xl focus-visible:ring-0 disabled:opacity-40"
           />
+          <span className="flex items-center pr-3 font-mono text-xs text-text-muted shrink-0 select-none">
+            {betToken.symbol}
+          </span>
         </div>
 
         {/* Quick-amount pills */}
@@ -362,11 +402,12 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
               className={cn(
                 "rounded-md border px-2.5 py-1 font-mono text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed",
                 amount === v
-                  ? "border-cyan/60 bg-cyan-dim text-cyan"
-                  : "border-border bg-elevated text-text-secondary hover:text-foreground hover:border-cyan/40"
+                  ? "border-current font-semibold"
+                  : "border-border bg-elevated text-text-secondary hover:text-foreground"
               )}
+              style={amount === v ? { borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` } : {}}
             >
-              {v}
+              {v} <span className="opacity-60">{betToken.symbol}</span>
             </button>
           ))}
           {balance && (
@@ -378,7 +419,8 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
                 setFieldError(null);
               }}
               disabled={isDisabled}
-              className="rounded-md border border-cyan/30 bg-cyan-dim px-2.5 py-1 font-mono text-xs text-cyan hover:border-cyan/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-md border px-2.5 py-1 font-mono text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ borderColor: `${betToken.color}60`, color: betToken.color, background: `${betToken.color}14` }}
             >
               MAX
             </button>
@@ -389,6 +431,7 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
         {balance && (
           <p className="mt-1.5 font-mono text-[11px] text-text-muted">
             Balance: <span className="text-foreground">{formatEth(balance.value)}</span>
+            <span className="ml-1 opacity-60">SepoliaETH</span>
           </p>
         )}
 
@@ -398,9 +441,11 @@ export function BetForm({ marketId, marketStatus, question }: BetFormProps) {
             "mt-2 rounded-lg border p-2.5 flex items-center justify-between",
             selectedOutcome === 1 ? "border-green/20 bg-green-dim" : "border-red/20 bg-red-dim"
           )}>
-            <span className="font-mono text-[11px] text-text-muted">Est. payout if {selectedOutcome === 1 ? "YES" : "NO"}</span>
+            <span className="font-mono text-[11px] text-text-muted">
+              Est. payout if {selectedOutcome === 1 ? "YES" : "NO"}
+            </span>
             <span className={cn("font-display font-bold text-sm", selectedOutcome === 1 ? "text-green" : "text-red")}>
-              ~{(amountNum * 1.9).toFixed(4)} ETH
+              ~{(amountNum * 1.9).toFixed(4)} <span className="text-xs font-mono">{betToken.symbol}</span>
             </span>
           </div>
         )}

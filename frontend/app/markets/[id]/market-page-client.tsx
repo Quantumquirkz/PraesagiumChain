@@ -60,7 +60,7 @@ export function MarketPageClient() {
     refetchIntervalInBackground: false,
   });
 
-  const { data: marketOnChainRaw } = useMarketOnChain(isInvalidId ? 0 : id);
+  const { data: marketOnChainRaw, isLoading: onChainLoading, isError: onChainError } = useMarketOnChain(isInvalidId ? 0 : id);
   const { data: userStakeRaw } = useUserStakeOnChain(isInvalidId ? 0 : id, address);
 
   const marketOnChain = parseMarketResult(marketOnChainRaw as readonly unknown[] | undefined);
@@ -121,6 +121,8 @@ export function MarketPageClient() {
         market={market}
         predictions={predictions ?? []}
         marketOnChain={marketOnChain}
+        onChainLoading={onChainLoading}
+        onChainError={onChainError}
         userStake={userStake}
       />
     </div>

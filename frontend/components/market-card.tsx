@@ -1,12 +1,24 @@
 "use client";
 
 import Link from "next/link";
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect, useState } from "react";
 import type { MarketView } from "@/types/api";
 import { useCountdown, formatCountdownDisplay } from "@/components/countdown";
 import { truncateAddress, formatEth } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { BET_TOKENS } from "@/app/markets/create/page";
+
+function getTokenFromMetadata(metadata?: string): { icon: string; symbol: string; color: string } | null {
+  try {
+    const m = metadata ? JSON.parse(metadata) : {};
+    const sym: string = (m.betToken ?? "").toUpperCase();
+    if (!sym) return null;
+    const token = BET_TOKENS.find((t) => t.symbol === sym);
+    return token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   Open: "badge-open",
@@ -78,6 +90,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
 
   const statusClass = STATUS_BADGE_CLASS[market.status] ?? "badge-cancelled";
   const showStar = creatorReputation != null && creatorReputation > 70;
+  const betToken = getTokenFromMetadata(market.metadata);
 
   return (
     <Link
@@ -91,15 +104,27 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
     >
       {/* ROW 1 — Header */}
       <div className="flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "rounded-md px-2 py-0.5 font-mono text-[11px] uppercase",
-            statusClass
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className={cn(
+              "rounded-md px-2 py-0.5 font-mono text-[11px] uppercase shrink-0",
+              statusClass
+            )}
+            aria-label={`Status: ${market.status}`}
+          >
+            {market.status}
+          </span>
+          {betToken && (
+            <span
+              className="flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold shrink-0"
+              style={{ borderColor: `${betToken.color}60`, color: betToken.color, background: `${betToken.color}14` }}
+              title={`Bet with ${betToken.symbol}`}
+            >
+              <span className="text-xs leading-none">{betToken.icon}</span>
+              {betToken.symbol}
+            </span>
           )}
-          aria-label={`Status: ${market.status}`}
-        >
-          {market.status}
-        </span>
+        </div>
         {market.creator && (
           <div className="flex items-center gap-1.5 shrink-0 min-w-0">
             {showStar && (
@@ -163,6 +188,18 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
           </span>
         ) : (
           <span className="flex-1" />
+        )}
+        {/* On-chain indicator */}
+        {market.creator ? (
+          <span className="flex items-center gap-1 font-mono text-[10px] text-green shrink-0" title="Deployed on-chain">
+            <span className="h-1.5 w-1.5 rounded-full bg-green" />
+            On-chain
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 font-mono text-[10px] text-amber-400 shrink-0" title="Backend only — not deployed on-chain">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            Off-chain
+          </span>
         )}
         <span className="shrink-0 font-mono text-xs text-text-secondary group-hover:text-cyan transition-colors">
           View <span className="inline-block group-hover:translate-x-0.5 transition-transform">→</span>

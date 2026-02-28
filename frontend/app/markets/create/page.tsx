@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,9 +9,17 @@ import { z } from "zod";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseEventLogs } from "viem";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock } from "lucide-react";
 import { createMarketBackend } from "@/lib/api";
 import { predictionMarketContract, EXPLORER_URL } from "@/lib/constants";
+import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
+
+const PRIVATE_MARKET_ADDRESS = (process.env
+  .NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS ??
+  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+const IS_PRIVATE_DEPLOYED =
+  PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000";
 import { formatEth } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,9 +30,9 @@ import {
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 
 const MARKET_TYPES = [
-  { value: "base", label: "Base", description: "Standard binary outcome market" },
-  { value: "conditional", label: "Conditional", description: "Depends on another market outcome" },
-  { value: "private", label: "Private", description: "Restricted to invited participants" },
+  { value: "base",        label: "Base",        description: "Standard binary outcome market"                                    },
+  { value: "conditional", label: "Conditional", description: "Depends on another market outcome"                                 },
+  { value: "private",     label: "Private",     description: "Positions hidden until reveal — powered by commit-reveal cryptography" },
 ] as const;
 
 const QUESTION_TEMPLATES = [
@@ -33,6 +40,25 @@ const QUESTION_TEMPLATES = [
   { label: "Ξ ETH > $X", value: "Will ETH exceed $4,000 before March 2026?" },
   { label: "📊 Custom", value: "" },
 ] as const;
+
+export interface BetToken {
+  symbol: string;
+  label: string;
+  icon: string;
+  color: string;
+  coingeckoId?: string;
+}
+
+export const BET_TOKENS: BetToken[] = [
+  { symbol: "ETH",   label: "Ethereum",  icon: "Ξ",  color: "#627EEA" },
+  { symbol: "BTC",   label: "Bitcoin",   icon: "₿",  color: "#F7931A" },
+  { symbol: "LINK",  label: "Chainlink", icon: "⬡",  color: "#2A5ADA" },
+  { symbol: "SOL",   label: "Solana",    icon: "◎",  color: "#9945FF" },
+  { symbol: "MATIC", label: "Polygon",   icon: "⬟",  color: "#8247E5" },
+  { symbol: "ARB",   label: "Arbitrum",  icon: "⬡",  color: "#12AAFF" },
+  { symbol: "OP",    label: "Optimism",  icon: "⬡",  color: "#FF0420" },
+  { symbol: "AVAX",  label: "Avalanche", icon: "▲",  color: "#E84142" },
+];
 
 const createMarketSchema = z
   .object({
@@ -69,6 +95,7 @@ export default function CreateMarketPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [deploySuccess, setDeploySuccess] = useState(false);
+  const [betToken, setBetToken] = useState<BetToken>(BET_TOKENS[0]!);
   const [resolutionParams, setResolutionParams] = useState<ResolutionSourceParams>({
     type: "price_above",
     symbol: "BTCUSDT",
@@ -97,18 +124,22 @@ export default function CreateMarketPage() {
 
   const closeTime = closeTimeStr ? new Date(closeTimeStr) : null;
   const resolveTime = resolveTimeStr ? new Date(resolveTimeStr) : null;
-  const now = Date.now();
+  const [now, setNow] = useState<number>(0);
   const [gasEstimate, setGasEstimate] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNow(Date.now());
+  }, [closeTimeStr, resolveTimeStr]);
 
   useEffect(() => {
     if (!question || !closeTimeStr || !resolveTimeStr) {
       setGasEstimate(null);
       return;
     }
-    const now = Date.now();
+    const currentTime = Date.now();
     const close = new Date(closeTimeStr);
     const resolve = new Date(resolveTimeStr);
-    if (close.getTime() <= now || resolve.getTime() <= close.getTime()) {
+    if (close.getTime() <= currentTime || resolve.getTime() <= close.getTime()) {
       setGasEstimate(null);
       return;
     }
@@ -170,41 +201,80 @@ export default function CreateMarketPage() {
       toast.error("Wrong network. Switch to Sepolia.");
       return;
     }
+    if (data.marketType === "private" && !IS_PRIVATE_DEPLOYED) {
+      toast.error("PrivatePredictionMarket contract is not deployed yet.");
+      return;
+    }
+
     const closeUnix = Math.floor(new Date(data.closeTime).getTime() / 1000);
     const resolveUnix = Math.floor(new Date(data.resolveTime).getTime() / 1000);
+
+    const isPrivate = data.marketType === "private";
+
     try {
       toast.info("Confirm in wallet...");
-      const hash = await writeContractAsync({
-        ...predictionMarketContract,
-        functionName: "createMarket",
-        args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
-      });
+
+      const hash = isPrivate
+        ? await writeContractAsync({
+            address: PRIVATE_MARKET_ADDRESS,
+            abi: privatePredictionMarketAbi,
+            functionName: "createMarket",
+            args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
+          })
+        : await writeContractAsync({
+            ...predictionMarketContract,
+            functionName: "createMarket",
+            args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
+          });
+
       if (!publicClient || !hash) {
         toast.success("Market created!");
         setDeploySuccess(true);
-        setTimeout(() => router.push("/"), 1500);
+        setTimeout(() => router.push(isPrivate ? "/markets/private" : "/"), 1500);
         return;
       }
+
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      const logs = parseEventLogs({ abi: predictionMarketContract.abi, logs: receipt.logs });
-      const created = logs.find((e) => e.eventName === "MarketCreated");
-      const newId = created?.args?.marketId != null ? Number(created.args.marketId) : null;
-      toast.success("Market created!", {
+
+      let newId: number | null = null;
+      if (!isPrivate) {
+        const logs = parseEventLogs({ abi: predictionMarketContract.abi, logs: receipt.logs });
+        const created = logs.find((e) => e.eventName === "MarketCreated");
+        newId = created?.args?.marketId != null ? Number(created.args.marketId) : null;
+      }
+
+      toast.success(isPrivate ? "Private market created!" : "Market created!", {
         action: { label: "View on Etherscan", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") },
       });
       setDeploySuccess(true);
-      try {
-        await createMarketBackend({
-          question: data.question,
-          close_time: closeUnix,
-          resolve_time: resolveUnix,
-          market_type: data.marketType,
-          metadata: JSON.stringify({ resolution: resolutionParams }),
-        });
-      } catch {
-        // non-blocking
+
+      if (!isPrivate) {
+        try {
+          await createMarketBackend({
+            question: data.question,
+            close_time: closeUnix,
+            resolve_time: resolveUnix,
+            market_type: data.marketType,
+            metadata: JSON.stringify({
+              resolution: resolutionParams,
+              betToken: betToken.symbol,
+              symbol: resolutionParams.symbol ?? betToken.symbol,
+            }),
+          });
+        } catch {
+          // non-blocking
+        }
       }
-      setTimeout(() => (newId != null ? router.push(`/markets/${newId}`) : router.push("/")), 1500);
+
+      setTimeout(
+        () =>
+          isPrivate
+            ? router.push("/markets/private")
+            : newId != null
+            ? router.push(`/markets/${newId}`)
+            : router.push("/"),
+        1500
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Transaction failed");
     }
@@ -356,6 +426,39 @@ export default function CreateMarketPage() {
           {form.formState.errors.question && (
             <p className="text-sm text-red">{form.formState.errors.question.message}</p>
           )}
+
+          {/* Bet token selector */}
+          <div className="pt-2">
+            <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase mb-3">
+              BET TOKEN — participants will stake with
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {BET_TOKENS.map((t) => {
+                const isSelected = betToken.symbol === t.symbol;
+                return (
+                  <button
+                    key={t.symbol}
+                    type="button"
+                    onClick={() => setBetToken(t)}
+                    className={cn(
+                      "rounded-lg border p-3 flex flex-col items-center gap-1.5 transition-all",
+                      isSelected
+                        ? "border-current bg-elevated shadow-sm"
+                        : "border-border bg-elevated/50 text-text-muted hover:border-border-bright hover:text-foreground"
+                    )}
+                    style={isSelected ? { borderColor: t.color, background: `${t.color}14`, color: t.color } : {}}
+                  >
+                    <span className="text-xl leading-none font-mono" aria-hidden>{t.icon}</span>
+                    <span className="font-display font-bold text-[11px] tracking-wide">{t.symbol}</span>
+                    <span className="font-body text-[9px] text-text-muted truncate w-full text-center">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 font-mono text-[10px] text-text-muted">
+              Note: bets are settled in <span className="text-cyan">SepoliaETH</span> on-chain. This token defines the market&apos;s reference asset.
+            </p>
+          </div>
         </div>
       )}
 
@@ -438,14 +541,26 @@ export default function CreateMarketPage() {
       {/* Step 4 — Deploy */}
       {step === 4 && (
         <form onSubmit={onSubmit} className="space-y-6">
-          <div className="card-gradient-border rounded-md p-4">
+          <div className="card-gradient-border rounded-md p-4 space-y-3">
             <p className="font-body text-sm text-foreground line-clamp-2">{question || "—"}</p>
-            <div className="mt-2 flex flex-wrap gap-4 font-mono text-xs text-text-secondary">
+            <div className="flex flex-wrap gap-4 font-mono text-xs text-text-secondary">
               <span>Close: {closeTime ? closeTime.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               <span>Resolve: {resolveTime ? resolveTime.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
             </div>
+            {/* Bet token summary */}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Bet token:</span>
+              <span
+                className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-display font-bold text-xs"
+                style={{ borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` }}
+              >
+                <span className="text-sm leading-none">{betToken.icon}</span>
+                {betToken.symbol}
+              </span>
+              <span className="font-mono text-[10px] text-text-muted">· settled in SepoliaETH</span>
+            </div>
             {gasEstimate && (
-              <p className="mt-2 font-mono text-xs text-text-muted">Est. gas cost: {gasEstimate}</p>
+              <p className="font-mono text-xs text-text-muted">Est. gas cost: {gasEstimate}</p>
             )}
           </div>
 
@@ -454,23 +569,60 @@ export default function CreateMarketPage() {
               MARKET TYPE
             </label>
             <div className="grid grid-cols-3 gap-3">
-              {MARKET_TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => form.setValue("marketType", t.value)}
-                  className={cn(
-                    "rounded-md border p-4 text-left transition-colors",
-                    marketType === t.value
-                      ? "border-cyan bg-cyan-dim"
-                      : "border-border bg-elevated hover:border-border-bright"
-                  )}
-                >
-                  <span className="font-display font-bold text-foreground">{t.label}</span>
-                  <p className="mt-1 font-body text-xs text-text-secondary">{t.description}</p>
-                </button>
-              ))}
+              {MARKET_TYPES.map((t) => {
+                const isPrivateType = t.value === "private";
+                const isSelected = marketType === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => form.setValue("marketType", t.value)}
+                    disabled={isPrivateType && !IS_PRIVATE_DEPLOYED}
+                    className={cn(
+                      "rounded-md border p-4 text-left transition-colors",
+                      isSelected && !isPrivateType && "border-cyan bg-cyan-dim",
+                      isSelected && isPrivateType && "border-violet bg-violet-dim",
+                      !isSelected && "border-border bg-elevated hover:border-border-bright",
+                      isPrivateType && !IS_PRIVATE_DEPLOYED && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      {isPrivateType && <Lock className="h-3.5 w-3.5 text-violet shrink-0" aria-hidden />}
+                      <span
+                        className={cn(
+                          "font-display font-bold",
+                          isSelected && isPrivateType ? "text-violet" : "text-foreground"
+                        )}
+                      >
+                        {t.label}
+                      </span>
+                    </div>
+                    <p className="font-body text-xs text-text-secondary">{t.description}</p>
+                  </button>
+                );
+              })}
             </div>
+
+            {marketType === "private" && IS_PRIVATE_DEPLOYED && (
+              <div className="rounded-lg border border-violet/30 bg-violet-dim px-4 py-3 flex items-start gap-2">
+                <Lock className="h-4 w-4 text-violet shrink-0 mt-0.5" aria-hidden />
+                <p className="font-mono text-[11px] text-violet leading-relaxed">
+                  This market will deploy to <code>PrivatePredictionMarket</code>. Bettors submit
+                  cryptographic commitments — positions are hidden until reveal. Powered by
+                  commit-reveal architecture (Chainlink Confidential Compute).
+                </p>
+              </div>
+            )}
+
+            {marketType === "private" && !IS_PRIVATE_DEPLOYED && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" aria-hidden />
+                <p className="font-mono text-[11px] text-amber-400">
+                  PrivatePredictionMarket contract is not deployed. Deploy it first and set{" "}
+                  <code>NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS</code>.
+                </p>
+              </div>
+            )}
           </div>
 
           <Button

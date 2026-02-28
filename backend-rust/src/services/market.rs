@@ -216,8 +216,16 @@ impl MarketService {
         info!("Creating market: {}", req.question);
 
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata, details_hash, encrypted_uri)
-             VALUES ($1, $2, $3, 'Open', $4, $5, $6, $7, $8, $9) RETURNING id"
+            "INSERT INTO markets (question, close_time, resolve_time, status, created_at, creator, market_type, metadata, details_hash, encrypted_uri, on_chain_market_id)
+             VALUES ($1, $2, $3, 'Open', $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT(on_chain_market_id) DO UPDATE SET
+               question = excluded.question,
+               close_time = excluded.close_time,
+               resolve_time = excluded.resolve_time,
+               creator = excluded.creator,
+               market_type = excluded.market_type,
+               metadata = excluded.metadata
+             RETURNING id"
         )
         .bind(req.question.trim())
         .bind(req.close_time)
@@ -228,6 +236,7 @@ impl MarketService {
         .bind(req.metadata)
         .bind(req.details_hash)
         .bind(req.encrypted_uri)
+        .bind(req.on_chain_market_id)
         .fetch_one(self.db.pool())
         .await?;
 

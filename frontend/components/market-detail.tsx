@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAccount, useBalance, useWriteContract } from "wagmi";
@@ -20,7 +19,7 @@ import {
 } from "lucide-react";
 import type { MarketView, PredictionView } from "@/types/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
-import { predictionMarketContract, OUTCOME, EXPLORER_URL } from "@/lib/constants";
+import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL } from "@/lib/constants";
 import { TVChart, type IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
@@ -62,15 +61,41 @@ export interface UserStakeOnChain {
   noStake: bigint;
 }
 
-const TIMEFRAMES: Timeframe[] = ["15m", "1h", "4h", "24h", "1W", "1M"];
-const INDICATOR_PILLS: { id: IndicatorId; label: string; color: string }[] = [
-  { id: "ma7",    label: "MA7",    color: "#FFD700" },
-  { id: "ma25",   label: "MA25",   color: "#00D4FF" },
-  { id: "ma99",   label: "MA99",   color: "#8B5CF6" },
-  { id: "bb",     label: "BB",     color: "#8B5CF6" },
-  { id: "volume", label: "Volume", color: "#00E87A" },
-  { id: "macd",   label: "MACD",   color: "#00D4FF" },
-  { id: "rsi",    label: "RSI",    color: "#00D4FF" },
+const TIMEFRAMES: { tf: Timeframe; label: string; desc: string }[] = [
+  { tf: "15m", label: "15m",  desc: "15 minutes — scalping view"       },
+  { tf: "1h",  label: "1H",   desc: "1 hour — intraday trend"          },
+  { tf: "4h",  label: "4H",   desc: "4 hours — swing trading"          },
+  { tf: "24h", label: "1D",   desc: "1 day — daily candles"            },
+  { tf: "1W",  label: "1W",   desc: "1 week — macro trend"             },
+  { tf: "1M",  label: "1M",   desc: "1 month — long-term view"         },
+];
+
+const INDICATOR_GROUPS: {
+  group: string;
+  items: { id: IndicatorId; label: string; desc: string; color: string }[];
+}[] = [
+  {
+    group: "Moving Averages",
+    items: [
+      { id: "ma7",  label: "MA 7",  desc: "7-period moving average — short-term momentum",  color: "#FFD700" },
+      { id: "ma25", label: "MA 25", desc: "25-period moving average — medium-term trend",    color: "#00D4FF" },
+      { id: "ma99", label: "MA 99", desc: "99-period moving average — long-term trend",      color: "#8B5CF6" },
+    ],
+  },
+  {
+    group: "Bands & Volume",
+    items: [
+      { id: "bb",     label: "Bollinger",  desc: "Bollinger Bands — volatility envelope (±2σ)",   color: "#8B5CF6" },
+      { id: "volume", label: "Volume",     desc: "Trading volume bars — market participation",     color: "#00E87A" },
+    ],
+  },
+  {
+    group: "Oscillators",
+    items: [
+      { id: "macd", label: "MACD", desc: "Moving Avg Convergence/Divergence — trend momentum",  color: "#00D4FF" },
+      { id: "rsi",  label: "RSI",  desc: "Relative Strength Index — overbought/oversold (14)",  color: "#F5A623" },
+    ],
+  },
 ];
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -85,6 +110,8 @@ export interface MarketDetailProps {
   market: MarketView;
   predictions: PredictionView[];
   marketOnChain: MarketOnChain | null;
+  onChainLoading?: boolean;
+  onChainError?: boolean;
   userStake: UserStakeOnChain | null;
 }
 
@@ -93,12 +120,37 @@ export function MarketDetail({
   market,
   predictions,
   marketOnChain,
+  onChainLoading,
+  onChainError,
   userStake,
 }: MarketDetailProps) {
   const [aiCollapsed, setAiCollapsed] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>("1h");
   const [indicators, setIndicators] = useState<Set<IndicatorId>>(new Set<IndicatorId>(["ma7", "volume"]));
   const [stakesMounted, setStakesMounted] = useState(false);
+
+  // Extract Binance symbol from market metadata.
+  // Supports: meta.symbol, meta.resolution.symbol, meta.asset, meta.pair, meta.betToken
+  const chartSymbol = (() => {
+    try {
+      const meta = market.metadata ? JSON.parse(market.metadata) : {};
+      const raw: string = (
+        meta.symbol ??
+        meta.resolution?.symbol ??
+        meta.asset ??
+        meta.pair ??
+        meta.betToken ??
+        ""
+      ) as string;
+      if (!raw) return undefined;
+      // Strip trailing "USDT" suffix before normalizing (avoid "BTCUSDTUSDT")
+      const upper = raw.toUpperCase().replace(/USDT$/, "");
+      if (!upper) return undefined;
+      return `${upper}USDT`;
+    } catch {
+      return undefined;
+    }
+  })();
 
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
@@ -165,13 +217,33 @@ export function MarketDetail({
               {market.question}
             </h1>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             <span className={cn("rounded-full px-3 py-1 font-mono text-[11px] uppercase font-bold", STATUS_BADGE_CLASS[market.status] ?? "badge-cancelled")}>
               {market.status}
             </span>
             <span className="rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] uppercase text-text-secondary">
               {market.market_type || "Base"}
             </span>
+            {/* On-chain indicator */}
+            {onChainLoading && !marketOnChain ? (
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] text-text-muted animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-text-muted shrink-0" />
+                Checking…
+              </span>
+            ) : marketOnChain ? (
+              <span className="flex items-center gap-1.5 rounded-full border border-green/30 bg-green-dim px-3 py-1 font-mono text-[11px] text-green">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
+                </span>
+                On-chain
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-mono text-[11px] text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                Off-chain
+              </span>
+            )}
             {isResolved && (
               <span className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1 font-display font-bold text-sm",
@@ -211,53 +283,81 @@ export function MarketDetail({
             </div>
           )}
 
-          {/* Timeframes */}
-          <div className="flex items-center gap-1 bg-elevated rounded-lg p-1 mb-3 w-fit">
-            {TIMEFRAMES.map((tf) => (
-              <button
-                key={tf}
-                type="button"
-                onClick={() => setTimeframe(tf)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 font-mono text-xs transition-all",
-                  timeframe === tf
-                    ? "bg-surface border border-border text-foreground font-bold shadow-sm"
-                    : "text-text-muted hover:text-foreground"
-                )}
-                aria-pressed={timeframe === tf}
-              >
-                {tf}
-              </button>
-            ))}
+          {/* ── Chart toolbar ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+
+            {/* Timeframe selector */}
+            <div className="flex items-center gap-1 bg-elevated rounded-lg p-1">
+              {TIMEFRAMES.map(({ tf, label, desc }) => (
+                <button
+                  key={tf}
+                  type="button"
+                  onClick={() => setTimeframe(tf)}
+                  title={desc}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 font-mono text-xs transition-all",
+                    timeframe === tf
+                      ? "bg-surface border border-border text-foreground font-bold shadow-sm"
+                      : "text-text-muted hover:text-foreground"
+                  )}
+                  aria-pressed={timeframe === tf}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Live refresh badge */}
+            <div className="flex items-center gap-1.5 rounded-full border border-green/25 bg-elevated px-2.5 py-1 shrink-0">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
+              </span>
+              <span className="font-mono text-[10px] text-green font-medium">Updates every 5s</span>
+            </div>
           </div>
 
-          {/* Indicator pills */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {INDICATOR_PILLS.map(({ id, label, color }) => (
-              <label
-                key={id}
-                className={cn(
-                  "cursor-pointer rounded-full border px-2.5 py-0.5 font-mono text-[11px] transition-all select-none",
-                  indicators.has(id)
-                    ? "border-current opacity-100"
-                    : "bg-transparent border-border text-text-muted hover:text-foreground hover:border-border-bright"
-                )}
-                style={indicators.has(id) ? { color, borderColor: color, background: `${color}18` } : {}}
-              >
-                <input
-                  type="checkbox"
-                  checked={indicators.has(id)}
-                  onChange={() => {
-                    const next = new Set<IndicatorId>(indicators);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    setIndicators(next);
-                  }}
-                  className="sr-only"
-                  aria-label={label}
-                />
-                {label}
-              </label>
+          {/* Indicator groups */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 pb-3 border-b border-border">
+            {INDICATOR_GROUPS.map(({ group, items }) => (
+              <div key={group} className="flex items-center gap-1.5">
+                <span className="font-mono text-[9px] text-text-muted uppercase tracking-widest mr-0.5 hidden sm:inline">
+                  {group}
+                </span>
+                {items.map(({ id, label, desc, color }) => (
+                  <label
+                    key={id}
+                    title={desc}
+                    className={cn(
+                      "cursor-pointer rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all select-none flex items-center gap-1.5",
+                      indicators.has(id)
+                        ? "border-current font-semibold"
+                        : "bg-transparent border-border text-text-muted hover:text-foreground hover:border-border-bright"
+                    )}
+                    style={indicators.has(id) ? { color, borderColor: color, background: `${color}18` } : {}}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={indicators.has(id)}
+                      onChange={() => {
+                        const next = new Set<IndicatorId>(indicators);
+                        if (next.has(id)) next.delete(id);
+                        else next.add(id);
+                        setIndicators(next);
+                      }}
+                      className="sr-only"
+                      aria-label={label}
+                    />
+                    {indicators.has(id) && (
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: color }}
+                      />
+                    )}
+                    {label}
+                  </label>
+                ))}
+              </div>
             ))}
           </div>
 
@@ -265,6 +365,7 @@ export function MarketDetail({
           <TVChart
             height={480}
             embedded
+            symbol={chartSymbol}
             timeframe={timeframe}
             onTimeframeChange={setTimeframe}
             indicators={indicators}
@@ -295,10 +396,10 @@ export function MarketDetail({
               <div className="flex justify-between font-mono text-xs">
                 <span className="flex items-center gap-1.5 text-green">
                   <span className="h-2 w-2 rounded-full bg-green" />
-                  YES — {formatEth(totalYes)} ETH ({yesPct}%)
+                  YES — {formatEth(totalYes)} ({yesPct}%)
                 </span>
                 <span className="flex items-center gap-1.5 text-red">
-                  NO — {formatEth(totalNo)} ETH ({noPct}%)
+                  NO — {formatEth(totalNo)} ({noPct}%)
                   <span className="h-2 w-2 rounded-full bg-red" />
                 </span>
               </div>
@@ -312,7 +413,7 @@ export function MarketDetail({
               )}>
                 <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">YES Implied</p>
                 <p className={cn("font-display font-extrabold text-3xl", yesPct >= noPct ? "text-green" : "text-foreground")}>{yesPct}%</p>
-                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalYes)} ETH staked</p>
+                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalYes)} staked</p>
               </div>
               <div className={cn(
                 "rounded-xl border p-4 text-center transition-all",
@@ -320,7 +421,7 @@ export function MarketDetail({
               )}>
                 <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">NO Implied</p>
                 <p className={cn("font-display font-extrabold text-3xl", noPct > yesPct ? "text-red" : "text-foreground")}>{noPct}%</p>
-                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalNo)} ETH staked</p>
+                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalNo)} staked</p>
               </div>
             </div>
           </div>
@@ -411,7 +512,7 @@ export function MarketDetail({
                       <p className="font-display font-bold text-green text-sm">WINNER!</p>
                     </div>
                     <p className="font-mono text-xs text-foreground mb-3">
-                      Claimable: <span className="text-green font-bold">{formatEth(claimable)} ETH</span>
+                      Claimable: <span className="text-green font-bold">{formatEth(claimable)}</span>
                     </p>
                     <Button
                       onClick={onClaimPayout}
@@ -435,7 +536,25 @@ export function MarketDetail({
             ) : (
               <div className="rounded-xl border border-border bg-surface p-4">
                 <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-4">Place Bet</h3>
-                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} />
+                {/* Aviso suave si aún está cargando el estado on-chain */}
+                {onChainLoading && !marketOnChain && (
+                  <p className="mb-3 font-mono text-[10px] text-text-muted animate-pulse">
+                    Checking on-chain status…
+                  </p>
+                )}
+                {/* Aviso informativo si confirmamos que NO existe on-chain */}
+                {!onChainLoading && (onChainError || !marketOnChain) && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2">
+                    <span className="text-amber-400 text-sm shrink-0 mt-0.5" aria-hidden>⚠</span>
+                    <p className="font-mono text-[10px] text-amber-300/80 leading-relaxed">
+                      This market is not deployed on-chain yet. Your transaction will likely fail until it is created via{" "}
+                      <Link href="/markets/create" className="text-amber-400 underline underline-offset-2 hover:text-amber-300">
+                        Create Market
+                      </Link>.
+                    </p>
+                  </div>
+                )}
+                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} metadata={market.metadata} />
               </div>
             )}
 

@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useInView } from "react-intersection-observer";
@@ -19,6 +18,7 @@ import { MarketCardSkeleton, StatsSkeleton } from "@/components/skeletons";
 import { NoMarkets } from "@/components/empty-states/no-markets";
 import { LastUpdated } from "@/components/last-updated";
 import { Button } from "@/components/ui/button";
+import { HeroSection } from "@/components/hero-section";
 import type { MarketView } from "@/types/api";
 import { detectCategory, type MarketCategory } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -120,12 +120,17 @@ export default function DashboardPage() {
   const isEmpty = !marketsLoading && !marketsError && filteredAndSorted.length === 0;
   const isFirstEmpty = totalFromApi === 0 && !filters.status;
 
+  const statsRef = useRef<HTMLElement>(null);
+
   if (marketsError) toast.error("Failed to load markets.");
 
   return (
     <div className="space-y-8">
+      {/* Hero */}
+      <HeroSection marketsRef={statsRef} />
+
       {/* Stats */}
-      <section aria-label="Statistics">
+      <section aria-label="Statistics" ref={statsRef}>
         {statsLoading ? (
           <StatsSkeleton aria-busy="true" />
         ) : (
