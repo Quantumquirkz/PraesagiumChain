@@ -1,6 +1,6 @@
 # PraesagiumChain — Backend (Rust / Axum)
 
-REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL**.
+REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **SQLite** (default) or **PostgreSQL**.
 
 ---
 
@@ -12,7 +12,8 @@ REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation ser
   ```
   Then open a new terminal or run: `source "$HOME/.cargo/env"`.
 
-- **PostgreSQL** (any standard Postgres instance).
+- **SQLite** (default): no extra install — uses `sqlite:./praesagium.db`. File created on first run.
+- **PostgreSQL** (optional, for production): use `DATABASE_URL=postgresql://...` in `.env`.
 
 - **OpenSSL** (system) for building. On Ubuntu/Debian/WSL:
   ```bash
@@ -31,8 +32,8 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
    cp config/env.example .env
    ```
 
-2. Edit `.env` and set at least:
-   - **`DATABASE_URL`**: PostgreSQL connection string, e.g. `postgresql://postgres:PASSWORD@localhost:5432/praesagium`.
+2. Edit `.env` if needed:
+   - **`DATABASE_URL`** (optional): defaults to `sqlite:./praesagium.db` for local dev. For production, use PostgreSQL: `postgresql://postgres:PASSWORD@localhost:5432/praesagium`.
 
 3. Optional variables:
    - `PORT` (default `4000`)
@@ -69,7 +70,7 @@ cargo test
 ```
 
 - **Health:** always runs (no DB required).
-- **Markets list:** runs only if `DATABASE_URL` is set to a Postgres URI; otherwise the test is skipped.
+- **Markets list:** runs only if `DATABASE_URL` is set (SQLite or PostgreSQL); otherwise the test is skipped.
 
 ---
 
