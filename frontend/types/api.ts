@@ -10,6 +10,7 @@ export interface MarketView {
   creator?: string;
   market_type: string;
   metadata?: string;
+  on_chain_market_id?: number;
   latest_prediction?: PredictionView;
 }
 

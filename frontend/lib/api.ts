@@ -80,6 +80,7 @@ export async function createMarketBackend(body: {
   resolve_time: number;
   market_type?: string;
   metadata?: string;
+  on_chain_market_id?: number;
 }): Promise<MarketView> {
   return fetchApi<MarketView>("/api/markets", {
     method: "POST",

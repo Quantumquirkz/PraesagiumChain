@@ -51,17 +51,25 @@ export function MarketPageClient() {
     dataUpdatedAt: marketUpdatedAt,
   } = useMarket(id);
 
+  const chainIdForContract =
+    market?.on_chain_market_id ?? (market ? 0 : id);
+
   const { data: predictions } = useQuery({
-    queryKey: ["market-predictions", id],
-    queryFn: () => getMarketPredictions(id),
+    queryKey: ["market-predictions", market?.id ?? id],
+    queryFn: () => getMarketPredictions(market!.id),
     enabled: !isInvalidId && !!market,
     staleTime: 30_000,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
 
-  const { data: marketOnChainRaw, isLoading: onChainLoading, isError: onChainError } = useMarketOnChain(isInvalidId ? 0 : id);
-  const { data: userStakeRaw } = useUserStakeOnChain(isInvalidId ? 0 : id, address);
+  const { data: marketOnChainRaw, isLoading: onChainLoading, isError: onChainError } = useMarketOnChain(
+    isInvalidId ? 0 : chainIdForContract
+  );
+  const { data: userStakeRaw } = useUserStakeOnChain(
+    isInvalidId ? 0 : chainIdForContract,
+    address
+  );
 
   const marketOnChain = parseMarketResult(marketOnChainRaw as readonly unknown[] | undefined);
   const userStake =
@@ -117,7 +125,7 @@ export function MarketPageClient() {
       </div>
 
       <MarketDetail
-        marketId={id}
+        marketId={chainIdForContract || id}
         market={market}
         predictions={predictions ?? []}
         marketOnChain={marketOnChain}

@@ -260,6 +260,7 @@ export default function CreateMarketPage() {
               betToken: betToken.symbol,
               symbol: resolutionParams.symbol ?? betToken.symbol,
             }),
+            on_chain_market_id: newId ?? undefined,
           });
         } catch {
           // non-blocking
