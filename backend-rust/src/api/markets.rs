@@ -41,7 +41,13 @@ pub async fn get_by_id(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i64>,
 ) -> Result<Json<MarketView>> {
-    let market = state.market_service.get_by_id(id).await?;
+    let market = match state.market_service.get_by_id(id).await {
+        Ok(m) => m,
+        Err(crate::error::AppError::NotFound) => {
+            state.market_service.get_by_on_chain_market_id(id).await?
+        }
+        Err(e) => return Err(e),
+    };
     Ok(Json(market))
 }
 
