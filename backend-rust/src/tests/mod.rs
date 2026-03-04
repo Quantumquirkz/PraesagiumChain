@@ -158,15 +158,15 @@ mod api_markets_tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
 
-    /// List markets without DB: we need a real Database to run this test.
-    /// Skipped unless DATABASE_URL is set (integration test).
+    /// List markets integration test. Requires DATABASE_URL (SQLite or PostgreSQL).
+    /// Skipped if DATABASE_URL is not set.
     #[tokio::test]
     async fn list_markets_returns_paginated() {
         let database_url = std::env::var("DATABASE_URL").ok();
         let database_url = match database_url {
-            Some(url) if url.starts_with("postgres") => url,
+            Some(url) if url.starts_with("sqlite") || url.starts_with("postgres") => url,
             _ => {
-                eprintln!("Skipping list_markets test: DATABASE_URL (postgres) not set");
+                eprintln!("Skipping list_markets test: DATABASE_URL (sqlite or postgres) not set");
                 return;
             }
         };
