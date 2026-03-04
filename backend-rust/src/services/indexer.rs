@@ -1,4 +1,4 @@
-//! On-chain event indexer: MarketCreated, MarketResolved.
+//! On-chain event indexer: MarketCreated, MarketResolved, BetPlaced.
 //! Syncs markets from the PredictionMarket contract to the off-chain database.
 //!
 //! Now exposes real-time metrics via `IndexerState` and publishes events to
@@ -21,6 +21,10 @@ fn market_created_topic() -> H256 {
 
 fn market_resolved_topic() -> H256 {
     ethers::utils::keccak256("MarketResolved(uint256,uint8,uint256,uint256)").into()
+}
+
+fn bet_placed_topic() -> H256 {
+    ethers::utils::keccak256("BetPlaced(uint256,address,uint8,uint256)").into()
 }
 
 pub struct EventIndexer {
@@ -161,6 +165,12 @@ impl EventIndexer {
                 } else {
                     processed += 1;
                 }
+            } else if topic0 == bet_placed_topic() {
+                if let Err(e) = self.handle_bet_placed(&log).await {
+                    warn!("Failed to handle BetPlaced: {}", e);
+                } else {
+                    processed += 1;
+                }
             }
         }
 
@@ -276,6 +286,55 @@ impl EventIndexer {
         info!(
             "Indexed MarketResolved: on_chain_market_id={}, outcome={}",
             on_chain_market_id, outcome
+        );
+        Ok(())
+    }
+
+    async fn handle_bet_placed(&self, log: &ethers::types::Log) -> Result<()> {
+        if log.topics.len() < 2 {
+            return Err(crate::error::AppError::Validation(
+                "BetPlaced log missing topics".to_string(),
+            ));
+        }
+        let market_id_u = U256::from_big_endian(log.topics[1].as_bytes());
+        let on_chain_market_id: i64 = market_id_u.as_u64() as i64;
+
+        let tokens = decode(
+            &[ParamType::Uint(8), ParamType::Uint(256)],
+            log.data.as_ref(),
+        )
+        .map_err(|e| crate::error::AppError::Validation(format!("decode BetPlaced data: {}", e)))?;
+
+        let outcome_byte: u8 = match &tokens[0] {
+            Token::Uint(u) => u.as_u64() as u8,
+            _ => {
+                warn!("BetPlaced: invalid outcome byte");
+                return Ok(());
+            }
+        };
+        let amount: u64 = match &tokens[1] {
+            Token::Uint(u) => u.as_u64(),
+            _ => return Err(crate::error::AppError::Validation("BetPlaced: invalid amount".into())),
+        };
+
+        let outcome = match outcome_byte {
+            1 => "Yes",
+            2 => "No",
+            _ => {
+                warn!(
+                    "BetPlaced for on_chain_market_id={} has unexpected outcome byte {}; skipping",
+                    on_chain_market_id, outcome_byte
+                );
+                return Ok(());
+            }
+        };
+
+        self.market_service
+            .update_stakes(on_chain_market_id, outcome, amount)
+            .await?;
+        info!(
+            "Indexed BetPlaced: on_chain_market_id={}, outcome={}, amount={}",
+            on_chain_market_id, outcome, amount
         );
         Ok(())
     }

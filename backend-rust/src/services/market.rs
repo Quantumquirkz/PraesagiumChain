@@ -64,6 +64,46 @@ impl MarketService {
         self.invalidate_list_cache().await;
     }
 
+    /// Updates total_yes_stake or total_no_stake when BetPlaced is indexed.
+    /// `outcome` must be "Yes" or "No"; `amount` is in wei.
+    /// Returns Ok even if no row was updated (market may not exist yet if BetPlaced precedes MarketCreated in the same block).
+    pub async fn update_stakes(
+        &self,
+        on_chain_market_id: i64,
+        outcome: &str,
+        amount: u64,
+    ) -> Result<()> {
+        let amount_i64 = amount.min(i64::MAX as u64) as i64;
+        let result = if outcome.eq_ignore_ascii_case("yes") {
+            sqlx::query(
+                "UPDATE markets SET total_yes_stake = total_yes_stake + ?1 WHERE on_chain_market_id = ?2",
+            )
+            .bind(amount_i64)
+            .bind(on_chain_market_id)
+            .execute(self.db.pool())
+            .await?
+        } else if outcome.eq_ignore_ascii_case("no") {
+            sqlx::query(
+                "UPDATE markets SET total_no_stake = total_no_stake + ?1 WHERE on_chain_market_id = ?2",
+            )
+            .bind(amount_i64)
+            .bind(on_chain_market_id)
+            .execute(self.db.pool())
+            .await?
+        } else {
+            return Err(AppError::Validation(format!(
+                "update_stakes: outcome must be 'Yes' or 'No', got '{}'",
+                outcome
+            )));
+        };
+        if result.rows_affected() > 0 {
+            if let Ok(market) = self.get_by_on_chain_market_id(on_chain_market_id).await {
+                self.invalidate_market_cache(market.id).await;
+            }
+        }
+        Ok(())
+    }
+
     pub async fn list(
         &self,
         page: i64,
