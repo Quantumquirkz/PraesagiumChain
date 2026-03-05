@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";

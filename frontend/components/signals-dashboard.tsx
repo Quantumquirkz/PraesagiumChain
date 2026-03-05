@@ -213,7 +213,7 @@ function LivePredictionChart({
       ctx.stroke();
       ctx.setLineDash([]);
     });
-  }, [tick]);
+  }, []);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);

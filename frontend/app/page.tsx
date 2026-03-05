@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
@@ -56,7 +56,7 @@ function filterAndSort(items: MarketView[], filters: FilterState): MarketView[] 
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -85,6 +85,7 @@ export default function DashboardPage() {
     data,
     isLoading: marketsLoading,
     isError: marketsError,
+    error: marketsQueryError,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -182,6 +183,11 @@ export default function DashboardPage() {
             role="alert"
           >
             <p className="font-body font-medium text-foreground mb-2">Failed to load markets.</p>
+            {marketsQueryError?.message && (
+              <p className="font-body text-sm text-text-secondary mb-3 max-w-md">
+                {marketsQueryError.message}
+              </p>
+            )}
             <Button
               onClick={() => refetchMarkets()}
               variant="outline"
@@ -252,5 +258,37 @@ export default function DashboardPage() {
         )}
       </section>
     </div>
+  );
+}
+
+function PageFallback() {
+  return (
+    <div className="space-y-8">
+      <section aria-label="Statistics">
+        <StatsSkeleton aria-busy="true" />
+      </section>
+      <section aria-label="Markets">
+        <div className="mb-6">
+          <h2 className="font-display text-xl font-bold text-foreground">Markets</h2>
+        </div>
+        <div
+          className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+          aria-busy="true"
+          aria-label="Loading markets"
+        >
+          {Array.from({ length: 12 }).map((_, i) => (
+            <MarketCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

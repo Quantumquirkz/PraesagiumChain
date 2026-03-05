@@ -3,7 +3,6 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Copy, ExternalLink } from "lucide-react";

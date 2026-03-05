@@ -1,4 +1,3 @@
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect } from 'react'
 import { useReadContract } from 'wagmi'
 import { predictionMarketContract } from '@/lib/constants'

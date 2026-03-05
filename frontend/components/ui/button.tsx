@@ -30,15 +30,14 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.HTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   className?: string;
 }
 
-// @ts-expect-error React.forwardRef no resuelto con export= en @types/react
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }: ButtonProps, ref: unknown) => {
+  ({ className, variant, size, asChild = false, ...props }: ButtonProps, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp

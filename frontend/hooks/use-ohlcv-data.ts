@@ -45,8 +45,8 @@ export function useOHLCVHistory(
         volume: Number(volume),
       }))
     },
-    staleTime: 4_000,
-    refetchInterval: 5_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
     refetchIntervalInBackground: false,
     retry: 2,
   })

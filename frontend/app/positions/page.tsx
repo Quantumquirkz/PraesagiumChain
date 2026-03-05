@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useAccount, useReadContracts } from "wagmi";

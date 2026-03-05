@@ -208,7 +208,7 @@ export function OnboardingModal() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-[480px] border-0 bg-surface p-0 overflow-hidden card-gradient-border rounded-xl"
-        overlayClassName="backdrop-blur-sm bg-[#000000A0]"
+        overlayClassName="fixed inset-0 z-50 backdrop-blur-sm bg-[var(--overlay-bg)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
         showClose={false}
         aria-describedby="onboarding-description"
         aria-labelledby="onboarding-title"

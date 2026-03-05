@@ -1,8 +1,13 @@
 "use client";
 
-import { SignalsDashboard } from "@/components/signals-dashboard";
+import dynamic from "next/dynamic";
 import { PhpeConfidenceGauge } from "@/components/phpe-confidence-gauge";
 import { cn } from "@/lib/utils";
+
+const SignalsDashboard = dynamic(
+  () => import("@/components/signals-dashboard").then((m) => ({ default: m.SignalsDashboard })),
+  { ssr: false, loading: () => <div className="rounded-xl border border-border bg-elevated h-48 animate-pulse" /> }
+);
 
 const ASSETS = [
   { symbol: "BTC/USD", binance: "BTCUSDT" },

@@ -129,43 +129,43 @@ export function NoMarkets({
   }
 
   return (
-    <div className={cn("flex flex-col items-center justify-center py-12 px-4 text-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center w-full max-w-4xl mx-auto py-14 px-6 text-center", className)}>
       {/* Ilustración */}
-      <div className="mb-6 fade-up">
+      <div className="mb-8 fade-up">
         <HeroIllustration />
       </div>
 
       {/* Título y subtítulo */}
-      <div className="mb-8 fade-up fade-up-delay-1">
-        <h2 className="font-display font-extrabold text-[28px] text-foreground mb-2 tracking-wide">
+      <div className="mb-10 fade-up fade-up-delay-1">
+        <h2 className="font-display font-extrabold text-3xl sm:text-[32px] text-foreground mb-3 tracking-wide">
           NO MARKETS YET
         </h2>
-        <p className="font-body text-sm text-text-secondary max-w-sm leading-relaxed">
+        <p className="font-body text-base text-text-secondary max-w-xl mx-auto leading-relaxed">
           Be the first to create a prediction market on PraesagiumChain.
           <br />
           Stake ETH, predict outcomes, earn rewards.
         </p>
       </div>
 
-      {/* Pasos */}
-      <div className="mb-8 w-full max-w-md fade-up fade-up-delay-2">
-        <div className="grid grid-cols-3 gap-3">
+      {/* Pasos — grid más ancho y tarjetas que llenan el espacio */}
+      <div className="mb-10 w-full max-w-3xl fade-up fade-up-delay-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {STEPS.map((step, i) => (
             <div
               key={i}
               className={cn(
-                "flex flex-col items-center gap-2 rounded-md border p-3",
+                "flex flex-col items-center gap-3 rounded-xl border p-5 sm:p-6",
                 "bg-surface",
                 step.border
               )}
             >
-              <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", step.bg, step.color)}>
+              <span className={cn("flex h-10 w-10 items-center justify-center rounded-full", step.bg, step.color)}>
                 {step.icon}
               </span>
-              <span className={cn("font-mono text-[11px] font-medium", step.color)}>
+              <span className={cn("font-mono text-xs font-medium", step.color)}>
                 {step.label}
               </span>
-              <span className="font-body text-[11px] text-text-muted leading-tight">
+              <span className="font-body text-xs text-text-muted leading-snug">
                 {step.desc}
               </span>
             </div>
@@ -173,29 +173,33 @@ export function NoMarkets({
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 fade-up fade-up-delay-3">
+      {/* CTA — botones más amigables: redondeados, mismo tamaño, secundario con fondo suave */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 fade-up fade-up-delay-3">
         <Link
           href="/markets/create"
           className={cn(
-            "inline-flex items-center gap-2 rounded-md px-6 py-3 font-display font-bold text-[15px] tracking-wide",
-            "bg-gradient-to-r from-cyan to-violet text-black",
-            "hover:opacity-90 hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] transition-all duration-200"
+            "inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-body font-semibold text-[15px]",
+            "bg-gradient-to-r from-cyan to-violet text-white",
+            "hover:opacity-95 hover:shadow-[0_4px_20px_rgba(0,212,255,0.25)] active:scale-[0.98] transition-all duration-200"
           )}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
-          CREATE FIRST MARKET
+          Create first market
         </Link>
         <Link
           href="/signals"
           className={cn(
-            "inline-flex items-center gap-2 rounded-md border border-border-bright px-5 py-3 font-body text-sm text-text-secondary",
-            "hover:border-cyan/40 hover:text-foreground transition-colors duration-200"
+            "inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-body font-semibold text-sm",
+            "bg-elevated border border-border-bright text-foreground",
+            "hover:border-violet/40 hover:bg-violet-dim/50 transition-colors duration-200 active:scale-[0.98]"
           )}
         >
-          View Signals →
+          View Signals
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
         </Link>
       </div>
     </div>

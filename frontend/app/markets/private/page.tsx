@@ -194,17 +194,21 @@ export default function PrivateMarketsPage() {
     <div className="space-y-10">
       {/* ── Hero ── */}
       <section className="relative overflow-hidden rounded-2xl hero-gradient py-14 px-6 text-center">
-        {/* Background hex */}
+        {/* Background: grid + orbs (Light/Dark via CSS vars) */}
+        <div className="private-hero-grid" aria-hidden />
+        <div className="private-hero-orb-violet" aria-hidden />
+        <div className="private-hero-orb-cyan" aria-hidden />
+        {/* Hexagons with float animation */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
           {[
-            { x: "5%",  y: "15%", size: 60 },
-            { x: "88%", y: "10%", size: 80 },
-            { x: "80%", y: "65%", size: 50 },
+            { x: "5%",  y: "15%", size: 60, extra: "" },
+            { x: "88%", y: "10%", size: 80, extra: "private-hex-float-2" },
+            { x: "80%", y: "65%", size: 50, extra: "private-hex-float-3" },
           ].map((h, i) => (
             <svg
               key={i}
-              className="hex-float"
-              style={{ position: "absolute", left: h.x, top: h.y, width: h.size, height: h.size, animationDelay: `${i * 1.5}s` }}
+              className={cn("private-hex-float", h.extra)}
+              style={{ position: "absolute", left: h.x, top: h.y, width: h.size, height: h.size }}
               viewBox="0 0 100 100"
               fill="none"
             >
@@ -292,11 +296,13 @@ export default function PrivateMarketsPage() {
             </p>
             <p className="font-body text-sm text-text-secondary mt-1">
               The <code className="font-mono text-xs">PrivatePredictionMarket</code> contract
-              has not been deployed yet. Run{" "}
+              has not been deployed yet. For <strong>Sepolia</strong>, run{" "}
               <code className="font-mono text-xs text-cyan">
                 npx hardhat run scripts/deploy-private.js --network sepolia
-              </code>{" "}
-              and set <code className="font-mono text-xs">NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS</code> in{" "}
+              </code>
+              . For <strong>localhost</strong>, run{" "}
+              <code className="font-mono text-xs text-cyan">npm run deploy:private</code>.
+              Then set <code className="font-mono text-xs">NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS</code> in{" "}
               <code className="font-mono text-xs">.env.local</code>.
             </p>
           </div>

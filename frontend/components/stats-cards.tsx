@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect, useState, useRef } from "react";
 import type { MarketStats } from "@/types/api";
 import { cn } from "@/lib/utils";

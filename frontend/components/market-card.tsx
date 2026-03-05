@@ -6,7 +6,7 @@ import type { MarketView } from "@/types/api";
 import { useCountdown, formatCountdownDisplay } from "@/components/countdown";
 import { truncateAddress, formatEth } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { BET_TOKENS } from "@/app/markets/create/page";
+import { BET_TOKENS } from "@/lib/constants";
 
 function getTokenFromMetadata(metadata?: string): { icon: string; symbol: string; color: string } | null {
   try {
@@ -98,7 +98,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
       className={cn(
         "group block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
         "transition-all duration-200 ease-out",
-        "hover:border-border-bright hover:shadow-[0_0_0_1px_var(--border-bright),0_0_24px_var(--cyan-dim),0_8px_32px_rgba(0,0,0,0.4)] hover:-translate-y-0.5"
+        "hover:border-border-bright hover:shadow-[0_0_0_1px_var(--border-bright),0_0_24px_var(--cyan-dim),0_8px_32px_var(--shadow-card)] hover:-translate-y-0.5"
       )}
       aria-label={`View market: ${market.question}`}
     >

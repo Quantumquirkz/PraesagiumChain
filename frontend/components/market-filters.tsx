@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";

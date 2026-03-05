@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import "./globals.css";
 
-export const dynamic = "force-dynamic";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
-import { LiveTicker } from "@/components/live-ticker";
 import { WrongNetworkBanner } from "@/components/wrong-network-banner";
 import { Footer } from "@/components/footer";
 import { PWAInstallBanner } from "@/components/pwa-install-banner";
 import { MarketWatcherProvider } from "@/components/market-watcher-provider";
+
+const LiveTicker = dynamic(
+  () => import("@/components/live-ticker").then((m) => ({ default: m.LiveTicker })),
+  { ssr: false, loading: () => null }
+);
 
 export const metadata: Metadata = {
   title: "PraesagiumChain",
@@ -27,7 +31,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <WrongNetworkBanner />
         <LiveTicker />
         <main className="container flex-1 px-4 py-6 hero-gradient page-enter">
-          {/* @ts-expect-error Next.js infiere children como unknown en root layout */}
           {children}
         </main>
         <Footer />

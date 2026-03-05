@@ -100,7 +100,7 @@ export function ConditionalTree({ marketId, className }: ConditionalTreeProps) {
         queryKey: ["market-conditions", marketId],
         queryFn: () => getMarketConditions(marketId),
         staleTime: 30_000,
-        refetchInterval: 10_000,
+        refetchInterval: 20_000,
       },
     ],
   });
@@ -113,7 +113,7 @@ export function ConditionalTree({ marketId, className }: ConditionalTreeProps) {
       queryKey: ["market", c.condition_market_id],
       queryFn: () => getMarket(c.condition_market_id),
       staleTime: 30_000,
-      refetchInterval: 10_000,
+      refetchInterval: 20_000,
       enabled: conditions.length > 0,
     })),
   });

@@ -285,8 +285,8 @@ export default function AboutPage() {
             className="font-display font-extrabold text-foreground leading-tight"
             style={{ fontSize: "clamp(24px, 4vw, 40px)" }}
           >
-            "Make prediction markets as accessible and transparent as reading a price chart —
-            powered by AI signals, secured by Ethereum."
+            &quot;Make prediction markets as accessible and transparent as reading a price chart —
+            powered by AI signals, secured by Ethereum.&quot;
           </blockquote>
           <p className="mt-6 font-body text-text-secondary max-w-2xl mx-auto leading-relaxed">
             We believe that collective intelligence, when properly incentivized and made transparent,

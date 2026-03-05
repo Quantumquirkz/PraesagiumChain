@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { ThemeProvider } from "next-themes";
 import { CustomToaster } from "@/components/ui/custom-toast";
+import { ThemeColorMeta } from "@/components/theme-color-meta";
 import { config } from "@/lib/wagmi";
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState } from "react";
 import { OnboardingModal } from "@/components/onboarding-modal";
 
@@ -14,7 +14,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 60 * 1000 },
+          queries: {
+            staleTime: 60 * 1000,
+            refetchOnWindowFocus: false,
+          },
         },
       })
   );
@@ -23,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <ThemeColorMeta />
           {children}
           <CustomToaster />
           <OnboardingModal />

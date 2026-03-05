@@ -37,8 +37,8 @@ export function usePrivateMarket(marketId: number) {
     args: [BigInt(marketId)],
     query: {
       enabled: marketId > 0 && PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000",
-      staleTime: 10_000,
-      refetchInterval: 15_000,
+      staleTime: 20_000,
+      refetchInterval: 30_000,
     },
   });
 
@@ -49,8 +49,8 @@ export function usePrivateMarket(marketId: number) {
     args: [BigInt(marketId)],
     query: {
       enabled: marketId > 0 && PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000",
-      staleTime: 10_000,
-      refetchInterval: 15_000,
+      staleTime: 20_000,
+      refetchInterval: 30_000,
     },
   });
 
@@ -96,8 +96,8 @@ export function usePrivateMarketCommitCount(
         marketId > 0 &&
         !!address &&
         PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000",
-      staleTime: 10_000,
-      refetchInterval: 15_000,
+      staleTime: 20_000,
+      refetchInterval: 30_000,
     },
   });
 
@@ -120,8 +120,8 @@ export function usePrivateTotalCommitted(marketId: number) {
       enabled:
         marketId > 0 &&
         PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000",
-      staleTime: 10_000,
-      refetchInterval: 15_000,
+      staleTime: 20_000,
+      refetchInterval: 30_000,
     },
   });
 

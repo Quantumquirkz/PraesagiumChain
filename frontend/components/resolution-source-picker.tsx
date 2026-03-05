@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState } from "react";
 import { DollarSign, Cloud, Trophy, Brain } from "lucide-react";
 import { Input } from "@/components/ui/input";

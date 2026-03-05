@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ChangeEvent } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { formatEther } from "viem";
@@ -19,7 +19,7 @@ import {
   subscribeToMarketResolution,
   requestNotificationPermission,
 } from "@/lib/notifications";
-import { BET_TOKENS, type BetToken } from "@/app/markets/create/page";
+import { BET_TOKENS, type BetToken } from "@/lib/constants";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -377,7 +377,7 @@ export function BetForm({ marketId, marketStatus, question, metadata }: BetFormP
             inputMode="decimal"
             placeholder="0.01"
             value={amount}
-            onChange={(e: { target: { value: string } }) => {
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setAmount(e.target.value);
               setFieldError(null);
               if (btnState === "error") { reset(); setBtnState("idle"); }

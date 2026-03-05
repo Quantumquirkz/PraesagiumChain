@@ -11,7 +11,7 @@ import { parseEventLogs } from "viem";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock } from "lucide-react";
 import { createMarketBackend } from "@/lib/api";
-import { predictionMarketContract, EXPLORER_URL } from "@/lib/constants";
+import { predictionMarketContract, EXPLORER_URL, BET_TOKENS, type BetToken } from "@/lib/constants";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
 const PRIVATE_MARKET_ADDRESS = (process.env
@@ -40,25 +40,6 @@ const QUESTION_TEMPLATES = [
   { label: "Ξ ETH > $X", value: "Will ETH exceed $4,000 before March 2026?" },
   { label: "📊 Custom", value: "" },
 ] as const;
-
-export interface BetToken {
-  symbol: string;
-  label: string;
-  icon: string;
-  color: string;
-  coingeckoId?: string;
-}
-
-export const BET_TOKENS: BetToken[] = [
-  { symbol: "ETH",   label: "Ethereum",  icon: "Ξ",  color: "#627EEA" },
-  { symbol: "BTC",   label: "Bitcoin",   icon: "₿",  color: "#F7931A" },
-  { symbol: "LINK",  label: "Chainlink", icon: "⬡",  color: "#2A5ADA" },
-  { symbol: "SOL",   label: "Solana",    icon: "◎",  color: "#9945FF" },
-  { symbol: "MATIC", label: "Polygon",   icon: "⬟",  color: "#8247E5" },
-  { symbol: "ARB",   label: "Arbitrum",  icon: "⬡",  color: "#12AAFF" },
-  { symbol: "OP",    label: "Optimism",  icon: "⬡",  color: "#FF0420" },
-  { symbol: "AVAX",  label: "Avalanche", icon: "▲",  color: "#E84142" },
-];
 
 const createMarketSchema = z
   .object({
@@ -234,7 +215,31 @@ export default function CreateMarketPage() {
         return;
       }
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      let receipt: Awaited<ReturnType<typeof publicClient.waitForTransactionReceipt>>;
+      try {
+        receipt = await publicClient.waitForTransactionReceipt({
+          hash,
+          timeout: 240_000, // 4 min — Sepolia can be slow
+          confirmations: 1,
+        });
+      } catch (waitErr) {
+        const isTimeout =
+          waitErr != null &&
+          typeof (waitErr as Error).message === "string" &&
+          ((waitErr as Error).message.includes("timed out") || (waitErr as Error).message.includes("timeout"));
+        if (isTimeout) {
+          toast.success("Transaction submitted. It may take a moment to confirm.", {
+            action: { label: "View on Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") },
+          });
+        } else {
+          toast.success("Transaction sent. Check the explorer for status.", {
+            action: { label: "View on Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") },
+          });
+        }
+        setDeploySuccess(true);
+        setTimeout(() => router.push(isPrivate ? "/markets/private" : "/"), 2000);
+        return;
+      }
 
       let newId: number | null = null;
       if (!isPrivate) {

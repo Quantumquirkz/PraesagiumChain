@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
@@ -8,7 +7,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Search, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReputationLeaderboard } from "@/components/reputation-leaderboard";
+import dynamic from "next/dynamic";
+
+const ReputationLeaderboard = dynamic(
+  () => import("@/components/reputation-leaderboard").then((m) => ({ default: m.ReputationLeaderboard })),
+  { ssr: false, loading: () => <div className="rounded-xl border border-border bg-elevated h-32 animate-pulse" /> }
+);
 
 const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 

@@ -9,7 +9,7 @@ export function useMarkets(page: number, limit: number, status?: string) {
     queryKey: ['markets', page, limit, status],
     queryFn: () => getMarkets(page, limit, status),
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: 45_000,
     refetchIntervalInBackground: false,
   })
 }
@@ -20,7 +20,7 @@ export function useMarket(id: number) {
     queryFn: () => getMarket(id),
     enabled: Number.isInteger(id) && id > 0,
     staleTime: 20_000,
-    refetchInterval: 20_000,
+    refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })
 }

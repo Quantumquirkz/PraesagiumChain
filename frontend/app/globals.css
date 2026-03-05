@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  /* ─── Dark theme (default) — fondo negro puro ─── */
+  /* ─── Dark theme (default) ─── */
   --bg-base:     #000000;
   --bg-surface:  #0A0A0A;
   --bg-elevated: #111111;
@@ -26,15 +26,31 @@
   --font-display: 'Barlow Condensed', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --font-body: 'DM Sans', sans-serif;
+  /* Theme-aware semantics */
+  --shadow-card: rgba(0, 0, 0, 0.4);
+  --overlay-bg: rgba(0, 0, 0, 0.65);
+  --scanline-color: rgba(0, 212, 255, 0.015);
+  --hero-gradient-color: rgba(0, 212, 255, 0.06);
+  --hero-orb-cyan: rgba(0, 212, 255, 0.12);
+  --hero-orb-violet: rgba(139, 92, 246, 0.1);
+  --hero-orb-green: rgba(0, 232, 122, 0.07);
+  --hero-scan-line: rgba(0, 212, 255, 0.3);
+  --glow-cyan: rgba(0, 212, 255, 0.5);
+  --glow-violet: rgba(139, 92, 246, 0.3);
+  --mask-content: #fff;
+  --badge-open-border: rgba(0, 232, 122, 0.35);
+  --badge-locked-border: rgba(245, 166, 35, 0.35);
+  --badge-resolved-border: rgba(0, 212, 255, 0.35);
+  --hero-vignette: radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%);
 }
 
-/* ─── Light theme — fondo blanco puro ─────────────────────────────────────── */
+/* ─── Light theme ─────────────────────────────────────────────────────────── */
 .light {
   --bg-base:      #FFFFFF;
-  --bg-surface:   #F5F5F5;
-  --bg-elevated:  #EBEBEB;
-  --border:       #D4D4D4;
-  --border-bright:#BDBDBD;
+  --bg-surface:   #FFFFFF;
+  --bg-elevated:  #F5F5F5;
+  --border:       #E5E5E5;
+  --border-bright:#D4D4D4;
   --text-primary: #0D0D0D;
   --text-secondary:#4A5568;
   --text-muted:   #9AA5B4;
@@ -47,6 +63,22 @@
   --red:          #DC2626;
   --red-dim:      rgba(220, 38, 38, 0.12);
   --gold:         #D97706;
+  /* Theme-aware semantics */
+  --shadow-card: rgba(0, 0, 0, 0.12);
+  --overlay-bg: rgba(0, 0, 0, 0.45);
+  --scanline-color: rgba(0, 153, 187, 0.06);
+  --hero-gradient-color: transparent;
+  --hero-orb-cyan: rgba(0, 153, 187, 0.1);
+  --hero-orb-violet: rgba(109, 40, 217, 0.08);
+  --hero-orb-green: rgba(5, 150, 105, 0.06);
+  --hero-scan-line: rgba(0, 153, 187, 0.25);
+  --glow-cyan: rgba(0, 153, 187, 0.4);
+  --glow-violet: rgba(109, 40, 217, 0.25);
+  --mask-content: #fff;
+  --badge-open-border: rgba(5, 150, 105, 0.4);
+  --badge-locked-border: rgba(217, 119, 6, 0.4);
+  --badge-resolved-border: rgba(0, 153, 187, 0.4);
+  --hero-vignette: none;
 }
 
 * { box-sizing: border-box; }
@@ -71,7 +103,7 @@ body {
   background-image: none;
 }
 
-/* Scanline effect para secciones de datos */
+/* Scanline effect for data sections */
 .scanlines::before {
   content: '';
   position: absolute;
@@ -80,8 +112,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 212, 255, 0.015) 2px,
-    rgba(0, 212, 255, 0.015) 4px
+    var(--scanline-color) 2px,
+    var(--scanline-color) 4px
   );
   pointer-events: none;
   z-index: 1;
@@ -95,7 +127,7 @@ body {
 }
 .card-glow:hover {
   border-color: var(--border-bright);
-  box-shadow: 0 0 24px var(--cyan-dim), 0 4px 16px rgba(0,0,0,0.4);
+  box-shadow: 0 0 24px var(--cyan-dim), 0 4px 16px var(--shadow-card);
   transform: translateY(-2px);
 }
 
@@ -111,7 +143,7 @@ body {
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(135deg, var(--cyan), var(--violet));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(var(--mask-content) 0 0) content-box, linear-gradient(var(--mask-content) 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -121,9 +153,9 @@ body {
 .num-mono { font-family: var(--font-mono); }
 
 /* Status badges */
-.badge-open    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,232,122,0.3); }
-.badge-locked  { background: rgba(245,166,35,0.12); color: var(--gold); border: 1px solid rgba(245,166,35,0.3); }
-.badge-resolved { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+.badge-open    { background: var(--green-dim); color: var(--green); border: 1px solid var(--badge-open-border); }
+.badge-locked  { background: rgba(245,166,35,0.12); color: var(--gold); border: 1px solid var(--badge-locked-border); }
+.badge-resolved { background: var(--cyan-dim); color: var(--cyan); border: 1px solid var(--badge-resolved-border); }
 .badge-cancelled { background: rgba(107,122,153,0.12); color: var(--text-secondary); border: 1px solid var(--border); }
 
 /* Pulse urgente */
@@ -181,11 +213,11 @@ body {
   pointer-events: none;
 }
 
-/* Hero gradient — fondo radial sutil en la parte superior del main */
+/* Hero gradient — subtle radial at top of main */
 .hero-gradient {
   background: radial-gradient(
     ellipse 80% 40% at 50% -10%,
-    rgba(0, 212, 255, 0.06) 0%,
+    var(--hero-gradient-color) 0%,
     transparent 70%
   );
 }
@@ -258,19 +290,19 @@ body {
 }
 .hero-orb-cyan {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(0,212,255,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--hero-orb-cyan) 0%, transparent 70%);
   top: 40%; left: 50%;
   animation: orb-pulse 8s ease-in-out infinite;
 }
 .hero-orb-violet {
   width: 400px; height: 400px;
-  background: radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--hero-orb-violet) 0%, transparent 70%);
   top: 55%; left: 30%;
   animation: orb-pulse 10s ease-in-out infinite 2s;
 }
 .hero-orb-green {
   width: 300px; height: 300px;
-  background: radial-gradient(circle, rgba(0,232,122,0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--hero-orb-green) 0%, transparent 70%);
   top: 30%; left: 70%;
   animation: orb-pulse 12s ease-in-out infinite 4s;
 }
@@ -302,8 +334,8 @@ body {
   100% { opacity: 1; transform: translateY(0)    rotateX(0deg);   filter: blur(0); }
 }
 @keyframes letter-glow-pulse {
-  0%, 100% { text-shadow: 0 0 8px rgba(0,212,255,0.0); }
-  50%       { text-shadow: 0 0 20px rgba(0,212,255,0.5), 0 0 40px rgba(139,92,246,0.3); }
+  0%, 100% { text-shadow: 0 0 8px rgba(0,212,255,0); }
+  50%       { text-shadow: 0 0 20px var(--glow-cyan), 0 0 40px var(--glow-violet); }
 }
 @keyframes shimmer-text {
   0%   { background-position: -200% center; }
@@ -332,7 +364,7 @@ body {
 }
 @keyframes letter-shimmer {
   0%   { color: var(--text-primary); text-shadow: none; }
-  50%  { color: var(--cyan); text-shadow: 0 0 16px rgba(0,212,255,0.6), 0 0 32px rgba(139,92,246,0.3); }
+  50%  { color: var(--cyan); text-shadow: 0 0 16px var(--glow-cyan), 0 0 32px var(--glow-violet); }
   100% { color: var(--text-primary); text-shadow: none; }
 }
 .hero-letter-rise.shimmer-loop {
@@ -367,7 +399,56 @@ body {
   position: absolute;
   left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+  background: linear-gradient(90deg, transparent, var(--hero-scan-line), transparent);
   animation: scan-sweep 6s linear infinite;
   pointer-events: none;
 }
+
+/* ─── Private page hero: background animations (Light + Dark) ───────────────── */
+@keyframes private-grid-pulse {
+  0%, 100% { opacity: 0.04; }
+  50%       { opacity: 0.1; }
+}
+.private-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--violet) 1px, transparent 1px),
+    linear-gradient(90deg, var(--violet) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: private-grid-pulse 8s ease-in-out infinite;
+  pointer-events: none;
+}
+.private-hero-orb-violet {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--hero-orb-violet) 0%, transparent 70%);
+  top: 20%;
+  left: 10%;
+  filter: blur(60px);
+  animation: orb-pulse 9s ease-in-out infinite;
+  pointer-events: none;
+}
+.private-hero-orb-cyan {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--hero-orb-cyan) 0%, transparent 70%);
+  bottom: 10%;
+  right: 15%;
+  filter: blur(50px);
+  animation: orb-pulse 11s ease-in-out infinite 2s;
+  pointer-events: none;
+}
+@keyframes private-hex-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.4; }
+  50%       { transform: translateY(-8px) rotate(2deg); opacity: 0.7; }
+}
+.private-hex-float {
+  animation: private-hex-float 6s ease-in-out infinite;
+}
+.private-hex-float-2 { animation-delay: 1.5s; }
+.private-hex-float-3 { animation-delay: 3s; }

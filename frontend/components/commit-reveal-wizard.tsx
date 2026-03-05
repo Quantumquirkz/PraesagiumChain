@@ -193,8 +193,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
               </p>
             </div>
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--violet)", color: "#fff", border: "none" }}
+              className="w-full font-mono text-sm bg-secondary text-primary-foreground border-none hover:opacity-90"
               onClick={startCommit}
             >
               <Lock className="mr-2 h-4 w-4" />
@@ -254,8 +253,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
             </div>
 
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--cyan)", color: "#000", border: "none" }}
+              className="w-full font-mono text-sm bg-primary text-primary-foreground border-none hover:opacity-90"
               onClick={() =>
                 executeCommit(selectedOutcome, amount || "0.01", commitCount)
               }
@@ -319,8 +317,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
             </div>
 
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--violet)", color: "#fff", border: "none" }}
+              className="w-full font-mono text-sm bg-secondary text-primary-foreground border-none hover:opacity-90"
               onClick={startReveal}
             >
               <Eye className="mr-2 h-4 w-4" />
@@ -362,8 +359,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
             )}
 
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--cyan)", color: "#000", border: "none" }}
+              className="w-full font-mono text-sm bg-primary text-primary-foreground border-none hover:opacity-90"
               onClick={() => executeReveal(manualNonce || undefined)}
               disabled={isBusy}
             >
@@ -395,8 +391,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
               </p>
             </div>
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--gold)", color: "#000", border: "none" }}
+              className="w-full font-mono text-sm bg-[var(--gold)] text-primary-foreground border-none hover:opacity-90"
               onClick={startClaim}
             >
               <Trophy className="mr-2 h-4 w-4" />
@@ -412,8 +407,7 @@ export function CommitRevealWizard({ marketId, className }: CommitRevealWizardPr
               Claiming your proportional share of the committed pool.
             </p>
             <Button
-              className="w-full font-mono text-sm"
-              style={{ background: "var(--gold)", color: "#000", border: "none" }}
+              className="w-full font-mono text-sm bg-[var(--gold)] text-primary-foreground border-none hover:opacity-90"
               onClick={executeClaim}
               disabled={isBusy}
             >

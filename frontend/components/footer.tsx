@@ -62,7 +62,7 @@ export function Footer() {
   const { data: isHealthy } = useQuery({
     queryKey: ["health"],
     queryFn: checkHealth,
-    refetchInterval: 30 * 1000,
+    refetchInterval: 120_000,
     placeholderData: true,
   });
 

@@ -10,19 +10,15 @@ import {
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
-  useReadContract,
 } from "wagmi";
 import { toast } from "sonner";
 import { EXPLORER_URL } from "@/lib/constants";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
 const _privateMarketAddress = process.env.NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS;
-if (!_privateMarketAddress) {
-  throw new Error(
-    "NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS is not defined. Add it to .env.local."
-  );
-}
-const PRIVATE_MARKET_ADDRESS = _privateMarketAddress as `0x${string}`;
+const PRIVATE_MARKET_ADDRESS = _privateMarketAddress && _privateMarketAddress !== "0x0000000000000000000000000000000000000000"
+  ? (_privateMarketAddress as `0x${string}`)
+  : undefined;
 
 const STORAGE_KEY = (marketId: number) => `praesagium_nonce_${marketId}`;
 
@@ -114,6 +110,10 @@ export function useCommitReveal(marketId: number) {
 
   const executeCommit = useCallback(
     async (outcome: number, amountEth: string, currentCommitCount: number) => {
+      if (!PRIVATE_MARKET_ADDRESS) {
+        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+        return;
+      }
       try {
         const nonce = generateNonce();
         const amountWei = parseEther(amountEth);
@@ -166,6 +166,10 @@ export function useCommitReveal(marketId: number) {
 
   const executeReveal = useCallback(
     async (manualNonce?: string) => {
+      if (!PRIVATE_MARKET_ADDRESS) {
+        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+        return;
+      }
       try {
         const stored = localStorage.getItem(STORAGE_KEY(marketId));
         let nonce: `0x${string}`;
@@ -243,6 +247,10 @@ export function useCommitReveal(marketId: number) {
   }, []);
 
   const executeClaim = useCallback(async () => {
+    if (!PRIVATE_MARKET_ADDRESS) {
+      toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+      return;
+    }
     try {
       setState((s) => ({ ...s, step: "claiming" }));
       toast.info("Confirm the claim in your wallet");

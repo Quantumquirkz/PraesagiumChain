@@ -1,4 +1,3 @@
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useState, useEffect } from 'react'
 
 export function useDebounce<T>(value: T, delayMs: number): T {

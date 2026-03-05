@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error Tipos de @types/react con export= no exponen named exports; en runtime sí existen
 import { useEffect, useState } from "react";
 import { useWaitForTransactionReceipt, useBlockNumber } from "wagmi";
 import { ExternalLink } from "lucide-react";

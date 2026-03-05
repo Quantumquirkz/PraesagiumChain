@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useAccount, useBalance, useWriteContract } from "wagmi";
 import { formatEther } from "viem";
 import { toast } from "sonner";
@@ -20,11 +21,10 @@ import {
 import type { MarketView, PredictionView } from "@/types/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
 import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL } from "@/lib/constants";
-import { TVChart, type IndicatorId } from "@/components/tv-chart";
+import type { IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
 import { CreatorReputationBadge } from "@/components/creator-reputation-badge";
-import { PHPEHistoryChart } from "@/components/phpe-history-chart";
 import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +44,19 @@ import { ModelVerifier } from "@/components/model-verifier";
 import { SignalFusionPanel } from "@/components/signal-fusion-panel";
 import { ConditionalTree } from "@/components/conditional-tree";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
+
+const PHPEHistoryChart = dynamic(
+  () =>
+    import("@/components/phpe-history-chart").then((m) => ({
+      default: m.PHPEHistoryChart,
+    })),
+  { ssr: false }
+);
+
+const TVChart = dynamic(
+  () => import("@/components/tv-chart").then((m) => ({ default: m.TVChart })),
+  { ssr: false }
+);
 
 export interface MarketOnChain {
   question: string;
@@ -488,7 +501,7 @@ export function MarketDetail({
 
             {/* USER POSITION */}
             {isConnected && userStake !== null && (
-              <div className="rounded-xl border border-cyan/20 bg-surface p-4" style={{ background: "linear-gradient(135deg, var(--bg-surface) 0%, rgba(0,212,255,0.03) 100%)" }}>
+              <div className="rounded-xl border border-cyan/20 bg-surface p-4" style={{ background: "linear-gradient(135deg, var(--bg-surface) 0%, var(--cyan-dim) 100%)" }}>
                 <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-3">Your Position</h3>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="rounded-lg border border-green/20 bg-green-dim p-2.5 text-center">

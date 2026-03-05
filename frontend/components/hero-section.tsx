@@ -180,6 +180,7 @@ const PILL_COLORS = {
 
 function StatPill({ label, value, color }: StatPillProps) {
   const c = PILL_COLORS[color];
+  const display = value != null ? value.toLocaleString() : "—";
   return (
     <div
       className={cn(
@@ -188,7 +189,7 @@ function StatPill({ label, value, color }: StatPillProps) {
       )}
     >
       <span className={cn("font-mono text-[22px] font-bold tabular-nums leading-none", c.text)}>
-        {value != null ? value.toLocaleString() : "—"}
+        {display}
       </span>
       <span className="font-body text-xs text-text-secondary">{label}</span>
     </div>
@@ -219,12 +220,11 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
     >
       <HeroBackground />
 
-      {/* Vignette overlay */}
+      {/* Vignette overlay — dark only; light uses none */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%)",
+          background: "var(--hero-vignette)",
         }}
         aria-hidden
       />
