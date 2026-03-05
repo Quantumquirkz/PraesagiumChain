@@ -211,6 +211,13 @@ Before running the project, ensure you have the following installed:
 
 ## Quick Start
 
+### Development on Windows (WSL)
+
+If you develop on **Windows**, always use a **WSL (Ubuntu)** terminal for project commands — not CMD or PowerShell. This avoids UNC path errors and the system not finding Node binaries.
+
+- **Node and npm:** install them **inside WSL** (e.g. with [nvm](https://github.com/nvm-sh/nvm)); then `npm run dev` and `npm run backend` will find `next` and other binaries in `node_modules/.bin`.
+- If you see *"next" not recognized* or messages mentioning CMD.EXE or UNC paths, open a new WSL terminal and check with `which node` and `which npm` that they point to WSL paths (e.g. `~/.nvm/versions/node/...`), not `/mnt/c/...`.
+
 ### Local Development (full stack)
 
 **Step 1 — Clone and install dependencies**
@@ -253,7 +260,9 @@ API_BASE_URL=http://localhost:4000
 Edit `frontend/.env.local` with:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+# Optional: leave NEXT_PUBLIC_API_BASE_URL unset to use the Next.js proxy to the backend (recommended for local dev).
+# Set it only if you need the browser to call the backend URL directly.
+# NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 NEXT_PUBLIC_CHAIN_ID=11155111
 NEXT_PUBLIC_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0xf2397b5827860b361427240d1D1F6F89e9bF197f
@@ -766,6 +775,7 @@ npm run audit
 
 | Error | Cause | Solution |
 |-------|-------|----------|
+| *"next" not recognized* or CMD.EXE / UNC paths | Commands run in CMD/PowerShell with Windows Node | Use a **WSL (Ubuntu)** terminal and install Node inside WSL (e.g. with `nvm`). Check with `which node` / `which npm` that they point to WSL paths. |
 | `EADDRINUSE 127.0.0.1:8545` | Hardhat node already running | Do not start another; use the existing terminal |
 | `Address already in use (os error 98)` | Backend already running on port 4000 | Run `kill $(lsof -ti:4000)` then restart |
 | `Set in .env: PREDICTION_MARKET_ADDRESS` | Missing post-deploy addresses | Copy printed addresses from `npm run deploy` to `.env` |
@@ -778,6 +788,9 @@ npm run audit
 | `cre workflow simulate` fails | CRE CLI not installed or backend down | Install CRE CLI; ensure `npm run backend` is running |
 | `Only resolver` revert | Wrong resolver address | Ensure `ORACLE_CONSUMER_ADDRESS` is set as resolver in `PredictionMarket` |
 | Wrong network in MetaMask | Wallet on Mainnet or wrong chain | The app auto-detects and prompts to switch to Sepolia (chain ID 11155111) |
+| **ChunkLoadError** / "Loading chunk ... failed" | Stale build cache or load timeout | Delete `frontend/.next`, then restart `npm run dev` from `frontend/` |
+| **Markets not loading** / "Backend unreachable" | Backend not running or proxy not used | Start `npm run backend` from repo root. For local dev, leave `NEXT_PUBLIC_API_BASE_URL` unset to use the Next.js proxy. |
+| `Cannot find module 'dotenv'` | Root dependencies not installed | Run `npm install` at the **repo root**. `run-backend.js` does not use dotenv; other scripts (demo, verify, hardhat) do and rely on root `node_modules`. |
 
 Enable verbose backend logging:
 
