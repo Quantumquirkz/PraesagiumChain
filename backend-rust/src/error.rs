@@ -24,6 +24,7 @@ pub enum AppError {
     #[error("Internal error: {0}")]
     Internal(#[from] anyhow::Error),
 
+    #[allow(dead_code)]
     #[error("Rate limit exceeded")]
     RateLimit,
 }

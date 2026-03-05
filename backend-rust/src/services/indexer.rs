@@ -41,6 +41,7 @@ pub struct EventIndexer {
 
 impl EventIndexer {
     /// Legacy constructor (no shared state / event bus). Used in tests.
+    #[allow(dead_code)]
     pub async fn new(
         rpc_url: &str,
         contract_address: Address,

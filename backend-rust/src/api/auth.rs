@@ -182,6 +182,7 @@ pub async fn verify(
 // ─── JWT validation helper (used by middleware) ───────────────────────────────
 
 /// Validates a Bearer JWT and returns the claims on success.
+#[allow(dead_code)]
 pub fn validate_jwt(token: &str, secret: &str) -> std::result::Result<Claims, String> {
     let key = DecodingKey::from_secret(secret.as_bytes());
     let mut validation = Validation::new(Algorithm::HS256);
@@ -254,6 +255,7 @@ fn recover_signer(message: &str, signature_hex: &str) -> Result<String> {
 
 /// Axum extractor that validates the `Authorization: Bearer <jwt>` header.
 /// Use this in protected handlers: `auth: AuthenticatedUser`.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
     pub address: String,

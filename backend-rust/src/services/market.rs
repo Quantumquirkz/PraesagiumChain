@@ -9,9 +9,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-const LIST_CACHE_TTL_SECS: u64 = 15;
+const LIST_CACHE_TTL_SECS: u64 = 25;
 const MARKET_CACHE_TTL_SECS: u64 = 20;
-const STATS_CACHE_TTL_SECS: u64 = 30;
+const STATS_CACHE_TTL_SECS: u64 = 45;
 
 #[derive(Clone)]
 struct TimedEntry<T: Clone> {
@@ -446,7 +446,7 @@ impl MarketService {
         Ok(pred.map(PredictionView::from))
     }
 
-    /// Fetches latest prediction per market (SQLite: correlated subquery per market_id).
+    /// Fetches latest prediction per market in a single query (avoids N+1).
     pub async fn get_latest_predictions_bulk(
         &self,
         market_ids: &[i64],
@@ -454,18 +454,28 @@ impl MarketService {
         if market_ids.is_empty() {
             return Ok(std::collections::HashMap::new());
         }
-        let mut map = std::collections::HashMap::new();
-        for &mid in market_ids {
-            let pred = sqlx::query_as::<_, Prediction>(
-                "SELECT * FROM predictions WHERE market_id = ?1 ORDER BY timestamp DESC LIMIT 1"
-            )
-            .bind(mid)
-            .fetch_optional(self.db.pool())
-            .await?;
-            if let Some(p) = pred {
-                map.insert(mid, PredictionView::from(p));
-            }
+        let placeholders: Vec<String> = (1..=market_ids.len()).map(|i| format!("?{}", i)).collect();
+        let in_list = placeholders.join(", ");
+        let sql = format!(
+            "SELECT p.id, p.market_id, p.probability, p.uncertainty, p.model_version, p.model_hash, p.timestamp \
+             FROM predictions p \
+             INNER JOIN ( \
+               SELECT market_id, MAX(timestamp) AS max_ts \
+               FROM predictions \
+               WHERE market_id IN ({}) \
+               GROUP BY market_id \
+             ) latest ON p.market_id = latest.market_id AND p.timestamp = latest.max_ts",
+            in_list
+        );
+        let mut q = sqlx::query_as::<_, Prediction>(&sql);
+        for mid in market_ids {
+            q = q.bind(mid);
         }
+        let rows = q.fetch_all(self.db.pool()).await?;
+        let map = rows
+            .into_iter()
+            .map(|p| (p.market_id, PredictionView::from(p)))
+            .collect();
         Ok(map)
     }
 

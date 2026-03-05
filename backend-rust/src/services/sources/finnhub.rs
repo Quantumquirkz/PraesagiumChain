@@ -22,6 +22,7 @@ pub struct FinnhubSource {
 }
 
 impl FinnhubSource {
+    #[allow(dead_code)]
     pub fn new(api_key: Option<String>) -> Self {
         Self {
             client: reqwest::Client::new(),
