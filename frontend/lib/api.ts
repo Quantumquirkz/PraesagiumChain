@@ -11,18 +11,16 @@ import type {
   FetchResponse,
 } from "@/types/api";
 
-// En el navegador usamos rutas relativas (/api/...) para que pasen por el proxy
-// de Next.js (next.config.js rewrites → backend). Esto evita problemas de CORS,
-// rate limiting directo y exponer la URL del backend en el cliente.
-// En SSR (servidor de Next.js) usamos la URL absoluta del backend.
+// En el navegador: si NEXT_PUBLIC_API_BASE_URL está definida, usarla (peticiones directas al backend);
+// si no, usar "" para que las peticiones vayan al mismo origen y el proxy de Next (rewrites) las envíe al backend.
+// En SSR usamos siempre la URL del backend.
 const getBaseUrl = (): string => {
   if (typeof window === "undefined") {
-    // Contexto servidor (SSR/RSC): necesita URL absoluta
     const url = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
     return url.replace(/\/$/, "");
   }
-  // Contexto cliente: rutas relativas → proxy de Next.js
-  return "";
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  return url.replace(/\/$/, "");
 };
 
 async function fetchApi<T>(
@@ -31,13 +29,22 @@ async function fetchApi<T>(
 ): Promise<T> {
   const base = getBaseUrl();
   const url = path.startsWith("http") ? path : `${base}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
+  } catch (e) {
+    const msg =
+      e instanceof TypeError && (String((e as Error).message).includes("fetch"))
+        ? "Backend unreachable. Start the API (e.g. npm run backend). For local dev, leave NEXT_PUBLIC_API_BASE_URL unset so the Next.js proxy is used."
+        : e instanceof Error ? (e as Error).message : "Network error";
+    throw new Error(msg);
+  }
   if (!res.ok) {
     const text = await res.text();
     let message: string;
@@ -49,7 +56,11 @@ async function fetchApi<T>(
     }
     throw new Error(message);
   }
-  return res.json() as Promise<T>;
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error("Invalid response from API (not JSON). Check that the backend is running and the URL is correct.");
+  }
 }
 
 export async function getStats(): Promise<MarketStats> {
@@ -63,7 +74,20 @@ export async function getMarkets(
 ): Promise<PaginatedResponse<MarketView>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
-  return fetchApi<PaginatedResponse<MarketView>>(`/api/markets?${params}`);
+  const raw = await fetchApi<PaginatedResponse<MarketView> | { data: PaginatedResponse<MarketView> }>(
+    `/api/markets?${params}`
+  );
+  // Aceptar tanto { items, total, page, limit } como { data: { items, total, page, limit } }
+  if (raw && typeof raw === "object" && "items" in raw && Array.isArray((raw as PaginatedResponse<MarketView>).items)) {
+    return raw as PaginatedResponse<MarketView>;
+  }
+  if (raw && typeof raw === "object" && "data" in raw) {
+    const data = (raw as { data: PaginatedResponse<MarketView> }).data;
+    if (data && Array.isArray(data.items)) {
+      return data;
+    }
+  }
+  return { items: [], total: 0, page: 1, limit };
 }
 
 export async function getMarket(id: number): Promise<MarketView> {

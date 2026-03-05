@@ -22,6 +22,9 @@ const nextConfig = {
       },
     ];
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
   webpack(config) {
     // Dependencias opcionales de node que no existen en el entorno browser/Next.js
     config.resolve.fallback = {
