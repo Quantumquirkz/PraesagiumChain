@@ -2,7 +2,8 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, Market,
-    MarketStats, MarketView, PaginatedResponse, Prediction, PredictionView, UpdateStatusRequest,
+    MarketRow, MarketStats, MarketView, PaginatedResponse, Prediction, PredictionView,
+    UpdateStatusRequest,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,6 +13,13 @@ use tracing::{debug, info};
 const LIST_CACHE_TTL_SECS: u64 = 25;
 const MARKET_CACHE_TTL_SECS: u64 = 20;
 const STATS_CACHE_TTL_SECS: u64 = 45;
+
+/// SELECT with COALESCE on optional TEXT and on_chain_market_id so NULL decodes correctly (sqlx any).
+const MARKET_SELECT: &str = "SELECT id, question, close_time, resolve_time, status, \
+    COALESCE(outcome,'') AS outcome, total_yes_stake, total_no_stake, created_at, \
+    COALESCE(creator,'') AS creator, market_type, COALESCE(metadata,'') AS metadata, \
+    COALESCE(details_hash,'') AS details_hash, COALESCE(encrypted_uri,'') AS encrypted_uri, \
+    COALESCE(on_chain_market_id, -1) AS on_chain_market_id";
 
 #[derive(Clone)]
 struct TimedEntry<T: Clone> {
@@ -138,33 +146,47 @@ impl MarketService {
         };
 
         let rows: Vec<Market> = if let Some(s) = status {
-            sqlx::query_as::<_, Market>(
-                "SELECT * FROM markets WHERE status = $1 ORDER BY id DESC LIMIT $2 OFFSET $3"
-            )
+            sqlx::query_as::<_, MarketRow>(&format!(
+                "{} FROM markets WHERE status = $1 ORDER BY id DESC LIMIT $2 OFFSET $3",
+                MARKET_SELECT
+            ))
             .bind(s)
             .bind(limit)
             .bind(offset)
             .fetch_all(self.db.pool())
             .await?
+            .into_iter()
+            .map(Market::from)
+            .collect()
         } else {
-            sqlx::query_as::<_, Market>(
-                "SELECT * FROM markets ORDER BY id DESC LIMIT $1 OFFSET $2"
-            )
+            sqlx::query_as::<_, MarketRow>(&format!(
+                "{} FROM markets ORDER BY id DESC LIMIT $1 OFFSET $2",
+                MARKET_SELECT
+            ))
             .bind(limit)
             .bind(offset)
             .fetch_all(self.db.pool())
             .await?
+            .into_iter()
+            .map(Market::from)
+            .collect()
         };
 
         let mut items: Vec<MarketView> = rows.into_iter().map(MarketView::from).collect();
 
-        // Bulk fetch latest predictions (avoids N+1)
+        // Bulk fetch latest predictions (avoids N+1). Si falla, mostramos mercados sin predicción.
         if !items.is_empty() {
             let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
-            let preds = self.get_latest_predictions_bulk(&ids).await?;
-            for item in &mut items {
-                if let Some(pred) = preds.get(&item.id) {
-                    item.latest_prediction = Some(pred.clone());
+            match self.get_latest_predictions_bulk(&ids).await {
+                Ok(preds) => {
+                    for item in &mut items {
+                        if let Some(pred) = preds.get(&item.id) {
+                            item.latest_prediction = Some(pred.clone());
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("get_latest_predictions_bulk failed (list still returned): {}", e);
                 }
             }
         }
@@ -193,12 +215,14 @@ impl MarketService {
         }
 
         debug!("Getting market by id: {}", id);
-        let market: Option<Market> = sqlx::query_as::<_, Market>(
-            "SELECT * FROM markets WHERE id = $1"
-        )
+        let market: Option<Market> = sqlx::query_as::<_, MarketRow>(&format!(
+            "{} FROM markets WHERE id = $1",
+            MARKET_SELECT
+        ))
         .bind(id)
         .fetch_optional(self.db.pool())
-        .await?;
+        .await?
+        .map(Market::from);
 
         let mut market_view = market
             .map(MarketView::from)
@@ -219,12 +243,14 @@ impl MarketService {
 
     /// Returns the market that was synced from chain with this on_chain_market_id (for indexer).
     pub async fn get_by_on_chain_market_id(&self, on_chain_market_id: i64) -> Result<MarketView> {
-        let market: Option<Market> = sqlx::query_as::<_, Market>(
-            "SELECT * FROM markets WHERE on_chain_market_id = $1"
-        )
+        let market: Option<Market> = sqlx::query_as::<_, MarketRow>(&format!(
+            "{} FROM markets WHERE on_chain_market_id = $1",
+            MARKET_SELECT
+        ))
         .bind(on_chain_market_id)
         .fetch_optional(self.db.pool())
-        .await?;
+        .await?
+        .map(Market::from);
 
         let mut market_view = market
             .map(MarketView::from)

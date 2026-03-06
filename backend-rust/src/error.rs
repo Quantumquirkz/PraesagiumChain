@@ -31,16 +31,25 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+        let (status, message) = match &self {
             AppError::NotFound => (StatusCode::NOT_FOUND, "Not found".to_string()),
-            AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
+            AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             AppError::ExternalApi(msg) => {
                 tracing::warn!("External API error: {}", msg);
-                (StatusCode::BAD_GATEWAY, msg)
+                (StatusCode::BAD_GATEWAY, msg.clone())
             }
             AppError::Database(e) => {
-                tracing::error!("Database error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+                let detail = e.to_string();
+                tracing::error!("Database error: {}", detail);
+                let is_dev = std::env::var("ENVIRONMENT")
+                    .map(|v| v == "development" || v.eq_ignore_ascii_case("dev"))
+                    .unwrap_or(false);
+                let message = if is_dev {
+                    format!("Database error: {}", detail)
+                } else {
+                    "Database error".to_string()
+                };
+                (StatusCode::INTERNAL_SERVER_ERROR, message)
             }
             AppError::Internal(e) => {
                 tracing::error!("Internal error: {}", e);

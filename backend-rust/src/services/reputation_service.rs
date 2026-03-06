@@ -143,15 +143,14 @@ impl ReputationService {
         .fetch_one(self.db.pool())
         .await?;
 
-        let rows: Vec<(i64, Option<String>)> = sqlx::query_as::<_, (i64, Option<String>)>(
-            "SELECT id, outcome FROM markets WHERE creator = $1 AND status = 'Resolved'",
+        let rows: Vec<(i64, String)> = sqlx::query_as::<_, (i64, String)>(
+            "SELECT id, COALESCE(outcome,'') AS outcome FROM markets WHERE creator = $1 AND status = 'Resolved'",
         )
         .bind(creator_address)
         .fetch_all(self.db.pool())
         .await?;
 
         let market_ids: Vec<i64> = rows.iter().map(|(id, _)| *id).collect();
-        // SQLite: fetch latest prediction per market using a correlated subquery
         let preds: std::collections::HashMap<i64, f32> = if market_ids.is_empty() {
             std::collections::HashMap::new()
         } else {
@@ -172,10 +171,10 @@ impl ReputationService {
 
         let mut correct = 0i64;
         for (market_id, outcome) in &rows {
-            if let Some(out) = outcome {
+            if !outcome.is_empty() {
                 let pred = preds.get(market_id).copied();
                 let predicted_yes = pred.map(|p| p >= 0.5).unwrap_or(false);
-                let actual_yes = out.eq_ignore_ascii_case("yes");
+                let actual_yes = outcome.eq_ignore_ascii_case("yes");
                 if predicted_yes == actual_yes {
                     correct += 1;
                 }

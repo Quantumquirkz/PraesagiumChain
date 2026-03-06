@@ -21,6 +21,62 @@ pub struct Market {
     pub on_chain_market_id: Option<i64>,
 }
 
+/// Row type for SELECTs: sqlx "any" driver does not decode NULL to Option<String> / Option<i64>
+/// reliably, so we use COALESCE for TEXT and COALESCE(..., -1) for on_chain_market_id.
+#[derive(Debug, Clone, FromRow)]
+pub struct MarketRow {
+    pub id: i64,
+    pub question: String,
+    pub close_time: i64,
+    pub resolve_time: i64,
+    pub status: String,
+    pub outcome: String,
+    pub total_yes_stake: i64,
+    pub total_no_stake: i64,
+    pub created_at: i64,
+    pub creator: String,
+    pub market_type: String,
+    pub metadata: String,
+    pub details_hash: String,
+    pub encrypted_uri: String,
+    /// From SQL: COALESCE(on_chain_market_id, -1); -1 means NULL.
+    pub on_chain_market_id: i64,
+}
+
+fn opt_str(s: String) -> Option<String> {
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+impl From<MarketRow> for Market {
+    fn from(r: MarketRow) -> Self {
+        Self {
+            id: r.id,
+            question: r.question,
+            close_time: r.close_time,
+            resolve_time: r.resolve_time,
+            status: r.status,
+            outcome: opt_str(r.outcome),
+            total_yes_stake: r.total_yes_stake,
+            total_no_stake: r.total_no_stake,
+            created_at: r.created_at,
+            creator: opt_str(r.creator),
+            market_type: r.market_type,
+            metadata: opt_str(r.metadata),
+            details_hash: opt_str(r.details_hash),
+            encrypted_uri: opt_str(r.encrypted_uri),
+            on_chain_market_id: if r.on_chain_market_id == -1 {
+                None
+            } else {
+                Some(r.on_chain_market_id)
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketView {
     pub id: i64,

@@ -1,6 +1,5 @@
-//! Database abstraction: SQLite (default) or PostgreSQL via runtime URL.
-//! Uses sqlx "any" driver when DATABASE_URL starts with `postgres`, otherwise SQLite.
-//! Migrations: `migrations/` for SQLite, `migrations_pg/` for PostgreSQL.
+//! Database: PostgreSQL (primary). Pool type is sqlx Any for compatibility.
+//! Migrations: migrations_pg/ for PostgreSQL. Redis is used separately (cache, sessions, etc.).
 
 use sqlx::any::AnyPoolOptions;
 use sqlx::migrate::Migrator;
@@ -12,8 +11,8 @@ pub struct Database {
 }
 
 impl Database {
-    /// Connect to the database from `url` (e.g. `sqlite:./praesagium.db` or `postgresql://...`).
-    /// Runs the appropriate migrations (SQLite or PostgreSQL) based on the URL scheme.
+    /// Connect to the database from `url`. Use PostgreSQL in production (e.g. postgresql://...).
+    /// Runs migrations from `migrations_pg/`. Redis is configured via REDIS_URL for cache/sessions.
     pub async fn new(url: &str, max_connections: u32) -> anyhow::Result<Self> {
         sqlx::any::install_default_drivers();
 

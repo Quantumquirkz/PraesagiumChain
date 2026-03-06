@@ -1,4 +1,6 @@
 //! Centralised route definitions. All handlers receive State<Arc<AppState>>.
+//!
+//! Callers: Frontend = Next.js app; CRE = Chainlink CRE workflow; Scripts = resolveFromBackend, demoE2E, simulateCRE; Admin/API = external or future use.
 
 use axum::{
     routing::{get, patch, post},
@@ -12,39 +14,39 @@ use crate::state::AppState;
 pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/health", get(api::health::health))
-        // Markets
+        // Markets (Frontend, indexer internal)
         .route("/api/markets", get(api::markets::list).post(api::markets::create))
         .route("/api/markets/conditional", post(api::markets::create_conditional))
         .route("/api/markets/stats", get(api::markets::stats))
-        .route("/api/markets/chain/:on_chain_id", get(api::markets::get_by_chain_id))
+        .route("/api/markets/chain/:on_chain_id", get(api::markets::get_by_chain_id)) // Admin/API
         .route("/api/markets/:id", get(api::markets::get_by_id))
-        .route("/api/markets/:id/status", patch(api::markets::update_status))
-        .route("/api/markets/:id/prediction", post(api::markets::set_prediction))
+        .route("/api/markets/:id/status", patch(api::markets::update_status)) // Admin/API
+        .route("/api/markets/:id/prediction", post(api::markets::set_prediction)) // Admin/API
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
         .route("/api/markets/:id/conditions", get(api::markets::get_conditions))
-        .route("/api/markets/:id/resolutions", get(api::resolve::list_resolutions))
+        .route("/api/markets/:id/resolutions", get(api::resolve::list_resolutions)) // Admin/API
         .route("/api/markets/:id/stream", get(api::stream::market_stream))
-        .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict))
-        // Predictions
-        .route("/api/predict", post(api::predictions::run_predict))
+        .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict)) // Admin/API
+        // Predictions (Frontend uses /hybrid; /api/predict for direct PHPE)
+        .route("/api/predict", post(api::predictions::run_predict)) // Admin/API
         .route("/api/predict/hybrid", post(api::hybrid::hybrid_predict))
-        // AI
+        // AI (Frontend, CRE, Scripts)
         .route("/api/ai/sentiment", post(api::ai::sentiment))
-        // Resolution (universal CRE oracle endpoint)
+        // Resolution (CRE, Scripts)
         .route("/api/resolve/evaluate", post(api::resolve::evaluate))
-        // Report / Oracle (individual endpoints kept for backward compatibility)
+        // Report / Oracle (Scripts: resolveFromBackend; CRE multi-source)
         .route("/api/weather/rained", get(api::report::weather_rained))
         .route("/api/price/above", get(api::report::price_above))
         .route("/api/sports/winner", get(api::report::sports_winner))
-        // Reputation
+        // Reputation (Frontend)
         .route("/api/reputation", get(api::reputation::list_reputation))
         .route("/api/reputation/:address", get(api::reputation::get_reputation))
-        // Observability
+        // Observability (Admin/API)
         .route("/api/metrics", get(api::metrics::get_metrics))
-        // Authentication (SIWE)
+        // Authentication (SIWE — Frontend when wired)
         .route("/api/auth/challenge", post(api::auth::challenge))
         .route("/api/auth/verify", post(api::auth::verify))
-        // Data sources
+        // Data sources (Frontend)
         .route("/api/sources", get(api::sources::list_sources))
         .route("/api/sources/fetch", get(api::sources::fetch))
         .with_state(state)

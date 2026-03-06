@@ -7,10 +7,10 @@ fn default_prediction_cache_ttl() -> u64 {
     300
 }
 fn default_rate_limit_per_second() -> u64 {
-    300
+    600
 }
 fn default_rate_limit_burst() -> u32 {
-    200
+    400
 }
 
 #[derive(Debug, Clone, Deserialize)]
