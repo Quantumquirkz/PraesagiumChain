@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { notFound } from "next/navigation";
 import { getMarketPredictions } from "@/lib/api";
 import { useMarket } from "@/hooks/use-markets";
+import { useMarketStream } from "@/hooks/use-market-stream";
 import { useMarketOnChain, useUserStakeOnChain } from "@/hooks/use-market-on-chain";
 import type { MarketOnChain, UserStakeOnChain } from "@/components/market-detail";
 import { MarketDetail } from "@/components/market-detail";
@@ -41,6 +42,8 @@ export function MarketPageClient() {
   const { address } = useAccount();
 
   const isInvalidId = !Number.isInteger(id) || id < 1;
+
+  useMarketStream(isInvalidId ? null : id);
 
   const {
     data: market,

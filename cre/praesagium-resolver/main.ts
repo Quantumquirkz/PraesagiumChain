@@ -1,7 +1,13 @@
 /**
  * PraesagiumChain CRE Workflow: Prediction market resolution (TypeScript)
  * Integrates: blockchain (Sepolia) + external API (backend /api/ai/sentiment - LLM)
- * Flow: CRON trigger → HTTP POST to API → outcome 0/1 → log
+ * Flow: CRON trigger → HTTP POST to API → outcome 0/1 → log (and in production, executor or script calls OracleConsumer.oracleCallback)
+ *
+ * This workflow only computes the outcome; it does not send an on-chain transaction.
+ * For production, the actual oracleCallback(marketId, outcome) must be invoked by:
+ * - Chainlink CRE executor (when supported), or
+ * - scripts/resolveFromBackend.js (cron/Automation), or
+ * - A custom resolver service. See docs/smart-contracts-and-database.md §3.3.
  */
 import {
   CronCapability,
@@ -84,7 +90,7 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
 
   if (runtime.config.oracle_consumer_address) {
     runtime.log(
-      `In production: would call OracleConsumer.oracleCallback(${runtime.config.market_id}, ${result.outcome})`
+      `Production: call OracleConsumer.oracleCallback(${runtime.config.market_id}, ${result.outcome}) via CRE executor, resolveFromBackend.js, or resolver service (see docs/smart-contracts-and-database.md §3.3)`
     )
   }
 

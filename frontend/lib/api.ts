@@ -14,7 +14,7 @@ import type {
 // En el navegador: si NEXT_PUBLIC_API_BASE_URL está definida, usarla (peticiones directas al backend);
 // si no, usar "" para que las peticiones vayan al mismo origen y el proxy de Next (rewrites) las envíe al backend.
 // En SSR usamos siempre la URL del backend.
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
   if (typeof window === "undefined") {
     const url = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
     return url.replace(/\/$/, "");

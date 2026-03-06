@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { getMarket } from "@/lib/api";
 import { MarketPageClient } from "./market-page-client";
 
+// Revalidate this segment at most every 30s when deployed behind a CDN (ISR).
+export const revalidate = 30;
+
 // ─── Open Graph / SEO dinámico ────────────────────────────────────────────────
 
 export async function generateMetadata({
