@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { notFound } from "next/navigation";
@@ -66,13 +67,18 @@ export function MarketPageClient() {
     refetchIntervalInBackground: false,
   });
 
-  const { data: marketOnChainRaw, isLoading: onChainLoading, isError: onChainError } = useMarketOnChain(
+  const { data: marketOnChainRaw, isLoading: onChainLoading, isError: onChainError, refetch: refetchMarketOnChain } = useMarketOnChain(
     isInvalidId ? 0 : chainIdForContract
   );
-  const { data: userStakeRaw } = useUserStakeOnChain(
+  const { data: userStakeRaw, refetch: refetchUserStake } = useUserStakeOnChain(
     isInvalidId ? 0 : chainIdForContract,
     address
   );
+
+  const onBetSuccess = useCallback(() => {
+    refetchMarketOnChain();
+    refetchUserStake();
+  }, [refetchMarketOnChain, refetchUserStake]);
 
   const marketOnChain = parseMarketResult(marketOnChainRaw as readonly unknown[] | undefined);
   const userStake =
@@ -135,6 +141,7 @@ export function MarketPageClient() {
         onChainLoading={onChainLoading}
         onChainError={onChainError}
         userStake={userStake}
+        onBetSuccess={onBetSuccess}
       />
     </div>
   );

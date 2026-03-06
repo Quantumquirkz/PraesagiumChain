@@ -36,7 +36,8 @@ export function useMarketWatcher() {
               removeWatchedMarket(id);
             }
           } catch {
-            // Error de red: ignorar y reintentar en el próximo ciclo
+            // 404 u otro error: dejar de vigilar este mercado para no seguir haciendo polling
+            removeWatchedMarket(id);
           }
         })
       );

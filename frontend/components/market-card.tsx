@@ -151,7 +151,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
       <div className="mt-4 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <span className="font-mono text-xs text-green shrink-0">
-            YES {formatEth(yesWei)}
+            YES {formatEth(yesWei)} <span className="text-text-muted">({Math.round(yesPct)}%)</span>
           </span>
           <div className="flex-1 h-2.5 min-w-0 rounded-full bg-elevated overflow-hidden flex">
             <div
@@ -164,7 +164,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
             />
           </div>
           <span className="font-mono text-xs text-red shrink-0">
-            NO {formatEth(noWei)}
+            NO {formatEth(noWei)} <span className="text-text-muted">({Math.round(noPct)}%)</span>
           </span>
         </div>
       </div>

@@ -31,6 +31,8 @@ export interface BetFormProps {
   question?: string;
   /** JSON string from market.metadata — used to extract betToken */
   metadata?: string;
+  /** Llamado tras confirmar la apuesta on-chain para refrescar tu stake en pantalla */
+  onBetSuccess?: () => void;
 }
 
 function parseBetToken(metadata?: string): BetToken {
@@ -133,7 +135,7 @@ function BetButton({ state, disabled }: BetButtonProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function BetForm({ marketId, marketStatus, question, metadata }: BetFormProps) {
+export function BetForm({ marketId, marketStatus, question, metadata, onBetSuccess }: BetFormProps) {
   const { address, isConnected } = useAccount();
   const { isWrongNetwork, switchToRequired, isSwitching } = useNetworkGuard();
   const { data: balance } = useBalance({ address });
@@ -177,7 +179,8 @@ export function BetForm({ marketId, marketStatus, question, metadata }: BetFormP
         },
       });
 
-      // Invalidar queries para refrescar datos del mercado y stake del usuario
+      // Refrescar datos on-chain (tu stake y totales) para que se vea la apuesta en pantalla
+      onBetSuccess?.();
       queryClient.invalidateQueries({ queryKey: ["market", marketId] });
       queryClient.invalidateQueries({ queryKey: ["user-stake", marketId] });
 
@@ -198,7 +201,7 @@ export function BetForm({ marketId, marketStatus, question, metadata }: BetFormP
       }, 2000);
       return () => clearTimeout(t);
     }
-  }, [isSuccess, hash, marketId, question, queryClient, reset]);
+  }, [isSuccess, hash, marketId, question, queryClient, reset, onBetSuccess]);
 
   useEffect(() => {
     if (error) {

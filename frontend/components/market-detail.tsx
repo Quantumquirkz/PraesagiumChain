@@ -126,6 +126,8 @@ export interface MarketDetailProps {
   onChainLoading?: boolean;
   onChainError?: boolean;
   userStake: UserStakeOnChain | null;
+  /** Llamado tras apostar con éxito para refrescar stake y totales on-chain */
+  onBetSuccess?: () => void;
 }
 
 export function MarketDetail({
@@ -136,6 +138,7 @@ export function MarketDetail({
   onChainLoading,
   onChainError,
   userStake,
+  onBetSuccess,
 }: MarketDetailProps) {
   const [aiCollapsed, setAiCollapsed] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>("1h");
@@ -169,8 +172,13 @@ export function MarketDetail({
   const { data: balance } = useBalance({ address });
   const { writeContractAsync, isPending: writePending } = useWriteContract();
 
-  const totalYes = marketOnChain ? marketOnChain.totalYesStake : BigInt(Number(market.total_yes_stake));
-  const totalNo = marketOnChain ? marketOnChain.totalNoStake : BigInt(Number(market.total_no_stake));
+  let totalYes = marketOnChain ? marketOnChain.totalYesStake : BigInt(Number(market.total_yes_stake));
+  let totalNo = marketOnChain ? marketOnChain.totalNoStake : BigInt(Number(market.total_no_stake));
+  // Si el contrato devuelve totales 0 pero el usuario tiene stake, usar su stake como mínimo (evita 50/50 fantasma)
+  if (totalYes + totalNo === BigInt(0) && userStake && (userStake.yesStake + userStake.noStake) > BigInt(0)) {
+    totalYes = userStake.yesStake;
+    totalNo = userStake.noStake;
+  }
   const totalStake = totalYes + totalNo;
   const yesPct = totalStake > BigInt(0) ? Number((totalYes * BigInt(100)) / totalStake) : 50;
   const noPct = 100 - yesPct;
@@ -326,7 +334,7 @@ export function MarketDetail({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
               </span>
-              <span className="font-mono text-[10px] text-green font-medium">Updates every 5s</span>
+              <span className="font-mono text-[10px] text-green font-medium">Updates every 2s</span>
             </div>
           </div>
 
@@ -567,7 +575,7 @@ export function MarketDetail({
                     </p>
                   </div>
                 )}
-                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} metadata={market.metadata} />
+                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} metadata={market.metadata} onBetSuccess={onBetSuccess} />
               </div>
             )}
 
