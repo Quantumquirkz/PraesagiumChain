@@ -85,10 +85,10 @@ function PriceParams({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="space-y-1.5">
         <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
-          Símbolo (ej: BTCUSDT)
+          Símbolo ({params.priceSource === "chainlink" ? "ETH_USD o BTC_USD" : "ej: BTCUSDT"})
         </label>
         <Input
-          placeholder="BTCUSDT"
+          placeholder={params.priceSource === "chainlink" ? "BTC_USD" : "BTCUSDT"}
           value={params.symbol ?? ""}
           onChange={(e) => onChange({ symbol: e.target.value })}
           className="font-mono text-sm"
@@ -110,23 +110,37 @@ function PriceParams({
         <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
           Fuente
         </label>
-        <div className="flex gap-2">
-          {["binance", "coingecko"].map((src) => (
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "binance", label: "Binance" },
+            { id: "coingecko", label: "CoinGecko" },
+            { id: "chainlink", label: "Chainlink Data Feeds" },
+          ].map(({ id, label }) => (
             <button
-              key={src}
+              key={id}
               type="button"
-              onClick={() => onChange({ priceSource: src })}
+              onClick={() => {
+                onChange({
+                  priceSource: id,
+                  symbol: id === "chainlink" ? "BTC_USD" : (params.symbol ?? "BTCUSDT"),
+                });
+              }}
               className={cn(
-                "flex-1 rounded-md border py-1.5 font-mono text-xs transition-all",
-                (params.priceSource ?? "binance") === src
+                "rounded-md border py-1.5 px-3 font-mono text-xs transition-all",
+                (params.priceSource ?? "binance") === id
                   ? "border-amber-400/40 bg-amber-400/10 text-amber-400"
                   : "border-border bg-elevated text-text-muted hover:border-border-bright"
               )}
             >
-              {src}
+              {label}
             </button>
           ))}
         </div>
+        {(params.priceSource ?? "binance") === "chainlink" && (
+          <p className="mt-2 font-mono text-[10px] text-green">
+            Resuelve con Chainlink Automation + Data Feeds on-chain
+          </p>
+        )}
       </div>
     </div>
   );

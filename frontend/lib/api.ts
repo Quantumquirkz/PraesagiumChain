@@ -6,6 +6,7 @@ import type {
   CreatorReputation,
   SentimentResponse,
   HybridPredictResponse,
+  FeedPriceResponse,
   ConditionalConditionView,
   SourceInfo,
   FetchResponse,
@@ -134,14 +135,6 @@ export async function getReputation(address: string): Promise<CreatorReputation>
   return fetchApi<CreatorReputation>(`/api/reputation/${address}`);
 }
 
-export async function getLeaderboard(
-  limit = 20,
-  offset = 0
-): Promise<CreatorReputation[]> {
-  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return fetchApi<CreatorReputation[]>(`/api/reputation?${params}`);
-}
-
 export async function getMarketConditions(
   id: number
 ): Promise<ConditionalConditionView[]> {
@@ -168,4 +161,9 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function getFeedPrice(feed: string): Promise<FeedPriceResponse> {
+  const params = new URLSearchParams({ feed });
+  return fetchApi<FeedPriceResponse>(`/api/feeds/price?${params}`);
 }

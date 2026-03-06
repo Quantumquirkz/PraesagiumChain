@@ -79,5 +79,13 @@ export interface HybridPredictResponse {
   market_id?: number;
 }
 
+export interface FeedPriceResponse {
+  feed: string;
+  price: number;
+  price_formatted: string;
+  decimals: number;
+  updated_at: number;
+}
+
 export type OutcomeEnum = 0 | 1 | 2;
 export type MarketStatusEnum = 0 | 1 | 2 | 3;

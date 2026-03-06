@@ -24,7 +24,6 @@ import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_
 import type { IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
-import { CreatorReputationBadge } from "@/components/creator-reputation-badge";
 import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +43,7 @@ import { ModelVerifier } from "@/components/model-verifier";
 import { SignalFusionPanel } from "@/components/signal-fusion-panel";
 import { ConditionalTree } from "@/components/conditional-tree";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
+import { ChainlinkPriceBadge } from "@/components/chainlink-price-badge";
 
 const PHPEHistoryChart = dynamic(
   () =>
@@ -490,6 +490,12 @@ export function MarketDetail({
         <aside className="lg:pl-5 pt-5 space-y-4 min-w-0">
           <div className="lg:sticky lg:top-4 space-y-4">
 
+            {/* CHAINLINK DATA FEEDS */}
+            <div className="flex flex-wrap gap-2">
+              <ChainlinkPriceBadge feed="ETH_USD" />
+              <ChainlinkPriceBadge feed="BTC_USD" />
+            </div>
+
             {/* COUNTDOWN */}
             <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
               <CountdownBlocks targetUnix={closeUnix} label="CLOSES IN" />
@@ -498,14 +504,6 @@ export function MarketDetail({
               </div>
               <TimelineBar closeUnix={closeUnix} resolveUnix={resolveUnix} />
             </div>
-
-            {/* CREATOR */}
-            {(market.creator || marketOnChain?.creator) && (
-              <div className="rounded-xl border border-border bg-surface p-4">
-                <h3 className="mb-3 font-display font-bold text-[11px] tracking-widest text-text-muted uppercase">Creator</h3>
-                <CreatorReputationBadge address={(market.creator || marketOnChain!.creator) as string} />
-              </div>
-            )}
 
             {/* USER POSITION */}
             {isConnected && userStake !== null && (

@@ -37,7 +37,6 @@ const FOOTER_COLUMNS = [
       { label: "Create",     href: "/markets/create" },
       { label: "Signals",    href: "/signals"        },
       { label: "Positions",  href: "/positions"      },
-      { label: "Reputation", href: "/reputation"     },
     ],
   },
   {
@@ -177,7 +176,7 @@ export function Footer() {
             <span className="text-text-muted">Ethereum Sepolia</span>
           </div>
           <p className="font-mono text-xs text-text-muted">
-            Powered by Chainlink CRE · PraesagiumChain v1.0
+            Powered by Chainlink CRE · Automation · Data Feeds · PraesagiumChain v1.0
           </p>
         </div>
       </div>
