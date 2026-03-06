@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "hardhat test",
+    "test": "HARDHAT_DISABLE_ANALYTICS=1 CI=1 node node_modules/hardhat/internal/cli/bootstrap.js test",
     "compile": "hardhat compile && npm run sync:cre-abi",
     "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy/deployLocal.js --network localhost",
