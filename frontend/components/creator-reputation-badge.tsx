@@ -49,10 +49,9 @@ export function CreatorReputationBadge({ address }: { address: string }) {
   const initials = address.slice(2, 4).toUpperCase();
 
   return (
-    <a
-      href={`/reputation/${address}`}
-      className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-elevated"
-      aria-label={`View reputation for ${address.slice(0, 6)}...${address.slice(-4)}`}
+    <div
+      className="flex items-center gap-3 rounded-md p-2"
+      aria-label={`Creator ${address.slice(0, 6)}...${address.slice(-4)}`}
     >
       {/* Avatar hexagonal con glow de tier */}
       <div
@@ -84,6 +83,6 @@ export function CreatorReputationBadge({ address }: { address: string }) {
           {data.markets_created} created · {data.correct_predictions} correct
         </span>
       </div>
-    </a>
+    </div>
   );
 }

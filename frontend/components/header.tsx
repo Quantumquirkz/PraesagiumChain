@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Star, Radio, Info, ShieldCheck } from "lucide-react";
+import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Radio, Info, ShieldCheck } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -28,7 +28,6 @@ const NAV_LINKS = [
   { href: "/",               label: "Markets",    icon: LayoutGrid,  accent: "cyan"   },
   { href: "/markets/create", label: "Create",     icon: PlusCircle,  accent: "violet" },
   { href: "/positions",      label: "Positions",  icon: Wallet,      accent: "green"  },
-  { href: "/reputation",     label: "Reputation", icon: Star,        accent: "gold"   },
   { href: "/signals",        label: "Signals",    icon: Radio,       accent: "cyan"   },
   { href: "/markets/private", label: "Private",    icon: ShieldCheck, accent: "violet" },
   { href: "/about",          label: "About",      icon: Info,        accent: "violet" },
@@ -406,7 +405,6 @@ export function Header() {
                           accent === "cyan"   && "bg-cyan-dim text-cyan",
                           accent === "violet" && "bg-violet-dim text-violet",
                           accent === "green"  && "bg-green-dim text-green",
-                          accent === "gold"   && "bg-[rgba(245,166,35,0.12)] text-gold",
                         )
                       : "text-text-secondary hover:text-foreground hover:bg-surface"
                   )}
@@ -417,7 +415,6 @@ export function Header() {
                       isActive && accent === "cyan"   && "text-cyan",
                       isActive && accent === "violet" && "text-violet",
                       isActive && accent === "green"  && "text-green",
-                      isActive && accent === "gold"   && "text-gold",
                     )}
                     aria-hidden
                   />
@@ -430,7 +427,6 @@ export function Header() {
                         accent === "cyan"   && "bg-cyan",
                         accent === "violet" && "bg-violet",
                         accent === "green"  && "bg-green",
-                        accent === "gold"   && "bg-gold",
                       )}
                       aria-hidden
                     />
@@ -501,7 +497,6 @@ export function Header() {
                               accent === "cyan"   && "text-cyan bg-cyan-dim",
                               accent === "violet" && "text-violet bg-violet-dim",
                               accent === "green"  && "text-green bg-green-dim",
-                              accent === "gold"   && "text-gold bg-[rgba(245,166,35,0.12)]",
                             )
                           : "text-text-secondary hover:text-foreground hover:bg-elevated"
                       )}
