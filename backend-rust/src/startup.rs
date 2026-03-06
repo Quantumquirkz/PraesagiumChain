@@ -1,4 +1,6 @@
 //! Application bootstrap: wires all services, middleware, and the router into a runnable app.
+//!
+//! When RUN_INDEXER_ONLY=1, use `run_indexer_only` to run only the event indexer (no API).
 
 use axum::Router;
 use std::sync::Arc;
@@ -17,8 +19,50 @@ use crate::services::{
 };
 use crate::state::AppState;
 
+/// Runs only the on-chain event indexer (no HTTP API). Use when RUN_INDEXER_ONLY=1.
+/// Requires RPC_URL and PREDICTION_MARKET_ADDRESS. Runs until process receives SIGTERM/Ctrl+C.
+pub async fn run_indexer_only(config: Config, db: Database) -> anyhow::Result<()> {
+    let (rpc_url, contract_addr) = match (&config.rpc_url, &config.prediction_market_address) {
+        (Some(u), Some(a)) if !u.is_empty() && !a.trim().is_empty() => (u.clone(), a.trim().to_string()),
+        _ => {
+            return Err(anyhow::anyhow!(
+                "RUN_INDEXER_ONLY requires RPC_URL and PREDICTION_MARKET_ADDRESS to be set"
+            ));
+        }
+    };
+    let contract_address: ethers::types::Address = contract_addr
+        .parse()
+        .map_err(|_| anyhow::anyhow!("PREDICTION_MARKET_ADDRESS is not a valid Ethereum address (0x + 40 hex)"))?;
+
+    let market_service = Arc::new(MarketService::new(db.clone()));
+    let reputation_service = Arc::new(ReputationService::new(db.clone()));
+    let start_block = config.start_block;
+    let shared_state = IndexerState::new(start_block.unwrap_or(0));
+    let event_bus = EventBus::new();
+
+    info!("Starting indexer-only mode (no API). Contract: {:?}", contract_address);
+    let mut indexer = crate::services::indexer::EventIndexer::new_with_state(
+        &rpc_url,
+        contract_address,
+        market_service,
+        reputation_service,
+        start_block,
+        shared_state,
+        event_bus,
+    )
+    .await?;
+    indexer.start().await?;
+    Ok(())
+}
+
 /// Builds the full Axum application with all layers and routes.
 pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
+    if config.is_production() && config.jwt_secret.as_deref().map_or(true, |s| s.trim().is_empty()) {
+        return Err(anyhow::anyhow!(
+            "JWT_SECRET must be set in production (ENVIRONMENT=production). Use a strong random secret."
+        ));
+    }
+
     let started_at = chrono::Utc::now().timestamp();
     let cache = Arc::new(Cache::new());
     let event_bus = EventBus::new();
@@ -136,9 +180,11 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     );
 
     let cors = cors_layer(&config);
+    let redis_url = config.redis_url.clone();
     let config_arc = Arc::new(config);
 
-    let nonce_store = crate::api::auth::new_nonce_store();
+    let nonce_store = crate::api::auth::new_nonce_store(redis_url.as_deref())
+        .map_err(|e| anyhow::anyhow!("Nonce store: {}", e))?;
 
     let state = Arc::new(AppState {
         market_service,

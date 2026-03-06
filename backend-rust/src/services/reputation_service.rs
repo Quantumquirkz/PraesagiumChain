@@ -79,13 +79,12 @@ impl ReputationService {
         let normalized = creator_address.trim().to_lowercase();
         let now = chrono::Utc::now().timestamp();
 
-        let last_pred = sqlx::query_scalar::<_, Option<f32>>(
+        let last_pred: Option<f32> = sqlx::query_scalar::<_, f32>(
             "SELECT probability FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1",
         )
         .bind(market_id)
         .fetch_optional(self.db.pool())
-        .await?
-        .flatten();
+        .await?;
 
         let predicted_yes = last_pred.map(|p| p >= 0.5).unwrap_or(false);
         let actual_yes = outcome.eq_ignore_ascii_case("yes");
@@ -95,15 +94,15 @@ impl ReputationService {
         sqlx::query(
             "INSERT INTO creator_reputation \
                 (creator_address, markets_created, markets_resolved, correct_predictions, reputation_score, updated_at) \
-             VALUES (?1, 0, 1, ?2, ?3, ?4) \
+             VALUES ($1, 0, 1, $2, $3, $4) \
              ON CONFLICT(creator_address) DO UPDATE \
              SET markets_resolved    = creator_reputation.markets_resolved + 1, \
-                 correct_predictions = creator_reputation.correct_predictions + ?2, \
+                 correct_predictions = creator_reputation.correct_predictions + $2, \
                  reputation_score    = CASE \
                      WHEN (creator_reputation.markets_resolved + 1) > 0 \
-                     THEN CAST(creator_reputation.correct_predictions + ?2 AS REAL) / CAST(creator_reputation.markets_resolved + 1 AS REAL) \
+                     THEN CAST(creator_reputation.correct_predictions + $2 AS REAL) / CAST(creator_reputation.markets_resolved + 1 AS REAL) \
                      ELSE 0.0 END, \
-                 updated_at = ?4",
+                 updated_at = $4",
         )
         .bind(&normalized)
         .bind(correct_delta)
@@ -144,7 +143,7 @@ impl ReputationService {
         .fetch_one(self.db.pool())
         .await?;
 
-        let rows = sqlx::query_as::<_, (i64, Option<String>)>(
+        let rows: Vec<(i64, Option<String>)> = sqlx::query_as::<_, (i64, Option<String>)>(
             "SELECT id, outcome FROM markets WHERE creator = $1 AND status = 'Resolved'",
         )
         .bind(creator_address)
@@ -159,7 +158,7 @@ impl ReputationService {
             let mut map = std::collections::HashMap::new();
             for mid in &market_ids {
                 let row: Option<f32> = sqlx::query_scalar(
-                    "SELECT probability FROM predictions WHERE market_id = ?1 ORDER BY timestamp DESC LIMIT 1"
+                    "SELECT probability FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
                 )
                 .bind(mid)
                 .fetch_optional(self.db.pool())

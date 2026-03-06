@@ -45,6 +45,12 @@ async fn main() -> anyhow::Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!("Migration failed: {}", e))?;
 
+    if std::env::var("RUN_INDEXER_ONLY").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false) {
+        info!("RUN_INDEXER_ONLY=1: starting indexer without API");
+        startup::run_indexer_only(config, db).await?;
+        return Ok(());
+    }
+
     let addr = format!("0.0.0.0:{}", config.port);
     let app = startup::build_app(config, db).await?;
 

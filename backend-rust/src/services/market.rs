@@ -74,9 +74,9 @@ impl MarketService {
         amount: u64,
     ) -> Result<()> {
         let amount_i64 = amount.min(i64::MAX as u64) as i64;
-        let result = if outcome.eq_ignore_ascii_case("yes") {
+        let result: sqlx::any::AnyQueryResult = if outcome.eq_ignore_ascii_case("yes") {
             sqlx::query(
-                "UPDATE markets SET total_yes_stake = total_yes_stake + ?1 WHERE on_chain_market_id = ?2",
+                "UPDATE markets SET total_yes_stake = total_yes_stake + $1 WHERE on_chain_market_id = $2",
             )
             .bind(amount_i64)
             .bind(on_chain_market_id)
@@ -84,7 +84,7 @@ impl MarketService {
             .await?
         } else if outcome.eq_ignore_ascii_case("no") {
             sqlx::query(
-                "UPDATE markets SET total_no_stake = total_no_stake + ?1 WHERE on_chain_market_id = ?2",
+                "UPDATE markets SET total_no_stake = total_no_stake + $1 WHERE on_chain_market_id = $2",
             )
             .bind(amount_i64)
             .bind(on_chain_market_id)
@@ -137,7 +137,7 @@ impl MarketService {
                 .await?
         };
 
-        let rows = if let Some(s) = status {
+        let rows: Vec<Market> = if let Some(s) = status {
             sqlx::query_as::<_, Market>(
                 "SELECT * FROM markets WHERE status = $1 ORDER BY id DESC LIMIT $2 OFFSET $3"
             )
@@ -193,7 +193,7 @@ impl MarketService {
         }
 
         debug!("Getting market by id: {}", id);
-        let market = sqlx::query_as::<_, Market>(
+        let market: Option<Market> = sqlx::query_as::<_, Market>(
             "SELECT * FROM markets WHERE id = $1"
         )
         .bind(id)
@@ -219,7 +219,7 @@ impl MarketService {
 
     /// Returns the market that was synced from chain with this on_chain_market_id (for indexer).
     pub async fn get_by_on_chain_market_id(&self, on_chain_market_id: i64) -> Result<MarketView> {
-        let market = sqlx::query_as::<_, Market>(
+        let market: Option<Market> = sqlx::query_as::<_, Market>(
             "SELECT * FROM markets WHERE on_chain_market_id = $1"
         )
         .bind(on_chain_market_id)
@@ -298,7 +298,7 @@ impl MarketService {
         let id: i64 = sqlx::query_scalar(
             r#"
             INSERT INTO markets (question, close_time, resolve_time, status, created_at, market_type, on_chain_market_id, creator)
-             VALUES (?1, ?2, ?3, 'Open', ?4, 'base', ?5, ?6)
+             VALUES ($1, $2, $3, 'Open', $4, 'base', $5, $6)
              ON CONFLICT(on_chain_market_id) DO UPDATE SET
                question = excluded.question,
                close_time = excluded.close_time,
@@ -436,7 +436,7 @@ impl MarketService {
     }
 
     pub async fn get_latest_prediction(&self, market_id: i64) -> Result<Option<PredictionView>> {
-        let pred = sqlx::query_as::<_, Prediction>(
+        let pred: Option<Prediction> = sqlx::query_as::<_, Prediction>(
             "SELECT * FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT 1"
         )
         .bind(market_id)
@@ -454,7 +454,7 @@ impl MarketService {
         if market_ids.is_empty() {
             return Ok(std::collections::HashMap::new());
         }
-        let placeholders: Vec<String> = (1..=market_ids.len()).map(|i| format!("?{}", i)).collect();
+        let placeholders: Vec<String> = (1..=market_ids.len()).map(|i| format!("${}", i)).collect();
         let in_list = placeholders.join(", ");
         let sql = format!(
             "SELECT p.id, p.market_id, p.probability, p.uncertainty, p.model_version, p.model_hash, p.timestamp \
@@ -471,7 +471,7 @@ impl MarketService {
         for mid in market_ids {
             q = q.bind(mid);
         }
-        let rows = q.fetch_all(self.db.pool()).await?;
+        let rows: Vec<Prediction> = q.fetch_all(self.db.pool()).await?;
         let map = rows
             .into_iter()
             .map(|p| (p.market_id, PredictionView::from(p)))
@@ -480,7 +480,7 @@ impl MarketService {
     }
 
     pub async fn get_predictions(&self, market_id: i64, limit: i64) -> Result<Vec<PredictionView>> {
-        let preds = sqlx::query_as::<_, Prediction>(
+        let preds: Vec<Prediction> = sqlx::query_as::<_, Prediction>(
             "SELECT * FROM predictions WHERE market_id = $1 ORDER BY timestamp DESC LIMIT $2"
         )
         .bind(market_id)

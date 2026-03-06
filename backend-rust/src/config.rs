@@ -43,9 +43,21 @@ pub struct Config {
     pub rate_limit_burst: u32,
     /// Secret key for JWT signing. If unset, a default insecure key is used (dev only).
     pub jwt_secret: Option<String>,
+    /// Redis URL for SIWE nonce store (e.g. redis://localhost:6379). If unset, nonces are stored in memory.
+    pub redis_url: Option<String>,
+    /// Environment: "production" enables strict checks (e.g. JWT_SECRET required). Unset or other = development.
+    pub environment: Option<String>,
 }
 
 impl Config {
+    /// Returns true when ENVIRONMENT=production (enables strict checks).
+    pub fn is_production(&self) -> bool {
+        self.environment
+            .as_deref()
+            .map(|e| e.eq_ignore_ascii_case("production"))
+            .unwrap_or(false)
+    }
+
     pub fn from_env() -> anyhow::Result<Self> {
         let port = std::env::var("PORT")
             .ok()
@@ -97,6 +109,8 @@ impl Config {
             rate_limit_per_second,
             rate_limit_burst,
             jwt_secret: std::env::var("JWT_SECRET").ok(),
+            redis_url: std::env::var("REDIS_URL").ok(),
+            environment: std::env::var("ENVIRONMENT").ok(),
         })
     }
 }

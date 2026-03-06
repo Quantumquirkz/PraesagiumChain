@@ -8,8 +8,7 @@
 //!      Server recovers the signer, validates the nonce, and returns a JWT.
 //!   4. Protected endpoints check the `Authorization: Bearer <jwt>` header.
 //!
-//! The nonce store is an in-memory `DashMap` keyed by address (lowercase).
-//! Nonces expire after 5 minutes. For production, replace with Redis.
+//! Nonce store: in-memory (default) or Redis when REDIS_URL is set (production).
 
 use axum::{extract::State, http::StatusCode, Json};
 use ethers::core::types::{Address, Signature};
@@ -26,16 +25,105 @@ use crate::state::AppState;
 
 // ─── Nonce store ─────────────────────────────────────────────────────────────
 
-/// In-memory nonce store. Shared via `AppState::nonce_store`.
-pub type NonceStore = Arc<RwLock<HashMap<String, NonceEntry>>>;
-
 pub struct NonceEntry {
     pub nonce: String,
     pub expires_at: i64,
 }
 
-pub fn new_nonce_store() -> NonceStore {
-    Arc::new(RwLock::new(HashMap::new()))
+/// Backend for SIWE nonces: in-memory (default) or Redis when REDIS_URL is set.
+#[derive(Clone)]
+pub enum NonceStoreBackend {
+    Memory(Arc<RwLock<HashMap<String, NonceEntry>>>),
+    Redis(Arc<redis::Client>),
+}
+
+const NONCE_PREFIX: &str = "siwe:nonce:";
+const NONCE_TTL_SECS: i64 = 300;
+
+impl NonceStoreBackend {
+    pub async fn set(&self, address: &str, nonce: &str, expires_at: i64) -> Result<()> {
+        match self {
+            NonceStoreBackend::Memory(store) => {
+                let mut m = store.write().await;
+                let now = chrono::Utc::now().timestamp();
+                m.retain(|_, v| v.expires_at > now);
+                m.insert(
+                    address.to_string(),
+                    NonceEntry {
+                        nonce: nonce.to_string(),
+                        expires_at,
+                    },
+                );
+                Ok(())
+            }
+            NonceStoreBackend::Redis(client) => {
+                let mut conn = client
+                    .get_multiplexed_async_connection()
+                    .await
+                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis connect: {}", e)))?;
+                let key = format!("{}{}", NONCE_PREFIX, address.to_lowercase());
+                let value = format!("{}:{}", nonce, expires_at);
+                redis::cmd("SETEX")
+                    .arg(&key)
+                    .arg(NONCE_TTL_SECS)
+                    .arg(&value)
+                    .query_async::<_, ()>(&mut conn)
+                    .await
+                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis SETEX: {}", e)))?;
+                Ok(())
+            }
+        }
+    }
+
+    /// Returns (nonce, expires_at) and removes the entry.
+    pub async fn get_and_remove(&self, address: &str) -> Result<Option<(String, i64)>> {
+        match self {
+            NonceStoreBackend::Memory(store) => {
+                let mut m = store.write().await;
+                let entry = m.remove(address);
+                Ok(entry.map(|e| (e.nonce, e.expires_at)))
+            }
+            NonceStoreBackend::Redis(client) => {
+                let mut conn = client
+                    .get_multiplexed_async_connection()
+                    .await
+                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis connect: {}", e)))?;
+                let key = format!("{}{}", NONCE_PREFIX, address.to_lowercase());
+                let value: Option<String> = redis::cmd("GET")
+                    .arg(&key)
+                    .query_async::<_, Option<String>>(&mut conn)
+                    .await
+                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis GET: {}", e)))?;
+                if let Some(s) = value {
+                    let _: () = redis::cmd("DEL")
+                        .arg(&key)
+                        .query_async::<_, ()>(&mut conn)
+                        .await
+                        .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis DEL: {}", e)))?;
+                    let parts: Vec<&str> = s.splitn(2, ':').collect();
+                    if parts.len() == 2 {
+                        if let Ok(exp) = parts[1].parse::<i64>() {
+                            return Ok(Some((parts[0].to_string(), exp)));
+                        }
+                    }
+                }
+                Ok(None)
+            }
+        }
+    }
+}
+
+/// Type alias for shared nonce store (used in AppState).
+pub type NonceStore = Arc<NonceStoreBackend>;
+
+pub fn new_nonce_store(redis_url: Option<&str>) -> Result<NonceStore> {
+    Ok(Arc::new(if let Some(url) = redis_url.filter(|s| !s.trim().is_empty()) {
+        let client = redis::Client::open(url)
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("Redis client: {}", e)))?;
+        NonceStoreBackend::Redis(Arc::new(client))
+    } else {
+        NonceStoreBackend::Memory(Arc::new(RwLock::new(HashMap::new())))
+    }))
 }
 
 // ─── JWT claims ──────────────────────────────────────────────────────────────
@@ -99,12 +187,10 @@ pub async fn challenge(
 
     let message = build_siwe_message(&address, &nonce, expires_at);
 
-    {
-        let mut store = state.nonce_store.write().await;
-        // Purge expired entries opportunistically
-        store.retain(|_, v| v.expires_at > now);
-        store.insert(address.clone(), NonceEntry { nonce: nonce.clone(), expires_at });
-    }
+    state
+        .nonce_store
+        .set(&address, &nonce, expires_at)
+        .await?;
 
     info!(address = %address, "SIWE challenge issued");
 
@@ -127,14 +213,14 @@ pub async fn verify(
 
     // Retrieve and consume the nonce
     let nonce = {
-        let mut store = state.nonce_store.write().await;
-        let entry = store.remove(&address).ok_or_else(|| {
+        let entry = state.nonce_store.get_and_remove(&address).await?;
+        let (nonce, exp) = entry.ok_or_else(|| {
             AppError::Validation("No pending challenge for this address".to_string())
         })?;
-        if entry.expires_at < now {
+        if exp < now {
             return Err(AppError::Validation("Challenge expired".to_string()));
         }
-        entry.nonce
+        nonce
     };
 
     // Reconstruct the message that was signed
