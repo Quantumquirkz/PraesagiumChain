@@ -5,10 +5,12 @@ import "./interfaces/IPredictionMarket.sol";
 
 /// @title CREWorkflow
 /// @notice Simplified bridge between external CRE/Oracle flow and PredictionMarket contract.
+///         Accepts resolution from oracle (Functions Consumer, CRE executor) or authorizedAutomation (OracleConsumer for Chainlink Automation + Data Feeds).
 contract CREWorkflow {
     IPredictionMarket public immutable predictionMarket;
     address public owner;
-    address public oracle; // authorized oracle contract (e.g. OracleConsumer)
+    address public oracle; // primary oracle (Functions Consumer, CRE executor)
+    address public authorizedAutomation; // OracleConsumer for Chainlink Automation + Data Feeds
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -16,7 +18,7 @@ contract CREWorkflow {
     }
 
     modifier onlyOracle() {
-        require(msg.sender == oracle, "Only oracle");
+        require(msg.sender == oracle || msg.sender == authorizedAutomation, "Only oracle");
         _;
     }
 
@@ -28,6 +30,10 @@ contract CREWorkflow {
 
     function setOracle(address _oracle) external onlyOwner {
         oracle = _oracle;
+    }
+
+    function setAuthorizedAutomation(address _automation) external onlyOwner {
+        authorizedAutomation = _automation;
     }
 
     /// @notice Called from the oracle (off-chain / Chainlink) when there is a final result.

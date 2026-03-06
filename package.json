@@ -17,6 +17,7 @@
     "test:backend": "cd backend-rust && cargo test",
     "test:all": "npm test && npm run test:backend",
     "sync:cre-abi": "node scripts/syncCreAbi.js",
+    "register:upkeep": "hardhat run scripts/registerUpkeep.js --network sepolia",
     "audit": "npm audit --audit-level=critical || true && (cd backend-rust && cargo audit 2>/dev/null || true)"
   },
   "devDependencies": {
