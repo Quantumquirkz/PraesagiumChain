@@ -35,6 +35,19 @@ const DEFAULT_SOURCES: SourceConfig[] = [
   { id: "exchangerate",  name: "ExchangeRate",   tag: "FOREX",  params: {},                             color: "var(--violet)" },
 ];
 
+function buildSourcesForAsset(binanceSymbol: string): SourceConfig[] {
+  const base = binanceSymbol.replace(/USDT$/i, "") || "BTC";
+  const krakenPair = base === "BTC" ? "XBTUSD" : `${base}USD`;
+  return [
+    { id: "binance",       name: "Binance",       tag: "CEX",    params: { symbol: binanceSymbol },           color: "var(--cyan)"   },
+    { id: "cryptocompare", name: "CryptoCompare",  tag: "AGG",    params: { fsym: base, tsym: "USD" },          color: "var(--violet)" },
+    { id: "kraken",        name: "Kraken",         tag: "CEX",    params: { pair: krakenPair },                 color: "var(--cyan)"   },
+    { id: "chainlink",     name: "Chainlink",      tag: "ORACLE", params: {},                                   color: "var(--green)"  },
+    { id: "finnhub",       name: "Finnhub",        tag: "MARKET", params: { symbol: `BINANCE:${binanceSymbol}` }, color: "var(--gold)"   },
+    { id: "exchangerate",  name: "ExchangeRate",   tag: "FOREX",  params: {},                                   color: "var(--violet)" },
+  ];
+}
+
 // ─── Live prediction chart ────────────────────────────────────────────────────
 
 interface PricePoint {
@@ -72,10 +85,10 @@ function LivePredictionChart({
   const [latestPred, setLatestPred] = useState<number | null>(null);
   const [latestChange, setLatestChange] = useState<number>(0);
 
-  // Add a new point every 2 seconds
+  // Add points: primer punto al instante, luego cada 2 segundos
   useEffect(() => {
     if (!price) return;
-    const id = setInterval(() => {
+    const addPoint = () => {
       const now  = Date.now();
       const prev = predRef.current ?? price;
       const { pred, upper, lower } = nextPrediction(prev, price);
@@ -91,7 +104,9 @@ function LivePredictionChart({
       }
       setLatestPred(pred);
       setTick((t) => t + 1);
-    }, 2000);
+    };
+    addPoint(); // Primer punto inmediato
+    const id = setInterval(addPoint, 500); // actualización cada 0.5 s
     return () => clearInterval(id);
   }, [price]);
 
@@ -104,6 +119,7 @@ function LivePredictionChart({
 
     const W = canvas.width;
     const H = canvas.height;
+    if (W <= 0 || H <= 0) return;
     const pts = pointsRef.current;
     if (pts.length < 2) {
       ctx.clearRect(0, 0, W, H);
@@ -218,7 +234,7 @@ function LivePredictionChart({
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [draw]);
+  }, [draw, tick]);
 
   // Resize canvas to match container
   const containerRef = useRef<HTMLDivElement>(null);
@@ -226,14 +242,20 @@ function LivePredictionChart({
     const el = containerRef.current;
     const canvas = canvasRef.current;
     if (!el || !canvas) return;
-    const ro = new ResizeObserver(() => {
-      canvas.width  = el.clientWidth;
-      canvas.height = el.clientHeight;
-      draw();
-    });
+    const syncSize = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        canvas.width = w;
+        canvas.height = h;
+        draw();
+      }
+    };
+    const ro = new ResizeObserver(syncSize);
     ro.observe(el);
+    syncSize();
     return () => ro.disconnect();
-  }, [draw]);
+  }, [draw, tick]);
 
   const isUp = latestChange >= 0;
 
@@ -261,7 +283,7 @@ function LivePredictionChart({
             </span>
           )}
           <span className="font-mono text-[9px] text-text-muted border border-border rounded px-1.5 py-0.5">
-            2s
+            0.5s
           </span>
         </div>
       </div>
@@ -269,7 +291,7 @@ function LivePredictionChart({
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="relative flex-1 rounded-xl overflow-hidden"
+        className="relative flex-1 min-h-[220px] rounded-xl overflow-hidden"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
       >
         {!price ? (
@@ -335,16 +357,17 @@ function MiniSparkline({ price, color }: { price: number | null | undefined; col
 }
 
 function SourceCard({
-  source, data, isLoading, isError, rank,
+  source, data, isLoading, isError, error, rank,
 }: {
   source: SourceConfig; data: FetchResponse | undefined;
-  isLoading: boolean; isError: boolean; rank: number;
+  isLoading: boolean; isError: boolean; error?: Error | null; rank: number;
 }) {
   const change         = data?.price_change_24h ?? null;
   const changePositive = change != null && change > 0;
   const changeNegative = change != null && change < 0;
   const changeColor    = changePositive ? "text-green" : changeNegative ? "text-red" : "text-text-muted";
   const changeBg       = changePositive ? "bg-green-dim border-green/20" : changeNegative ? "bg-red-dim border-red/20" : "bg-elevated border-border";
+  const finnhubNeedsKey = source.id === "finnhub" && isError && (error?.message?.includes("FINNHUB") ?? false);
 
   return (
     <div className={cn(
@@ -368,7 +391,11 @@ function SourceCard({
       </div>
 
       {isLoading && <div className="h-5 w-24 animate-pulse rounded bg-border" />}
-      {isError   && <span className="font-mono text-[11px] text-red">Unavailable</span>}
+      {isError && (
+        <span className="font-mono text-[11px] text-red" title={error?.message}>
+          {finnhubNeedsKey ? "Set FINNHUB_API_KEY in backend .env" : "Unavailable"}
+        </span>
+      )}
 
       {!isLoading && !isError && data && (
         <div className="flex items-end justify-between gap-1">
@@ -409,26 +436,31 @@ function SourceCard({
 
 interface SignalsDashboardProps {
   symbol?: string;
+  /** Símbolo Binance (ej. BTCUSDT, ETHUSDT). Si no se pasa, se usa BTC. */
+  binanceSymbol?: string;
 }
 
-export function SignalsDashboard({ symbol = "BTC/USD" }: SignalsDashboardProps) {
+export function SignalsDashboard({ symbol = "BTC/USD", binanceSymbol = "BTCUSDT" }: SignalsDashboardProps) {
   const [fusionOpen, setFusionOpen] = useState(false);
+  const sources = buildSourcesForAsset(binanceSymbol);
 
   const results = useQueries({
-    queries: DEFAULT_SOURCES.map((source) => ({
+    queries: sources.map((source) => ({
       queryKey: ["source", source.id, source.params],
       queryFn: (): Promise<FetchResponse> => fetchSource(source.id, source.params),
-      staleTime: 30_000,
+      staleTime: 10_000,
       gcTime: 120_000,
-      refetchInterval: 30_000,
+      refetchInterval: 10_000,
       refetchIntervalInBackground: false,
       retry: 1,
     })),
   });
 
   const anyLoading  = results.some((r) => r.isLoading);
-  const activeCount = results.filter((r) => r.data && !r.isError).length;
-  const binancePrice = results[0]?.data?.price;
+  const activeCount = results.filter((r) => r.data?.price != null && !r.isError).length;
+  // Usar el primer precio disponible para la gráfica (fallback si Binance falla)
+  const chartPrice = results.find((r) => r.data?.price != null)?.data?.price ?? null;
+  const binancePrice = results[0]?.data?.price ?? chartPrice;
   const [lastUpdated, setLastUpdated] = useState<string>("");
 
   useEffect(() => {
@@ -450,7 +482,7 @@ export function SignalsDashboard({ symbol = "BTC/USD" }: SignalsDashboardProps) 
               {anyLoading && <RefreshCw className="h-3 w-3 animate-spin text-text-muted" />}
             </div>
             <p className="font-mono text-[10px] text-text-muted mt-0.5">
-              {activeCount}/{DEFAULT_SOURCES.length} sources active{lastUpdated ? ` · ${lastUpdated}` : ""}
+              {activeCount}/{sources.length} sources active{lastUpdated ? ` · ${lastUpdated}` : ""}
             </p>
           </div>
         </div>
@@ -479,22 +511,23 @@ export function SignalsDashboard({ symbol = "BTC/USD" }: SignalsDashboardProps) 
       <div className="p-5 flex gap-5">
         {/* Left: source cards grid — fixed width so chart fills the rest */}
         <div className="grid grid-cols-2 gap-2.5 shrink-0 content-start" style={{ width: "min(55%, 420px)" }}>
-          {DEFAULT_SOURCES.map((source, i) => (
+          {sources.map((source, i) => (
             <SourceCard
               key={source.id}
               source={source}
               data={results[i]?.data}
               isLoading={results[i]?.isLoading ?? false}
               isError={results[i]?.isError ?? false}
+              error={results[i]?.error instanceof Error ? results[i].error : null}
               rank={i + 1}
             />
           ))}
         </div>
 
-        {/* Right: live prediction chart — takes all remaining space */}
+        {/* Right: live prediction chart — usa el primer precio disponible */}
         <div className="flex-1 min-w-0">
           <LivePredictionChart
-            price={binancePrice}
+            price={chartPrice}
             color="var(--cyan)"
             symbol={symbol}
           />
@@ -508,7 +541,7 @@ export function SignalsDashboard({ symbol = "BTC/USD" }: SignalsDashboardProps) 
             <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" style={{ boxShadow: "0 0 4px var(--green)" }} aria-hidden />
             <span className="font-mono text-[10px] text-text-muted">{activeCount} active</span>
           </div>
-          <span className="font-mono text-[10px] text-text-muted">Refreshes every 30s</span>
+          <span className="font-mono text-[10px] text-text-muted">Refreshes every 0.5s</span>
         </div>
         <span className="font-mono text-[10px] text-text-muted">PHPE Fusion Engine · Bayesian weighted</span>
       </div>
@@ -522,7 +555,7 @@ export function SignalsDashboard({ symbol = "BTC/USD" }: SignalsDashboardProps) 
               Hybrid Prediction — {symbol}
             </DialogTitle>
           </DialogHeader>
-          <SignalFusionPanel defaultParams={{ binanceSymbol: "BTCUSDT" }} />
+          <SignalFusionPanel defaultParams={{ binanceSymbol }} />
         </DialogContent>
       </Dialog>
     </div>

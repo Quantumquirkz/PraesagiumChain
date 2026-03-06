@@ -1,50 +1,72 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { useState, useMemo } from "react";
+import { Search } from "lucide-react";
 import { PhpeConfidenceGauge } from "@/components/phpe-confidence-gauge";
+import { SignalsDashboard } from "@/components/signals-dashboard";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const SignalsDashboard = dynamic(
-  () => import("@/components/signals-dashboard").then((m) => ({ default: m.SignalsDashboard })),
-  { ssr: false, loading: () => <div className="rounded-xl border border-border bg-elevated h-48 animate-pulse" /> }
-);
-
-const ASSETS = [
-  { symbol: "BTC/USD", binance: "BTCUSDT" },
-  { symbol: "ETH/USD", binance: "ETHUSDT" },
+// Lista de criptos: símbolo para mostrar, par Binance, nombre
+const CRYPTO_LIST: { symbol: string; binance: string; name: string }[] = [
+  { symbol: "BTC/USD",  binance: "BTCUSDT",  name: "Bitcoin"    },
+  { symbol: "ETH/USD",  binance: "ETHUSDT",  name: "Ethereum"   },
+  { symbol: "BNB/USD",  binance: "BNBUSDT",  name: "BNB"        },
+  { symbol: "SOL/USD",  binance: "SOLUSDT",  name: "Solana"     },
+  { symbol: "XRP/USD",  binance: "XRPUSDT",  name: "XRP"        },
+  { symbol: "ADA/USD",  binance: "ADAUSDT",  name: "Cardano"    },
+  { symbol: "DOGE/USD", binance: "DOGEUSDT", name: "Dogecoin"   },
+  { symbol: "AVAX/USD", binance: "AVAXUSDT", name: "Avalanche"   },
+  { symbol: "DOT/USD",  binance: "DOTUSDT",  name: "Polkadot"   },
+  { symbol: "MATIC/USD", binance: "MATICUSDT", name: "Polygon"  },
+  { symbol: "LINK/USD", binance: "LINKUSDT", name: "Chainlink"  },
+  { symbol: "UNI/USD",  binance: "UNIUSDT",  name: "Uniswap"     },
+  { symbol: "ATOM/USD", binance: "ATOMUSDT", name: "Cosmos"      },
+  { symbol: "LTC/USD",  binance: "LTCUSDT",  name: "Litecoin"    },
+  { symbol: "BCH/USD",  binance: "BCHUSDT",  name: "Bitcoin Cash" },
+  { symbol: "NEAR/USD", binance: "NEARUSDT", name: "NEAR"        },
+  { symbol: "APT/USD",  binance: "APTUSDT",  name: "Aptos"       },
+  { symbol: "ARB/USD",  binance: "ARBUSDT",  name: "Arbitrum"    },
+  { symbol: "OP/USD",   binance: "OPUSDT",   name: "Optimism"    },
+  { symbol: "INJ/USD",  binance: "INJUSDT",  name: "Injective"   },
+  { symbol: "SUI/USD",  binance: "SUIUSDT",  name: "Sui"         },
+  { symbol: "SEI/USD",  binance: "SEIUSDT",  name: "Sei"         },
+  { symbol: "TIA/USD",  binance: "TIAUSDT",  name: "Celestia"    },
+  { symbol: "PEPE/USD", binance: "PEPEUSDT", name: "Pepe"        },
+  { symbol: "WIF/USD",  binance: "WIFUSDT",  name: "dogwifhat"   },
+  { symbol: "FET/USD",  binance: "FETUSDT",  name: "Fetch.ai"    },
+  { symbol: "RENDER/USD", binance: "RENDERUSDT", name: "Render"   },
+  { symbol: "FIL/USD",  binance: "FILUSDT",  name: "Filecoin"    },
+  { symbol: "AAVE/USD", binance: "AAVEUSDT", name: "Aave"        },
 ];
 
-// ─── Correlation heatmap ──────────────────────────────────────────────────────
+// ─── Menú de búsqueda de criptos ─────────────────────────────────────────────
 
-const SOURCES = ["Binance", "Kraken", "CryptoCompare", "Chainlink", "Finnhub", "ExchangeRate"];
+function CryptoSearchMenu({
+  selected,
+  onSelect,
+}: {
+  selected: { symbol: string; binance: string; name: string };
+  onSelect: (c: { symbol: string; binance: string; name: string }) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
 
-const CORRELATION_MATRIX: number[][] = [
-  [1.00, 0.97, 0.95, 0.92, 0.88, 0.72],
-  [0.97, 1.00, 0.96, 0.91, 0.87, 0.71],
-  [0.95, 0.96, 1.00, 0.93, 0.89, 0.70],
-  [0.92, 0.91, 0.93, 1.00, 0.85, 0.68],
-  [0.88, 0.87, 0.89, 0.85, 1.00, 0.65],
-  [0.72, 0.71, 0.70, 0.68, 0.65, 1.00],
-];
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return CRYPTO_LIST;
+    return CRYPTO_LIST.filter(
+      (c) =>
+        c.symbol.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        c.binance.toLowerCase().includes(q)
+    );
+  }, [query]);
 
-function cellBg(value: number): string {
-  if (value === 1.00) return "rgba(0,212,255,0.22)";
-  if (value >= 0.90) return `rgba(0,212,255,${((value - 0.88) * 2.5).toFixed(2)})`;
-  if (value >= 0.70) return `rgba(139,92,246,${((value - 0.60) * 1.2).toFixed(2)})`;
-  return "rgba(107,122,153,0.10)";
-}
-
-function cellText(value: number): string {
-  if (value >= 0.90) return "var(--cyan)";
-  if (value >= 0.70) return "var(--violet)";
-  return "var(--text-muted)";
-}
-
-function CorrelationHeatmap() {
   return (
     <div className="card-glow rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
           <span
             className="h-2 w-2 rounded-full bg-cyan"
@@ -52,74 +74,70 @@ function CorrelationHeatmap() {
             aria-hidden
           />
           <span className="font-mono text-xs text-text-muted uppercase tracking-widest">
-            Source Correlation Matrix
+            Buscar cripto
           </span>
         </div>
-        <span className="font-mono text-[10px] text-text-muted border border-border rounded px-2 py-0.5">
-          6 × 6
-        </span>
       </div>
 
-      <div className="p-5 overflow-x-auto">
-        <table className="w-full" aria-label="Signal source correlation matrix">
-          <thead>
-            <tr>
-              <th className="w-28" />
-              {SOURCES.map((s) => (
-                <th
-                  key={s}
-                  className="font-mono text-[10px] text-text-muted pb-3 px-1 text-center"
-                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", height: 80 }}
-                  scope="col"
-                >
-                  {s}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SOURCES.map((rowSrc, ri) => (
-              <tr key={rowSrc} className="group">
-                <td className="font-mono text-[10px] text-text-muted text-right pr-4 py-1 whitespace-nowrap group-hover:text-foreground transition-colors">
-                  {rowSrc}
-                </td>
-                {CORRELATION_MATRIX[ri].map((val, ci) => (
-                  <td key={ci} className="p-1">
-                    <div
-                      className="rounded-md flex items-center justify-center font-mono text-[11px] font-bold transition-all duration-150 hover:scale-110 cursor-default"
-                      style={{
-                        width: 42,
-                        height: 34,
-                        background: cellBg(val),
-                        color: cellText(val),
-                        margin: "0 auto",
-                        boxShadow: val >= 0.90 ? "0 0 8px rgba(0,212,255,0.15)" : "none",
-                      }}
-                      title={`${rowSrc} ↔ ${SOURCES[ci]}: ${val.toFixed(2)}`}
-                    >
-                      {val.toFixed(2)}
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Legend */}
-        <div className="mt-5 flex items-center gap-5 justify-end border-t border-border pt-4">
-          <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Correlation:</span>
-          {[
-            { label: "Low",    bg: "rgba(107,122,153,0.15)", text: "var(--text-muted)" },
-            { label: "Medium", bg: "rgba(139,92,246,0.30)",  text: "var(--violet)"    },
-            { label: "High",   bg: "rgba(0,212,255,0.30)",   text: "var(--cyan)"      },
-          ].map(({ label, bg, text }) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <div className="h-4 w-8 rounded" style={{ background: bg }} />
-              <span className="font-mono text-[10px]" style={{ color: text }}>{label}</span>
-            </div>
-          ))}
+      <div className="p-5 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+          <Input
+            type="search"
+            placeholder="Buscar por nombre o símbolo (ej. Bitcoin, ETH, SOLUSDT)..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            className="pl-9 font-mono text-sm"
+            aria-label="Buscar criptomonedas"
+          />
         </div>
+
+        <div
+          className={cn(
+            "rounded-xl border border-border bg-elevated overflow-hidden transition-all",
+            open || query ? "max-h-[320px] overflow-y-auto" : "max-h-[200px] overflow-y-auto"
+          )}
+        >
+          <ul className="divide-y divide-border" role="listbox" aria-label="Lista de criptomonedas">
+            {filtered.length === 0 ? (
+              <li className="px-4 py-6 text-center font-mono text-sm text-text-muted">
+                No hay resultados para &quot;{query}&quot;
+              </li>
+            ) : (
+              filtered.map((c) => (
+                <li key={c.binance}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected.binance === c.binance}
+                    onClick={() => {
+                      onSelect(c);
+                      setQuery("");
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors",
+                      selected.binance === c.binance
+                        ? "bg-cyan-dim border-l-2 border-cyan"
+                        : "hover:bg-surface border-l-2 border-transparent"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <span className="font-mono text-sm font-bold text-foreground">{c.symbol}</span>
+                      <span className="font-body text-xs text-text-muted ml-2">{c.name}</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-text-muted shrink-0">{c.binance}</span>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        <p className="font-mono text-[10px] text-text-muted">
+          Seleccionado: <span className="text-foreground font-semibold">{selected.symbol}</span> ({selected.name})
+        </p>
       </div>
     </div>
   );
@@ -139,7 +157,6 @@ const ENGINE_STATS = [
 function PhpeOverviewPanel() {
   return (
     <div className="card-glow rounded-2xl overflow-hidden">
-      {/* Header */}
       <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span
@@ -158,7 +175,6 @@ function PhpeOverviewPanel() {
       </div>
 
       <div className="p-6 flex flex-col lg:flex-row items-center gap-8">
-        {/* Gauge — más grande */}
         <div className="shrink-0 flex flex-col items-center gap-3">
           <PhpeConfidenceGauge confidence={STATIC_CONFIDENCE} size={200} />
           <div className="flex items-center gap-1.5">
@@ -169,14 +185,12 @@ function PhpeOverviewPanel() {
           </div>
         </div>
 
-        {/* Stats grid */}
         <div className="flex-1 grid grid-cols-2 gap-3 w-full">
           {ENGINE_STATS.map(({ label, value, sub, color }) => (
             <div
               key={label}
               className="relative rounded-xl border border-border bg-elevated p-4 overflow-hidden group hover:border-border-bright transition-colors"
             >
-              {/* Subtle glow corner */}
               <div
                 className="pointer-events-none absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }}
@@ -206,33 +220,32 @@ function PhpeOverviewPanel() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SignalsPage() {
+  const [selectedCrypto, setSelectedCrypto] = useState(CRYPTO_LIST[0]);
+
   return (
     <div className="container py-10 px-4 space-y-8 max-w-6xl">
-      {/* Page header */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-display font-extrabold text-[40px] text-foreground leading-tight flex items-center gap-3 flex-wrap">
             LIVE SIGNALS
             <span className="inline-flex items-center gap-1.5">
               <span
                 className="h-2.5 w-2.5 rounded-full bg-green animate-pulse"
                 style={{ boxShadow: "0 0 10px var(--green)" }}
-                aria-hidden
               />
               <span className="font-mono text-sm text-green font-medium">LIVE</span>
             </span>
           </h1>
           <p className="mt-2 font-body text-sm text-text-secondary max-w-xl">
-            Real-time monitoring of 6 PHPE data sources. Use any asset as input for a hybrid prediction.
+            Monitoreo en tiempo real de 6 fuentes PHPE. Busca una cripto y revisa señales e predicción.
           </p>
         </div>
 
-        {/* Quick stats bar */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap justify-end">
           {[
-            { label: "Sources",    value: "6",    color: "var(--cyan)"   },
-            { label: "Assets",     value: "2",    color: "var(--violet)" },
-            { label: "Refresh",    value: "30s",  color: "var(--green)"  },
+            { label: "Sources", value: "6",    color: "var(--cyan)"   },
+            { label: "Assets",  value: String(CRYPTO_LIST.length), color: "var(--violet)" },
+            { label: "Refresh", value: "30s", color: "var(--green)"  },
           ].map(({ label, value, color }) => (
             <div
               key={label}
@@ -242,21 +255,19 @@ export default function SignalsPage() {
               <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{label}</span>
             </div>
           ))}
+          <ThemeToggle className="ml-1" />
         </div>
       </header>
 
-      {/* PHPE Engine overview */}
       <PhpeOverviewPanel />
 
-      {/* Correlation heatmap */}
-      <CorrelationHeatmap />
+      <CryptoSearchMenu selected={selectedCrypto} onSelect={setSelectedCrypto} />
 
-      {/* Per-asset signal dashboards */}
-      <div className="space-y-6">
-        {ASSETS.map((asset) => (
-          <SignalsDashboard key={asset.symbol} symbol={asset.symbol} />
-        ))}
-      </div>
+      <SignalsDashboard
+        key={selectedCrypto.binance}
+        symbol={selectedCrypto.symbol}
+        binanceSymbol={selectedCrypto.binance}
+      />
     </div>
   );
 }
