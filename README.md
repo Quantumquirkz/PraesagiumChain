@@ -275,7 +275,7 @@ The backend uses SQLite by default (zero-config for local development). Migratio
 
 ```bash
 # Backend will auto-migrate on first run; no separate step needed.
-# To verify: check that praesagium.db is created in backend-rust/ after Step 5.
+# To verify: check that praesagium.db is created (in the current working directory from which the backend was started; e.g. run `npm run backend` from repo root so the DB lives at the root).
 ```
 
 **Step 4 — Start the local blockchain**
@@ -349,7 +349,8 @@ cre workflow simulate praesagium-resolver --target staging-settings
 
 ## Configuration
 
-Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.
+Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.  
+**Checklist de keys y APIs:** [docs/keys-and-apis.md](docs/keys-and-apis.md).
 
 ### Backend
 

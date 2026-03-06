@@ -12,8 +12,9 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
 
-const BACKEND_URL = "http://localhost:4000";
+const BACKEND_URL = process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:4000";
 const CONTRACT_ADDRESS =
+  process.env.PREDICTION_MARKET_ADDRESS ||
   process.env.NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS ||
   "0xf2397b5827860b361427240d1D1F6F89e9bF197f";
 

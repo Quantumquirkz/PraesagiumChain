@@ -4,10 +4,11 @@
  * Uso:
  *   node scripts/seed-markets.js
  *
- * Requiere que el backend esté corriendo en http://localhost:4000
+ * Requiere que el backend esté corriendo. Por defecto usa API_BASE_URL o localhost:4000.
  */
 
-const BASE_URL = "http://localhost:4000";
+require("dotenv").config();
+const BASE_URL = process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:4000";
 
 // ─── Helpers de tiempo ────────────────────────────────────────────────────────
 

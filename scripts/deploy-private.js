@@ -9,8 +9,8 @@
  *   NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=<address>
  *
  * Env (required for Sepolia):
- *   PRIVATE_KEY   — deployer private key (without 0x prefix)
- *   SEPOLIA_RPC   — Sepolia RPC URL (Alchemy / Infura)
+ *   PRIVATE_KEY       — deployer private key (without 0x prefix)
+ *   SEPOLIA_RPC_URL   — Sepolia RPC URL (Alchemy / Infura)
  */
 const { ethers } = require("hardhat");
 const fs = require("fs");

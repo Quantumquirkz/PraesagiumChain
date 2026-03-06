@@ -42,7 +42,11 @@ async function main() {
   const oracleAddr = await oracle.getAddress();
   console.log("OracleConsumer:", oracleAddr);
 
-  await pm.setResolver(creAddr);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  let tx = await pm.setResolver(creAddr);
+  await tx.wait();
+  await sleep(2000);
 
   if (functionsRouter) {
     const FunctionsConsumer = await hre.ethers.getContractFactory("PredictionMarketFunctionsConsumer");
@@ -54,8 +58,11 @@ async function main() {
     await cre.setOracle(functionsConsumerAddr);
     console.log("CREWorkflow oracle set to Functions Consumer.");
   } else {
-    await cre.setOracle(oracleAddr);
-    await oracle.setAuthorizedCallback(deployer.address);
+    tx = await cre.setOracle(oracleAddr);
+    await tx.wait();
+    await sleep(2000);
+    tx = await oracle.setAuthorizedCallback(deployer.address);
+    await tx.wait();
     console.log("CREWorkflow oracle set to OracleConsumer (local).");
   }
 
