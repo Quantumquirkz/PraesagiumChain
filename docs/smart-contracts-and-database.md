@@ -185,7 +185,21 @@ await oracleConsumer.setAuthorizedCallback(deployerAddress); // local demo
 await creWorkflow.setOracle(oracleConsumer.address);
 ```
 
-### 3.3 Why Three Contracts
+### 3.3 Who Calls `oracleCallback` in Production?
+
+The CRE workflow in this repo (`cre/praesagium-resolver/main.ts`) runs on a CRON trigger, calls the backend `/api/ai/sentiment`, and **computes** the outcome (0/1). It does **not** send an on-chain transaction itself; it only logs the intended call when `oracle_consumer_address` is set in config.
+
+To complete the resolution on-chain in production, use one of these options:
+
+| Option | Description |
+|--------|-------------|
+| **Chainlink CRE executor** | When the Chainlink CRE runtime supports submitting transactions, configure the workflow so the executor calls `OracleConsumer.oracleCallback(marketId, outcome)` with the workflow result. Set `oracle_consumer_address` in the CRE config to the deployed `OracleConsumer` address. |
+| **`scripts/resolveFromBackend.js`** | Run as a cron job or via Chainlink Automation at resolve time. It fetches the outcome from the API (e.g. `/api/ai/sentiment` or `/api/price/above`) and sends the transaction to `OracleConsumer.oracleCallback(marketId, outcome)` using a wallet funded with gas. Requires `ORACLE_CONSUMER_ADDRESS`, `PRIVATE_KEY`, and `API_BASE_URL`. |
+| **Custom resolver service** | A dedicated service that subscribes to “market due for resolution” (e.g. from a queue or DB) and calls the API for the outcome, then submits the tx (with retries and idempotency by `market_id`). |
+
+Ensure `OracleConsumer.setAuthorizedCallback()` is set to the address that will send the transaction (CRE executor, Automation node, or your resolver wallet). For local demos, the deploy script sets the deployer as `authorizedCallback`; for production, use the Chainlink Functions Router or the address of your Automation / resolver service.
+
+### 3.4 Why Three Contracts
 
 | Concern | Contract |
 |---------|---------|
@@ -640,3 +654,35 @@ The blockchain is always the source of truth. The database is a read-optimized c
 ### 9.4 Manual Sync
 
 To re-sync a specific market from the chain, the backend exposes `PATCH /api/markets/:id/status` which allows updating the status and outcome fields directly. This is used by the demo scripts after calling `resolveFromBackend.js`.
+
+---
+
+## 10. Backups and Restore
+
+For production, back up the database regularly so you can restore after failure or migration.
+
+### 10.1 Backup Script
+
+From the repo root, run:
+
+```bash
+./scripts/backup-db.sh [output_dir]
+```
+
+- **output_dir** (optional): directory where backup files are written. Default: `./backups`.
+- **DATABASE_URL** must be set (e.g. in `.env`).
+
+Behavior:
+
+- **SQLite:** uses `sqlite3 .backup` to create a copy of the database file. Output: `praesagium-sqlite-YYYYMMDD-HHMMSS.db`.
+- **PostgreSQL:** uses `pg_dump` with `--no-owner --no-acl`. Output: `praesagium-postgres-YYYYMMDD-HHMMSS.sql`.
+
+Schedule this script via cron (e.g. daily) and retain a retention policy (e.g. keep last 7 days).
+
+### 10.2 Restore
+
+- **SQLite:** stop the backend, replace the database file with the backup, restart.
+- **PostgreSQL:** create a new database if needed, then `psql $DATABASE_URL -f praesagium-postgres-YYYYMMDD-HHMMSS.sql`.
+
+After restore, ensure `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set so the indexer can catch up with any blocks missed during downtime.
+
