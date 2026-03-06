@@ -2,12 +2,16 @@
  * Resolve a market by fetching the outcome from the backend API and sending it on-chain.
  * Use for demos, cron jobs, or as the "Perform" step of a Chainlink Automation keeper.
  *
+ * Idempotent: if the market is already resolved on-chain, skips the tx (optional, requires PREDICTION_MARKET_ADDRESS).
+ * Retries the transaction up to 3 times with exponential backoff on failure.
+ *
  * Usage:
  *   node scripts/resolveFromBackend.js --market-id 1
  *   node scripts/resolveFromBackend.js --market-id 1 --text "Bitcoin will go up"
  *   node scripts/resolveFromBackend.js --market-id 1 --source price --symbol BTCUSDT --threshold 50000
  *
  * Env: PRIVATE_KEY, RPC_URL (or default localhost:8545), ORACLE_CONSUMER_ADDRESS, API_BASE_URL (default http://localhost:4000)
+ * Optional: PREDICTION_MARKET_ADDRESS — if set, skips tx when market is already resolved (idempotency).
  */
 require("dotenv").config();
 const path = require("path");
@@ -111,14 +115,42 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(pk, provider);
 
+  const pmAddress = process.env.PREDICTION_MARKET_ADDRESS;
+  if (pmAddress) {
+    const pmAbi = ["function getMarket(uint256) view returns (tuple(string question, uint256 closeTime, uint256 resolveTime, uint8 status, uint8 outcome, uint256 totalYesStake, uint256 totalNoStake, address creator))"];
+    const pm = new ethers.Contract(pmAddress, pmAbi, provider);
+    const market = await pm.getMarket(marketId);
+    if (market && Number(market.status) === 2) {
+      console.log("Market", marketId, "already resolved on-chain. Skipping (idempotent).");
+      return;
+    }
+  }
+
   const abi = [
     "function oracleCallback(uint256 marketId, uint8 rawOutcome) external"
   ];
   const oracle = new ethers.Contract(oracleAddr, abi, wallet);
-  const tx = await oracle.oracleCallback(marketId, outcome);
-  console.log("Tx hash:", tx.hash);
-  await tx.wait();
-  console.log("Market", marketId, "resolved on-chain.");
+
+  const maxRetries = 3;
+  let lastErr;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const tx = await oracle.oracleCallback(marketId, outcome);
+      console.log("Tx hash:", tx.hash);
+      await tx.wait();
+      console.log("Market", marketId, "resolved on-chain.");
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.warn("Tx failed (attempt", attempt + 1, "):", err.message || err, "- retrying in", delay, "ms");
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  console.error("Failed to resolve after", maxRetries, "attempts:", lastErr?.message || lastErr);
+  process.exit(1);
 }
 
 main().catch((err) => {
