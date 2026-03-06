@@ -91,13 +91,29 @@ pub async fn fetch(
             }
         }
         "chainlink" => {
-            let sig = state.sources_registry.chainlink.fetch_eth_usd().await?;
+            // Prefer Chainlink Data Feeds (on-chain) when configured; fallback to Binance proxy
+            let (source_name, price, price_change) = if let Some(ref feeds) = state.chainlink_feeds {
+                match feeds.get_price("ETH_USD").await {
+                    Ok(resp) => (
+                        "chainlink_data_feed".to_string(),
+                        Some(resp.price as f64 / 1e8),
+                        None,
+                    ),
+                    Err(_) => {
+                        let sig = state.sources_registry.chainlink.fetch_eth_usd().await?;
+                        (sig.source, sig.price, sig.price_change_24h)
+                    }
+                }
+            } else {
+                let sig = state.sources_registry.chainlink.fetch_eth_usd().await?;
+                (sig.source, sig.price, sig.price_change_24h)
+            };
             FetchResponse {
-                source: sig.source,
-                price: sig.price,
-                price_change_24h: sig.price_change_24h,
-                volume_24h: sig.volume_24h,
-                sentiment: sig.sentiment,
+                source: source_name,
+                price: price,
+                price_change_24h: price_change,
+                volume_24h: None,
+                sentiment: None,
             }
         }
         "cryptocompare" => {

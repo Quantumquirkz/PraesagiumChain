@@ -13,8 +13,8 @@ use crate::db::Database;
 use crate::middleware;
 use crate::router::build_router;
 use crate::services::{
-    AiService, Cache, EventBus, GeminiProvider, HuggingFaceProvider, HybridPredictor,
-    IndexerState, MarketService, MockAiProvider, PredictionService, ReputationService,
+    AiService, Cache, ChainlinkFeedsService, EventBus, GeminiProvider, HuggingFaceProvider,
+    HybridPredictor, IndexerState, MarketService, MockAiProvider, PredictionService, ReputationService,
     SourcesRegistry,
 };
 use crate::state::AppState;
@@ -181,10 +181,20 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
 
     let cors = cors_layer(&config);
     let redis_url = config.redis_url.clone();
+    let rpc_url = config.rpc_url.clone();
+    let eth_feed = config.chainlink_eth_usd_feed.clone();
+    let btc_feed = config.chainlink_btc_usd_feed.clone();
     let config_arc = Arc::new(config);
 
     let nonce_store = crate::api::auth::new_nonce_store(redis_url.as_deref())
         .map_err(|e| anyhow::anyhow!("Nonce store: {}", e))?;
+    let chainlink_feeds = ChainlinkFeedsService::from_config(
+        rpc_url.as_deref(),
+        eth_feed.as_deref(),
+        btc_feed.as_deref(),
+    )
+    .map_err(|e| anyhow::anyhow!("Chainlink feeds: {}", e))?
+    .map(Arc::new);
 
     let state = Arc::new(AppState {
         market_service,
@@ -201,6 +211,7 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
         indexer_state,
         started_at,
         nonce_store,
+        chainlink_feeds,
     });
 
     let router = build_router(state)

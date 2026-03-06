@@ -8,8 +8,8 @@ use crate::api::auth::NonceStore;
 use crate::config::Config;
 use crate::db::Database;
 use crate::services::{
-    AiService, Cache, EventBus, HybridPredictor, IndexerState, MarketService, PredictionService,
-    ReputationService, SourcesRegistry,
+    AiService, Cache, ChainlinkFeedsService, EventBus, HybridPredictor, IndexerState, MarketService,
+    PredictionService, ReputationService, SourcesRegistry,
 };
 
 /// Central application state shared across all request handlers.
@@ -33,4 +33,6 @@ pub struct AppState {
     pub started_at: i64,
     /// In-memory nonce store for SIWE challenges.
     pub nonce_store: NonceStore,
+    /// Chainlink Data Feeds service (None if RPC/feeds not configured).
+    pub chainlink_feeds: Option<Arc<ChainlinkFeedsService>>,
 }

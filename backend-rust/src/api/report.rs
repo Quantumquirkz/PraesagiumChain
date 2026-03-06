@@ -67,11 +67,11 @@ pub async fn weather_rained(
 
 #[derive(Debug, Deserialize)]
 pub struct PriceAboveQuery {
-    /// e.g. bitcoin, ethereum (CoinGecko) or BTCUSDT, ETHUSDT (Binance)
+    /// e.g. bitcoin, ethereum (CoinGecko) or BTCUSDT, ETHUSDT (Binance) or ETH_USD, BTC_USD (Chainlink)
     pub symbol: String,
     /// Threshold to compare against (e.g. 50000 for "BTC > 50000")
     pub threshold: f64,
-    /// Optional: "binance" or "coingecko" (default: binance for *USDT, else coingecko)
+    /// Optional: "binance", "coingecko", or "chainlink" (Chainlink Data Feeds on-chain)
     pub source: Option<String>,
 }
 
@@ -82,14 +82,32 @@ struct BinancePriceResponse {
 
 /// GET /api/price/above?symbol=BTCUSDT&threshold=50000
 /// or ?symbol=bitcoin&threshold=50000&source=coingecko
+/// or ?symbol=BTC_USD&threshold=50000&source=chainlink
 /// outcome = 1 if price >= threshold, else 0.
 pub async fn price_above(
     State(state): State<Arc<AppState>>,
     Query(q): Query<PriceAboveQuery>,
 ) -> Result<impl IntoResponse> {
+    let use_chainlink = q.source.as_deref() == Some("chainlink");
     let use_binance = q.source.as_deref() == Some("binance")
-        || (q.symbol.len() >= 4 && q.symbol.ends_with("USDT"));
-    let price = if use_binance {
+        || (!use_chainlink && q.symbol.len() >= 4 && q.symbol.ends_with("USDT"));
+
+    let price = if use_chainlink {
+        let service = state
+            .chainlink_feeds
+            .as_ref()
+            .ok_or_else(|| AppError::Validation("Chainlink Data Feeds not configured (RPC_URL and feed addresses required)".into()))?;
+        let feed_name: String = if q.symbol.eq_ignore_ascii_case("eth_usd") || q.symbol.eq_ignore_ascii_case("eth-usd") {
+            "ETH_USD".into()
+        } else if q.symbol.eq_ignore_ascii_case("btc_usd") || q.symbol.eq_ignore_ascii_case("btc-usd") {
+            "BTC_USD".into()
+        } else {
+            q.symbol.to_uppercase().replace('-', "_")
+        };
+        let resp = service.get_price(&feed_name).await?;
+        // Chainlink feeds use 8 decimals
+        resp.price as f64 / 1e8
+    } else if use_binance {
         let sym = if q.symbol.contains("USDT") {
             q.symbol.to_uppercase()
         } else {

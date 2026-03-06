@@ -45,6 +45,10 @@ pub struct Config {
     pub jwt_secret: Option<String>,
     /// Redis URL for SIWE nonce store (e.g. redis://localhost:6379). If unset, nonces are stored in memory.
     pub redis_url: Option<String>,
+    /// Chainlink ETH/USD price feed address (Sepolia/mainnet).
+    pub chainlink_eth_usd_feed: Option<String>,
+    /// Chainlink BTC/USD price feed address (Sepolia/mainnet).
+    pub chainlink_btc_usd_feed: Option<String>,
     /// Environment: "production" enables strict checks (e.g. JWT_SECRET required). Unset or other = development.
     pub environment: Option<String>,
 }
@@ -111,6 +115,8 @@ impl Config {
             jwt_secret: std::env::var("JWT_SECRET").ok(),
             redis_url: std::env::var("REDIS_URL").ok(),
             environment: std::env::var("ENVIRONMENT").ok(),
+            chainlink_eth_usd_feed: std::env::var("CHAINLINK_ETH_USD_FEED").ok(),
+            chainlink_btc_usd_feed: std::env::var("CHAINLINK_BTC_USD_FEED").ok(),
         })
     }
 }

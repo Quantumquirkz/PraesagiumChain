@@ -46,6 +46,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Authentication (SIWE — Frontend when wired)
         .route("/api/auth/challenge", post(api::auth::challenge))
         .route("/api/auth/verify", post(api::auth::verify))
+        // Chainlink Data Feeds (Frontend)
+        .route("/api/feeds/price", get(api::feeds::get_feed_price))
         // Data sources (Frontend)
         .route("/api/sources", get(api::sources::list_sources))
         .route("/api/sources/fetch", get(api::sources::fetch))

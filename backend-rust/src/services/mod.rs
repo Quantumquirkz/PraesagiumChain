@@ -1,6 +1,7 @@
+pub mod cache;
+pub mod chainlink_feeds;
 pub mod market;
 pub mod prediction;
-pub mod cache;
 pub mod indexer;
 pub mod indexer_state;
 pub mod event_bus;
@@ -10,6 +11,7 @@ pub mod sources;
 mod sources_registry;
 pub mod hybrid;
 
+pub use chainlink_feeds::ChainlinkFeedsService;
 pub use market::MarketService;
 pub use prediction::PredictionService;
 pub use cache::Cache;

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod feeds;
 pub mod health;
 pub mod markets;
 pub mod predictions;

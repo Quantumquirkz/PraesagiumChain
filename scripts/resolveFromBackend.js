@@ -19,13 +19,14 @@ const fs = require("fs");
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const out = { marketId: null, source: "sentiment", text: null, symbol: null, threshold: null };
+  const out = { marketId: null, source: "sentiment", text: null, symbol: null, threshold: null, priceSource: null };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--market-id" && args[i + 1]) out.marketId = parseInt(args[i + 1], 10);
     if (args[i] === "--source" && args[i + 1]) out.source = args[i + 1];
     if (args[i] === "--text" && args[i + 1]) out.text = args[i + 1];
     if (args[i] === "--symbol" && args[i + 1]) out.symbol = args[i + 1];
     if (args[i] === "--threshold" && args[i + 1]) out.threshold = parseFloat(args[i + 1]);
+    if (args[i] === "--price-source" && args[i + 1]) out.priceSource = args[i + 1];
   }
   return out;
 }
@@ -40,6 +41,7 @@ async function fetchOutcomeFromApi(apiBase, opts) {
   if (opts.source === "price" && opts.symbol != null) {
     pathname = `/api/price/above?symbol=${encodeURIComponent(opts.symbol)}`;
     if (opts.threshold != null) pathname += `&threshold=${opts.threshold}`;
+    if (opts.priceSource) pathname += `&source=${encodeURIComponent(opts.priceSource)}`;
   } else {
     pathname = "/api/ai/sentiment";
     method = "POST";
@@ -107,7 +109,8 @@ async function main() {
     source: args.source,
     text: textToAnalyze,
     symbol: args.symbol,
-    threshold: args.threshold
+    threshold: args.threshold,
+    priceSource: args.priceSource
   });
   console.log("Outcome:", outcome, outcome === 1 ? "(Yes)" : "(No)");
 
