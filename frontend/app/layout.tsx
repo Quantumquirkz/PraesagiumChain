@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
@@ -9,11 +8,7 @@ import { WrongNetworkBanner } from "@/components/wrong-network-banner";
 import { Footer } from "@/components/footer";
 import { PWAInstallBanner } from "@/components/pwa-install-banner";
 import { MarketWatcherProvider } from "@/components/market-watcher-provider";
-
-const LiveTicker = dynamic(
-  () => import("@/components/live-ticker").then((m) => ({ default: m.LiveTicker })),
-  { ssr: false, loading: () => null }
-);
+import { LiveTicker } from "@/components/live-ticker";
 
 export const metadata: Metadata = {
   title: "PraesagiumChain",

@@ -28,17 +28,20 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-md border border-border text-text-secondary transition-colors hover:border-border-bright hover:text-foreground",
+        "inline-flex items-center justify-center gap-1 rounded-md border border-border text-text-secondary transition-colors hover:border-border-bright hover:text-foreground px-2 h-8",
         className
       )}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      title={isDark ? "Light mode" : "Dark mode"}
+      aria-label={isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+      title={isDark ? "Modo claro" : "Modo oscuro"}
     >
       {isDark ? (
         <Sun className="h-4 w-4" aria-hidden />
       ) : (
         <Moon className="h-4 w-4" aria-hidden />
       )}
+      <span className="ml-0.5 hidden sm:inline text-xs font-mono">
+        {isDark ? "Claro" : "Oscuro"}
+      </span>
     </button>
   );
 }

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { truncateAddress, formatEth } from "@/lib/utils";
 import { config } from "@/lib/wagmi";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
   ? Number(process.env.NEXT_PUBLIC_CHAIN_ID)
@@ -206,7 +207,15 @@ function WalletButtonInner() {
               variant="outline"
               className="w-full justify-start font-mono border-border hover:bg-cyan-dim"
               onClick={() => {
-                connectAsync({ connector }).then(() => setConnectOpen(false));
+                if (typeof window !== "undefined") window.focus();
+                connectAsync({ connector })
+                  .then(() => setConnectOpen(false))
+                  .catch((err: unknown) => {
+                    const e = err as { message?: string; shortMessage?: string; details?: string };
+                    const msg = e?.shortMessage ?? e?.details ?? (err instanceof Error ? err.message : "Connection failed.");
+                    const isTabInactive = /resource not available|pestaña no está activa|Requested resource|ResourceUnavailable/i.test(String(msg));
+                    toast.error(isTabInactive ? "Keep this tab active: click the page, then try connecting again." : msg);
+                  });
               }}
               disabled={isPending}
               aria-label={"Connect with " + connector.name}
@@ -252,7 +261,17 @@ function WalletButtonMobile() {
                 key={connector.uid}
                 variant="outline"
                 className="w-full justify-start font-mono"
-                onClick={() => connectAsync({ connector }).then(() => setConnectOpen(false))}
+                onClick={() => {
+                  if (typeof window !== "undefined") window.focus();
+                  connectAsync({ connector })
+                    .then(() => setConnectOpen(false))
+                    .catch((err: unknown) => {
+                      const e = err as { message?: string; shortMessage?: string; details?: string };
+                      const msg = e?.shortMessage ?? e?.details ?? (err instanceof Error ? err.message : "Connection failed.");
+                      const isTabInactive = /resource not available|pestaña no está activa|Requested resource|ResourceUnavailable/i.test(String(msg));
+                      toast.error(isTabInactive ? "Keep this tab active: click the page, then try connecting again." : msg);
+                    });
+                }}
                 disabled={isPending}
                 aria-label={"Connect with " + connector.name}
               >
@@ -423,14 +442,16 @@ export function Header() {
 
           {/* Right */}
           <div className="flex items-center gap-3">
-            <LiveIndicator />
+            <div className="flex items-center gap-2">
+              <LiveIndicator />
+              <ThemeToggle />
+            </div>
             {mounted && isConnected && (
               <NetworkBadge />
             )}
             <div className="hidden md:block">
               {mounted ? <WalletButtonInner /> : <div className="h-9 w-32" />}
             </div>
-            <ThemeToggle />
 
             {/* Mobile menu trigger */}
             <button
@@ -490,8 +511,9 @@ export function Header() {
                     </Link>
                   );
                 })}
-                <div className="mt-4 pt-4 border-t border-border">
+                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-3">
                   <WalletButtonMobile />
+                  <ThemeToggle />
                 </div>
               </div>
             </div>

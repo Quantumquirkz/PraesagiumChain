@@ -267,8 +267,11 @@ export default function CreateMarketPage() {
             }),
             on_chain_market_id: newId ?? undefined,
           });
-        } catch {
-          // non-blocking
+        } catch (err) {
+          toast.warning(
+            "Market is on-chain but could not register in the app. Click Retry on the markets page or refresh.",
+            { duration: 8000 }
+          );
         }
       }
 
@@ -282,7 +285,14 @@ export default function CreateMarketPage() {
         1500
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Transaction failed");
+      const msg = e instanceof Error ? e.message : String(e);
+      const isUserRejected =
+        /user rejected|user denied|not been authorized|rejected the request|User denied/i.test(msg);
+      toast.error(
+        isUserRejected
+          ? "Transaction not signed. Open your wallet (e.g. MetaMask), confirm the popup and click «Confirm»."
+          : msg
+      );
     }
   });
 

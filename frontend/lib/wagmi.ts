@@ -10,8 +10,10 @@ const isValidProjectId =
   !rawProjectId.includes('tu_project') &&
   !rawProjectId.includes('your_project')
 
+// MetaMask primero; injected genérico para Brave/otros. En el modal verás ambas opciones.
 const connectors = [
   injected({ target: 'metaMask' }),
+  injected(),
   ...(isValidProjectId ? [walletConnect({ projectId: rawProjectId })] : []),
   coinbaseWallet({ appName: 'PraesagiumChain' }),
   safe(),

@@ -18,6 +18,7 @@ import { toastSuccess } from "@/components/ui/custom-toast";
 
 const CONNECTOR_ICONS: Record<string, string> = {
   metaMask: "🦊",
+  injected: "🔶",
   walletConnect: "🔵",
   coinbaseWallet: "🔵",
   safe: "🟢",
@@ -46,6 +47,9 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
       setConnectorErrors((prev: Record<string, string>) => ({ ...prev, [connectorId]: "" }));
 
       try {
+        // Enfocar la pestaña para que la wallet no devuelva "La pestaña no está activa"
+        if (typeof window !== "undefined") window.focus();
+
         const result = await connectAsync({ connector });
         const addr = result.accounts?.[0];
         if (addr) {
@@ -53,9 +57,18 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
         }
         onOpenChange(false);
       } catch (err: unknown) {
+        const e = err as { message?: string; shortMessage?: string; details?: string };
         const msg =
-          err instanceof Error ? err.message : "Connection failed. Try again.";
-        setConnectorErrors((prev: Record<string, string>) => ({ ...prev, [connectorId]: msg }));
+          e?.shortMessage ?? e?.details ?? (err instanceof Error ? err.message : "Connection failed. Try again.");
+        const full = String(msg);
+        const isTabInactive =
+          /resource not available|pestaña no está activa|tab.*not active|Requested resource|ResourceUnavailable/i.test(
+            full
+          );
+        const displayMsg = isTabInactive
+          ? "This tab must be active. Click the page, leave the tab in focus, then try again."
+          : full;
+        setConnectorErrors((prev: Record<string, string>) => ({ ...prev, [connectorId]: displayMsg }));
       }
     },
     [connectors, connectAsync, onOpenChange]

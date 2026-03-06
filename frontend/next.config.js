@@ -56,7 +56,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts"],
   },
-  webpack(config) {
+  webpack(config, { dev, isServer }) {
     // Dependencias opcionales de node que no existen en el entorno browser/Next.js
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -66,6 +66,11 @@ const nextConfig = {
       net: false,
       tls: false,
     };
+    if (dev && !isServer) {
+      config.infrastructureLogging = { level: "error" };
+      config.watchOptions = config.watchOptions || {};
+      config.watchOptions.aggregateTimeout = 800;
+    }
     return config;
   },
 };

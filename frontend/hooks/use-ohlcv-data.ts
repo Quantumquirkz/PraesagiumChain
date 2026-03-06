@@ -46,7 +46,7 @@ export function useOHLCVHistory(
       }))
     },
     staleTime: 10_000,
-    refetchInterval: 15_000,
+    refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     retry: 2,
   })

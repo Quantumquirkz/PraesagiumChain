@@ -54,8 +54,8 @@ export function useTickerPrices() {
       ]);
       return { btc, eth, eur };
     },
-    refetchInterval: 25_000,
-    staleTime: 15_000,
+    refetchInterval: 45_000,
+    staleTime: 20_000,
     refetchIntervalInBackground: false,
   });
 }
