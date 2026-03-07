@@ -61,9 +61,9 @@ export const predictionMarketAbi = [
     inputs: [
       { name: "marketId", type: "uint256", indexed: true, internalType: "uint256" },
       { name: "question", type: "string", indexed: false, internalType: "string" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
       { name: "closeTime", type: "uint256", indexed: false, internalType: "uint256" },
       { name: "resolveTime", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "creator", type: "address", indexed: true, internalType: "address" },
     ],
     name: "MarketCreated",
     type: "event",
