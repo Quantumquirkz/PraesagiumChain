@@ -4,9 +4,12 @@ import { ContractFunctionRevertedError, BaseError } from "viem";
 
 const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   MarketNotOpen:          "This market is not accepting bets right now.",
+  MarketDoesNotExist:     "This market does not exist on-chain. The app may be out of sync — try refreshing.",
+  MarketClosed:          "This market is closed and no longer accepting bets.",
   MarketAlreadyResolved:  "This market has already been resolved.",
   InsufficientFee:        "The creation fee is insufficient. Check the required amount.",
   InvalidOutcome:         "Invalid bet outcome. Choose Yes or No.",
+  ZeroStake:             "Bet amount must be greater than 0.",
   NothingToClaim:         "You have no winnings to claim on this market.",
   AlreadyClaimed:         "You have already claimed your winnings for this market.",
   MarketNotResolved:      "This market has not been resolved yet.",
@@ -33,6 +36,15 @@ export function parseContractError(error: unknown): string {
     // Fondos insuficientes
     if (msg.includes("insufficient funds")) {
       return CONTRACT_ERROR_MESSAGES["insufficient funds"];
+    }
+
+    // Gas limit superior al bloque (Sepolia ~16.7M)
+    if (
+      msg.includes("gas limit too high") ||
+      msg.includes("transaction gas limit") ||
+      msg.includes("exceeds block gas limit")
+    ) {
+      return "Transaction gas limit exceeds block limit. Please try again; if it persists, try a different wallet or reduce complexity.";
     }
   }
 
