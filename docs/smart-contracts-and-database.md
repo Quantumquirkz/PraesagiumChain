@@ -484,13 +484,11 @@ The contract verifies `keccak256(abi.encode(outcome, amount, nonce)) == stored_c
 
 ## 8. Database Schema
 
-**File:** `backend-rust/migrations/`
+**File:** `backend-rust/migrations_pg/`
 
 The database schema mirrors on-chain state and stores off-chain data (predictions, reputation). The backend's `EventIndexer` keeps it synchronized with the blockchain.
 
-> **Database engine:** The backend uses **SQLite** by default (`DATABASE_URL=sqlite://praesagium.db`), which requires zero configuration for local development. The schema is compatible with PostgreSQL for production deployments — simply change `DATABASE_URL` to a PostgreSQL connection string. Migrations are applied automatically by SQLx on backend startup.
->
-> Migration files are located in `backend-rust/migrations/`. Migrations 002–006 are intentional stubs that preserve SQLx migration history; the full schema is defined in `001_initial.sql`.
+> **Database engine:** The backend uses **PostgreSQL** only. Set `DATABASE_URL=postgresql://...` in `.env`. Migrations are in `backend-rust/migrations_pg/` and are applied automatically by SQLx on backend startup.
 
 ### 8.1 Entity Relationship
 
@@ -674,14 +672,12 @@ From the repo root, run:
 
 Behavior:
 
-- **SQLite:** uses `sqlite3 .backup` to create a copy of the database file. Output: `praesagium-sqlite-YYYYMMDD-HHMMSS.db`.
 - **PostgreSQL:** uses `pg_dump` with `--no-owner --no-acl`. Output: `praesagium-postgres-YYYYMMDD-HHMMSS.sql`.
 
 Schedule this script via cron (e.g. daily) and retain a retention policy (e.g. keep last 7 days).
 
 ### 10.2 Restore
 
-- **SQLite:** stop the backend, replace the database file with the backup, restart.
 - **PostgreSQL:** create a new database if needed, then `psql $DATABASE_URL -f praesagium-postgres-YYYYMMDD-HHMMSS.sql`.
 
 After restore, ensure `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set so the indexer can catch up with any blocks missed during downtime.

@@ -1,6 +1,6 @@
 # PraesagiumChain — Backend (Rust / Axum)
 
-REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **SQLite** (default) or **PostgreSQL**.
+REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL** (required). Redis and ClickHouse are optional for cache/sessions and analytics.
 
 ---
 
@@ -12,8 +12,7 @@ REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation ser
   ```
   Then open a new terminal or run: `source "$HOME/.cargo/env"`.
 
-- **SQLite** (default): no extra install — uses `sqlite:./praesagium.db`. File created on first run.
-- **PostgreSQL** (optional, for production): use `DATABASE_URL=postgresql://...` in `.env`.
+- **PostgreSQL**: required. Use `DATABASE_URL=postgresql://...` in `.env`. For local dev, run PostgreSQL via Docker: `docker compose up -d` (see repo root).
 
 - **OpenSSL** (system) for building. On Ubuntu/Debian/WSL:
   ```bash
@@ -32,18 +31,20 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
    cp config/env.example .env
    ```
 
-2. Edit `.env` if needed:
-   - **`DATABASE_URL`** (optional): defaults to `sqlite:./praesagium.db` for local dev. For production, use PostgreSQL: `postgresql://postgres:PASSWORD@localhost:5432/praesagium`.
+2. Edit `.env`; **required**:
+   - **`DATABASE_URL`**: PostgreSQL connection string, e.g. `postgresql://praesagium:PASSWORD@localhost:5432/praesagium`.
 
 3. Optional variables:
    - `PORT` (default `4000`)
+   - `REDIS_URL` (e.g. `redis://localhost:6379`) for SIWE nonce store
+   - `CLICKHOUSE_URL` (e.g. `http://localhost:8123`) for analytics events
    - `AI_PROVIDER`, `GEMINI_API_KEY` / `HF_API_KEY` for sentiment
    - `RPC_URL`, `PREDICTION_MARKET_ADDRESS`, `START_BLOCK` for the **event indexer** (see below)
    - `CORS_ORIGINS` (comma-separated origins in production)
 
 ### Event indexer (optional)
 
-The backend can run an **event indexer** that syncs on-chain market events to the database. It starts only if **both** `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set and **non-empty**. Leave them unset or empty to run without the indexer. If they are set to empty strings, the app would try to parse an empty address and fail; the code skips the indexer when either value is empty.
+The backend can run an **event indexer** that syncs on-chain market events to the database. It starts only if **both** `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are set and **non-empty**. Leave them unset or empty to run without the indexer.
 
 ---
 
@@ -70,7 +71,9 @@ cargo test
 ```
 
 - **Health:** always runs (no DB required).
-- **Markets list:** runs only if `DATABASE_URL` is set (SQLite or PostgreSQL); otherwise the test is skipped.
+- **Markets list, get by id, predictions, private access, sources/fetch, create market:** run only if `DATABASE_URL` is set to a PostgreSQL URL; otherwise those tests are skipped.
+
+**Request body limit:** The API applies a global limit of **2 MB** on request body size (Axum `DefaultBodyLimit`). Requests with a larger body may receive **413 Payload Too Large**. See `docs/audit-inventory.md` for validation limits on specific fields.
 
 ---
 
@@ -97,15 +100,14 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 
 ### Troubleshooting
 
-- **“Invalid input length”**  
-  This usually means the backend tried to parse `PREDICTION_MARKET_ADDRESS` as an Ethereum address but it was empty or invalid. Ensure `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are either **unset** or **valid** (non-empty; address = 0x + 40 hex chars). Empty strings are now ignored (indexer is skipped).
+- **"DATABASE_URL is required"**  
+  Set `DATABASE_URL=postgresql://user:password@host:5432/database` in `.env`. Start PostgreSQL (e.g. `docker compose up -d`).
 
-- **Other DB errors**  
-  To see where the error occurs (connection vs migrations) and a full backtrace:
-  ```bash
-  cd backend-rust
-  RUST_BACKTRACE=1 cargo run 2>&1
-  ```
+- **"password authentication failed"**  
+  PostgreSQL is running but credentials in `DATABASE_URL` are wrong. Create the user and database, or use the same credentials as in `docker-compose.yml` (e.g. `praesagium` / `praesagium`).
+
+- **"Invalid input length"**  
+  Usually means `PREDICTION_MARKET_ADDRESS` was parsed as an Ethereum address but was empty or invalid. Ensure `RPC_URL` and `PREDICTION_MARKET_ADDRESS` are either **unset** or **valid**. Empty strings are ignored (indexer is skipped).
 
 ---
 

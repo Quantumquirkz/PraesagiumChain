@@ -249,7 +249,7 @@ cp config/frontend.env.example frontend/.env.local
 Edit `.env` with at minimum these values:
 
 ```env
-DATABASE_URL=sqlite://praesagium.db
+DATABASE_URL=postgresql://praesagium:PASSWORD@localhost:5432/praesagium
 AI_PROVIDER=gemini          # or "mock" to skip AI key
 GEMINI_API_KEY=your_key     # skip if AI_PROVIDER=mock
 PRIVATE_KEY=your_hardhat_or_wallet_key
@@ -269,14 +269,11 @@ NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0xf2397b5827860b361427240d1D1F6F89e9bF197f
 NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 ```
 
-**Step 3 — Apply database migrations**
+**Step 3 — Start PostgreSQL (and optionally Redis, ClickHouse)**
 
-The backend uses SQLite by default (zero-config for local development). Migrations run automatically on startup via SQLx.
+Use Docker: `docker compose up -d` (see [Docker](#docker) below). Or install PostgreSQL locally and create a database. Set `DATABASE_URL=postgresql://user:pass@localhost:5432/praesagium` in `.env`.
 
-```bash
-# Backend will auto-migrate on first run; no separate step needed.
-# To verify: check that praesagium.db is created (in the current working directory from which the backend was started; e.g. run `npm run backend` from repo root so the DB lives at the root).
-```
+Migrations run automatically when the backend starts; no separate step needed.
 
 **Step 4 — Start the local blockchain**
 
@@ -320,6 +317,25 @@ npm run dev
 npm run demo
 # Flow: create market → place bet → advance time → resolve via AI → claim payout
 ```
+
+### Docker (PostgreSQL, Redis, ClickHouse)
+
+Start the data stack with Docker Compose:
+
+```bash
+./scripts/docker-up.sh
+# Or: docker compose up -d
+```
+
+Then set in `.env`:
+
+```env
+DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium
+REDIS_URL=redis://localhost:6379
+CLICKHOUSE_URL=http://localhost:8123
+```
+
+Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see the `k8s/` directory.
 
 ### CRE Workflow Simulation
 
@@ -784,7 +800,7 @@ npm run audit
 | `Set in .env: PREDICTION_MARKET_ADDRESS` | Missing post-deploy addresses | Copy printed addresses from `npm run deploy` to `.env` |
 | `CRE callback failed` | `block.timestamp < resolveTime` | The demo script advances time with `evm_increaseTime`; ensure you have the latest version |
 | `Backend not responding` | Backend not started | Run `npm run backend` in a separate terminal |
-| `database is locked` | Corrupted SQLite DB (interrupted process) | Delete `backend-rust/praesagium.db*` and restart the backend |
+| `password authentication failed` / DB connection failed | PostgreSQL not running or wrong DATABASE_URL | Start PostgreSQL (e.g. `docker compose up -d`), set `DATABASE_URL=postgresql://user:pass@host:5432/db` |
 | `no such table: markets` | Migrations not applied | Restart the backend; SQLx auto-migrates on startup |
 | `Too Many Requests` | Rate limit exceeded | Increase `RATE_LIMIT_BURST` in `.env`; default is 200 |
 | `cargo build` fails | Rust not installed or outdated | Run `rustup update stable` |
@@ -859,7 +875,7 @@ The following improvements were implemented after the initial release:
 - **Backend:** Removed unused `trace` feature from `tower-http` in `backend-rust/Cargo.toml`.
 
 ### Backend Stability
-- Migrated from PostgreSQL to **SQLite** for zero-config local development (`DATABASE_URL=sqlite://praesagium.db`).
+- Backend uses **PostgreSQL** only; `DATABASE_URL` is required (no SQLite).
 - Increased default rate limits: `RATE_LIMIT_PER_SECOND=300`, `RATE_LIMIT_BURST=200`.
 
 ---

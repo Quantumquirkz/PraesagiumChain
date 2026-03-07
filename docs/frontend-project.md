@@ -80,6 +80,12 @@ Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. The `fronte
 | `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` | Yes | PredictionMarket contract address | `0xf2397b5827860b361427240d1D1F6F89e9bF197f` (Sepolia) |
 | `NEXT_PUBLIC_BLOCK_EXPLORER_URL` | No | Base URL for block explorer (tx and address links) | `https://sepolia.etherscan.io` |
 
+**Backend and proxy**
+
+- The frontend expects the **backend to be running** (e.g. `npm run backend` on port 4000). If the backend is unreachable, API calls will fail with a clear message.
+- For **local development**, leave `NEXT_PUBLIC_API_BASE_URL` **unset** so the Next.js rewrites (in `next.config.js`) send `/api/*` and `/health` to the backend. If you set it to `http://localhost:4000`, requests go directly from the browser to the backend (CORS must allow the frontend origin).
+- **Signals / Finnhub:** To use the Finnhub source on the Signals page, set `FINNHUB_API_KEY` in the **backend** `.env`. If unset, the Signals dashboard shows a friendly message for that source.
+
 **Contract ABIs:** Use compiled artifacts from this repo:
 
 - **PredictionMarket:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json` → copy the `abi` array into the frontend (e.g. `frontend/lib/abis/prediction-market.ts` or `frontend/public/abis/PredictionMarket.json`).
