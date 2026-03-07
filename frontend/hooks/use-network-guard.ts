@@ -50,9 +50,13 @@ export function useNetworkGuard() {
 
   const switchToRequired = async () => {
     try {
-      switchChain?.({ chainId: DEFAULT_CHAIN_ID as 11155111 });
-    } catch {
-      await switchManually(DEFAULT_CHAIN_ID);
+      await switchChain?.({ chainId: DEFAULT_CHAIN_ID as 11155111 });
+    } catch (err) {
+      try {
+        await switchManually(DEFAULT_CHAIN_ID);
+      } catch (fallbackErr) {
+        throw fallbackErr ?? err;
+      }
     }
   };
 

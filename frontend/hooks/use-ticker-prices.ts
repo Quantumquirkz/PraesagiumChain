@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-
-const getBase = () =>
-  (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+import { getBaseUrl } from "@/lib/api";
 
 // ─── Tipos mínimos de respuesta ───────────────────────────────────────────────
 
@@ -40,7 +38,7 @@ export function useTickerPrices() {
   return useQuery<TickerPrices>({
     queryKey: ["ticker-prices"],
     queryFn: async () => {
-      const base = getBase();
+      const base = getBaseUrl();
       const [btc, eth, eur] = await Promise.all([
         safeFetch<BinanceTickerData>(
           `${base}/api/sources/fetch?source=binance&symbol=BTCUSDT`

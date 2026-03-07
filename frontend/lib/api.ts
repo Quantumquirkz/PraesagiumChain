@@ -105,6 +105,7 @@ export async function createMarketBackend(body: {
   question: string;
   close_time: number;
   resolve_time: number;
+  creator?: string;
   market_type?: string;
   metadata?: string;
   on_chain_market_id?: number;
