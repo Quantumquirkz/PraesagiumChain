@@ -298,6 +298,45 @@ pub struct ResolveResponse {
     pub resolved_at: i64,
 }
 
+// ─── Private market access keys ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrivateMarketRegisterRequest {
+    pub on_chain_market_id: i64,
+    pub creator_address: String,
+    pub question: String,
+    pub close_time: i64,
+    pub resolve_time: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrivateMarketRegisterResponse {
+    pub access_key: String,
+    pub market_id: i64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrivateMarketAccessResponse {
+    pub market_id: i64,
+    pub question: String,
+    pub close_time: i64,
+    pub resolve_time: i64,
+    pub creator: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct PrivateMarketAccessKeyRow {
+    pub id: i64,
+    pub on_chain_market_id: i64,
+    pub access_key: String,
+    pub creator_address: String,
+    pub question: String,
+    pub close_time: i64,
+    pub resolve_time: i64,
+    pub created_at: i64,
+}
+
 /// A persisted resolution record (read from `market_resolutions`).
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct MarketResolution {

@@ -2,6 +2,7 @@ pub mod auth;
 pub mod feeds;
 pub mod health;
 pub mod markets;
+pub mod private_markets;
 pub mod predictions;
 pub mod metrics;
 pub mod ai;

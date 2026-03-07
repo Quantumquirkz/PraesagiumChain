@@ -25,6 +25,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
         .route("/api/markets/:id/conditions", get(api::markets::get_conditions))
         .route("/api/markets/:id/resolutions", get(api::resolve::list_resolutions)) // Admin/API
+        // Private markets (access keys)
+        .route("/api/markets/private/register", post(api::private_markets::register))
+        .route("/api/markets/private/access", get(api::private_markets::access))
         .route("/api/markets/:id/stream", get(api::stream::market_stream))
         .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict)) // Admin/API
         // Predictions (Frontend uses /hybrid; /api/predict for direct PHPE)
