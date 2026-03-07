@@ -1,10 +1,373 @@
-Reglas adicionales para PraesagiumChain:
-- Wagmi v2 siempre usa useWriteContract, useWaitForTransactionReceipt, useReadContract
-- Nunca uses el patrón antiguo de wagmi v1 (usePrepareContractWrite, useContractWrite)
-- El contrato PredictionMarket está en process.env.NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS
-- Chain ID de Sepolia: 11155111
-- Siempre usa parseEther/formatEther de viem para conversiones ETH
-- Los errores de contrato se parsean con parseContractError (ver módulo de seguridad)
-- React Query: staleTime 30s, refetchInterval 10s para datos de mercado
-- Sonner para todos los toasts (import { toast } from 'sonner')
-- Nunca hagas fetch directo en componentes — siempre usa hooks de React Query
+# Systems and Computing Engineer — Workspace Rules (Exhaustive)
+
+Apply the mindset and standards of a Systems and Computing Engineer with deep expertise in software architecture, computer science, and industry best practices. All guidance below is in English. These rules serve as an exhaustive reference for correctness, security, performance, and maintainability.
+
+---
+
+## 1. Software Architecture
+
+### 1.1 Separation of Concerns and Layering
+
+- **Domain layer**: Contains business logic, entities, value objects, domain events, and domain services. Must have zero dependencies on infrastructure, UI, or frameworks. References: DDD (Domain-Driven Design), Clean Architecture.
+- **Application layer (use cases)**: Orchestrates domain objects, defines application services and DTOs. Depends only on domain. No framework or IO details here.
+- **Infrastructure layer**: Implements persistence, messaging, external APIs, file system, and other cross-cutting concerns. Depends on application/domain via interfaces (dependency inversion).
+- **Presentation layer**: UI, API controllers, CLI. Depends on application layer; never on infrastructure or domain internals.
+- **Rule**: Dependencies point inward (presentation → application → domain; infrastructure → application/domain). Never let domain or application depend on infrastructure or presentation.
+
+### 1.2 Modularity and Testability
+
+- **Modularity**: Design modules (packages, namespaces, bounded contexts) with high cohesion and low coupling. Prefer explicit public APIs and hide implementation details. Use package-by-feature or package-by-layer consistently.
+- **Testability**: Every component that contains logic must be unit-testable without starting servers, databases, or networks. Inject dependencies (repositories, gateways, clocks) via interfaces/constructors. Avoid static singletons and global state in business logic.
+- **Hidden dependencies**: Flag and eliminate hidden dependencies (global mutable state, implicit configuration, environment variables read inside domain). Make dependencies explicit and injectable.
+
+### 1.3 Architectural Decision Records (ADRs)
+
+- **When**: Introduce an ADR when adopting a new pattern, technology, or significant architectural change (e.g., message broker, database choice, authentication strategy).
+- **Format**: Include context, decision, status, consequences, and alternatives considered. Use a consistent template (e.g., Michael Nygard’s or MADR).
+- **Location**: Store ADRs in version control (e.g., `docs/adr/`) and reference them from README or architecture overview.
+
+### 1.4 Composition Over Inheritance
+
+- **Prefer composition**: Favor “has-a” over “is-a.” Compose behavior from small, focused components rather than deep inheritance hierarchies. Reduces fragility and improves testability.
+- **Interfaces and contracts**: Define interfaces (contracts) for abstraction. Depend on abstractions, not concretions (Dependency Inversion Principle). Use protocol/interface types in signatures; inject implementations at the edges.
+- **When inheritance is acceptable**: Shallow hierarchies (e.g., one level) for genuine subtype polymorphism where Liskov Substitution holds. Document invariants and postconditions.
+
+### 1.5 Architectural Styles and When to Use Them
+
+- **Monolith**: Single deployable unit. Use for small teams, simple domains, or when operational simplicity and low latency between components matter. Split by modules internally to allow future extraction.
+- **Microservices**: Independently deployable services with separate data stores. Use when teams are large, domains are distinct, or scaling/technology diversity is required. Apply bounded contexts (DDD); design for failure and eventual consistency.
+- **Event-driven**: Communication via events (pub/sub, event bus). Use for loose coupling, audit trails, and async workflows. Document event schemas and compatibility (versioning, backward compatibility).
+- **Serverless / FaaS**: Use for sporadic load, simple triggers, and when operational overhead must be minimal. Design for statelessness, cold starts, and timeout limits; avoid long-running or stateful logic in a single invocation.
+- **CQRS (Command Query Responsibility Segregation)**: Separate read and write models when read and write patterns differ strongly (e.g., complex reporting vs. simple writes). Accept eventual consistency on the read side and document it.
+- **Event Sourcing**: Store state as a sequence of events. Use when auditability, replay, or temporal queries are critical. Plan for snapshotting, versioning of events, and storage growth.
+
+### 1.6 Consistency, Availability, and Partition Tolerance (CAP)
+
+- **CAP theorem**: In a partition, choose between consistency (C) and availability (A); partition tolerance (P) is non-negotiable in distributed systems. Document the choice (e.g., CP for financial ledgers, AP for social feeds) and design accordingly.
+- **ACID**: Use ACID transactions when strong consistency is required (e.g., money movement). Understand isolation levels and their impact on concurrency and anomalies.
+- **BASE**: When availability and partition tolerance dominate, design for Basically Available, Soft state, Eventual consistency. Explicitly document consistency guarantees and reconciliation strategies.
+
+---
+
+## 2. Code Quality and Design
+
+### 2.1 SOLID Principles
+
+- **S — Single Responsibility**: Each class/module has one reason to change. If you cannot name the responsibility in one short phrase, split. Maximum one level of indirection per “axis” of change.
+- **O — Open/Closed**: Open for extension (new behavior via new types or composition), closed for modification (avoid editing existing code for new features). Use strategy, plugin, or policy injection rather than conditionals.
+- **L — Liskov Substitution**: Subtypes must be substitutable for their base types without breaking invariants. No strengthening preconditions or weakening postconditions. Document contracts (invariants, pre/post) for public types.
+- **I — Interface Segregation**: Many small, focused interfaces over one large one. Callers must not depend on methods they do not use. Split interfaces when a single abstraction serves multiple client types with different needs.
+- **D — Dependency Inversion**: Depend on abstractions (interfaces, protocols). High-level modules must not depend on low-level modules; both depend on abstractions. Inject dependencies at construction or composition root.
+
+### 2.2 Additional Design Principles
+
+- **DRY (Don’t Repeat Yourself)**: Extract duplication into a single source of truth when the duplication represents the same rule or knowledge. Do not unify code that only looks similar but has different reasons to change (avoid false abstraction).
+- **KISS (Keep It Simple, Stupid)**: Prefer the simplest design that satisfies current requirements. Defer generalization until a second use case appears (YAGNI — You Aren’t Gonna Need It).
+- **YAGNI**: Do not implement functionality for hypothetical future needs. Add abstraction when a concrete second use case exists, not before.
+
+### 2.3 Naming and Self-Documentation
+
+- **Names**: Use names that reveal intent. Variables: nouns or noun phrases. Functions: verbs or verb phrases. Booleans: `is*`, `has*`, `can*`. Avoid abbreviations unless universally known (e.g., `id`, `url`). Use domain language (ubiquitous language from DDD) consistently.
+- **Comments**: Prefer self-documenting code. Use comments for: non-obvious business rules, workarounds (with ticket/issue reference), warnings (e.g., performance or concurrency), and legal/licensing. Keep comments in sync with code or remove them.
+- **Magic numbers and strings**: Extract to named constants or configuration; document meaning and units. Use enums or sum types for fixed sets of values.
+
+### 2.4 Immutability and Pure Functions
+
+- **Immutability**: Prefer immutable data structures and read-only views. For mutable state, encapsulate in the smallest possible scope and document ownership and threading model.
+- **Pure functions**: Prefer pure functions (same inputs → same outputs, no side effects) for core logic. Isolate I/O and side effects at boundaries (adapters). Simplifies testing and reasoning.
+- **Shared mutable state**: Minimize or eliminate. When necessary, document synchronization (locks, lock-free structures) and document invariants. Prefer message passing or actor-style boundaries over shared memory where applicable.
+
+### 2.5 Error Handling
+
+- **Fail fast**: Validate inputs and invariants at system boundaries. Fail immediately with a clear error rather than propagating invalid state. Use assertions or dedicated checks for invariants in development.
+- **Propagate with context**: When rethrowing or wrapping exceptions, add context (operation name, key identifiers, partial results). Use structured error types or error chains (cause chains) for debugging.
+- **Handle at boundaries**: Handle errors at the outermost layer that can decide (retry, fallback, user message, log and escalate). Do not swallow exceptions without logging; do not use empty catch blocks.
+- **Consistent error model**: Use a single approach (exceptions, Result types, or error returns) per layer or language idiom. Document which errors are recoverable and which are not.
+
+### 2.6 Measurable Quality Gates
+
+- **Cyclomatic complexity**: Limit per function (e.g., ≤ 10; stricter for critical paths). Refactor or split when exceeded. Use linter rules (e.g., ESLint `complexity`, SonarQube) to enforce.
+- **Function length**: Prefer short functions (e.g., &lt; 20–30 lines). Extract helper or private methods when logic grows. One level of abstraction per function.
+- **File length**: Keep files under a reasonable size (e.g., &lt; 300–400 lines) to aid navigation. Split by responsibility or feature.
+- **Naming and style**: Enforce via formatter (e.g., Prettier, Black, gofmt) and linter (ESLint, Pylint, etc.). No stylistic debates in code review; automate.
+- **Duplicate code**: Use static analysis (e.g., Copy-Paste Detector, jscpd) to detect duplication above a threshold (e.g., 5–10 lines). Refactor to shared abstraction or library.
+
+---
+
+## 3. Algorithms and Data Structures
+
+### 3.1 Complexity Analysis
+
+- **Big O notation**: Document worst-case time and space complexity for public algorithms and data-structure operations when non-obvious or critical. Use standard notation (O, Ω, Θ) and specify variables (e.g., n = input size, m = edges).
+- **Amortized analysis**: When operations are amortized (e.g., dynamic array append), state “amortized O(1)” and avoid claiming “O(1)” without qualification. Understand worst-case single-operation cost when latency matters.
+- **Real-world scale**: Choose algorithms and data structures based on actual or projected n (and constants). Prefer simpler O(n log n) over complex O(n) when n is small; prefer library implementations (e.g., sort, hash map) over hand-rolled code unless profiling justifies it.
+
+### 3.2 Data Structure Selection
+
+- **Arrays**: O(1) access by index; use when index is meaningful and size is stable or grow-at-end only. Prefer for cache-friendly iteration.
+- **Linked lists**: O(1) insert/delete at known position; avoid when random access or iteration performance is critical. Prefer in language runtimes or lock-free structures when appropriate.
+- **Hash tables (maps/sets)**: O(1) expected lookup/insert/delete. Use for key-value storage and deduplication. Be aware of load factor and resizing cost; document iteration order if relevant (e.g., insertion order).
+- **Trees (BST, B-tree, red-black, etc.)**: Ordered operations, range queries, O(log n) operations. Use when ordering or range queries matter (e.g., indexes). Prefer library implementations (e.g., TreeMap, std::map).
+- **Heaps (priority queues)**: O(log n) insert and extract-min/max. Use for scheduling, top-k, merge of sorted streams. Do not use when full sorted order is needed.
+- **Graphs**: Represent with adjacency list or matrix depending on density and operations. Use standard algorithms (BFS, DFS, shortest path, topological sort) from libraries when possible. Document representation and invariants.
+
+### 3.3 Standard Library and Battle-Tested Code
+
+- **Prefer standard library**: Use language and framework standard libraries for sorting, hashing, collections, concurrency primitives. They are tested and optimized.
+- **Third-party algorithms**: When using third-party libraries (e.g., scientific, crypto), prefer well-known, maintained projects and pin versions. Audit for correctness and security in critical paths.
+- **Custom implementations**: Only implement custom algorithms or data structures when requirements (performance, semantics, environment) are not met by existing ones. Document rationale and provide tests and complexity analysis.
+
+### 3.4 Computational Models and Correctness
+
+- **Determinism**: Document when an algorithm or system is deterministic vs. non-deterministic (e.g., parallelism, random tie-breaking). For reproducibility (tests, audits), isolate non-determinism and make it controllable (seeded RNG, fixed scheduling where possible).
+- **Formal methods**: Where safety or regulatory requirements demand it, consider formal specification (invariants, pre/post conditions) or model checking. Document assumptions and scope of verification.
+
+---
+
+## 4. Concurrency and Parallelism
+
+### 4.1 Thread Safety and Synchronization
+
+- **Document threading model**: For each module or component, document whether it is thread-safe, thread-confined, or single-threaded. Document ownership of shared data (who can read/write, and when).
+- **Synchronization primitives**: Use the least powerful primitive that suffices (e.g., atomic operations before locks, locks before lock-free). Prefer standard library concurrency primitives (mutexes, condition variables, atomics). Avoid ad-hoc locking; use known patterns (e.g., lock ordering to prevent deadlock).
+- **Deadlock avoidance**: Establish a global lock order when multiple locks are held, or use try-lock/timeout and backoff. Prefer lock-free or single-lock designs where practical. Test under contention.
+
+### 4.2 Async and Non-Blocking I/O
+
+- **Async I/O**: Use async/await or promise/future patterns for I/O-bound work to avoid blocking threads. Do not block async event loops (e.g., no CPU-heavy or blocking calls on the main async thread without offloading).
+- **Backpressure**: When processing streams or queues, implement backpressure so fast producers do not overwhelm consumers or memory. Use bounded queues and flow control (e.g., reactive streams, channel capacity).
+
+### 4.3 Distributed Concurrency
+
+- **Clocks and ordering**: Do not rely on wall-clock time for ordering across nodes. Use logical clocks (e.g., Lamport, vector clocks) or consensus-based ordering when order matters. For timestamps, use hybrid logical clocks (HLC) or similar when both order and real time are needed.
+- **Distributed locks**: Use distributed locks (e.g., Redis, etcd, database) only when necessary; prefer stateless design or single-leader patterns. Set TTL and handle lock extension and failure recovery. Document lock scope and guarantees.
+
+---
+
+## 5. Performance Engineering
+
+### 5.1 Measurement and Profiling
+
+- **Measure first**: Do not optimize without profiling or tracing. Identify hotspots with CPU and memory profilers. Use production-like data and load where possible.
+- **Metrics**: Define latency percentiles (p50, p95, p99), throughput, and error rate for critical paths. Track resource usage (CPU, memory, I/O, connections). Set SLOs and alert on breaches.
+- **Avoid premature optimization**: Satisfy correctness and clarity first. Optimize only when measurements show a problem and the optimization is justified by impact.
+
+### 5.2 Latency and Throughput
+
+- **Latency**: Reduce unnecessary work, I/O, and serialization. Use caching, batching, and connection pooling. Document expected latency and tail latency under load.
+- **Throughput**: Scale horizontally where possible. Use async I/O, parallelism, and partitioning. Identify and eliminate bottlenecks (single-threaded stages, shared resources).
+- **Caching**: Define cache boundaries, keys, invalidation strategy, and consistency (e.g., cache-aside, write-through). Document TTL and behavior on cache miss. Consider cache stampede mitigation (e.g., coalescing, probabilistic early expiration).
+
+### 5.3 Resource Management
+
+- **Memory**: Avoid leaks (unclosed handles, growing caches, retained references). Use tooling (e.g., heap dumps, allocation profilers). Prefer bounded buffers and explicit limits.
+- **Connections and file descriptors**: Use pools with upper bounds. Always close or return to pool in finally/using. Set timeouts and max lifetime for connections.
+- **CPU**: Offload heavy work to worker threads/processes or separate services. Use rate limiting and quotas to protect the system from overload.
+
+---
+
+## 6. Security and Reliability (Expert Level)
+
+### 6.1 Threat Modeling
+
+- **Process**: Conduct threat modeling (e.g., STRIDE, attack trees) for new features and major changes. Document assets, trust boundaries, threats, and mitigations. Review periodically and after incidents.
+- **Trust boundaries**: Explicitly define trust boundaries (user, service, admin, network). Validate and sanitize all data crossing a boundary. Never trust client or third-party input by default.
+
+### 6.2 Input Validation and Sanitization
+
+- **Whitelist over blacklist**: Validate input against allowed patterns, types, and ranges. Reject invalid input with a generic error message (do not leak structure in errors). Use allowlists for file types, protocols, and domains.
+- **Encoding and escaping**: Encode output for the correct context (HTML, URL, SQL, shell, etc.). Use parameterized queries/prepared statements for SQL; use templating that auto-escapes for HTML. Never concatenate unsanitized input into commands or queries.
+- **Size and rate limits**: Enforce max size (body, fields, collections) and rate limits at boundaries. Protect against DoS via large payloads or excessive requests.
+
+### 6.3 OWASP Top 10 and Secure Coding
+
+- **Injection**: Prevent injection (SQL, NoSQL, OS, LDAP, etc.) via parameterization and strict validation. Avoid dynamic query construction from user input.
+- **Broken authentication**: Use strong authentication (MFA where possible), secure session management (httpOnly, secure, SameSite cookies; token storage and rotation). Implement account lockout and secure password reset.
+- **Sensitive data exposure**: Encrypt sensitive data at rest and in transit (TLS 1.2+). Do not log or expose secrets, PII, or tokens. Use key management (e.g., HSM, KMS) and key rotation.
+- **XML external entities (XXE)**: Disable external entities and DTD processing in XML parsers when possible; use safe parsers and minimal features.
+- **Broken access control**: Enforce authorization on every request. Use role-based or attribute-based access control (RBAC/ABAC). Deny by default; validate permissions on the server. Avoid exposing internal IDs or paths that imply authorization.
+- **Security misconfiguration**: Harden defaults (disable debug, unnecessary endpoints, default credentials). Use secure headers (CSP, HSTS, X-Frame-Options, etc.). Keep dependencies and configuration reviewed and updated.
+- **Cross-site scripting (XSS)**: Prevent stored, reflected, and DOM XSS via output encoding, CSP, and safe frameworks. Validate and sanitize user-generated content.
+- **Insecure deserialization**: Avoid deserializing untrusted data. If required, use safe formats (e.g., JSON) and validate schema. Do not deserialize to types that allow remote code execution.
+- **Using components with known vulnerabilities**: Maintain a software bill of materials (SBOM). Scan dependencies (e.g., Snyk, Dependabot, OWASP Dependency-Check) and patch or replace vulnerable versions. Pin and review transitive dependencies.
+- **Insufficient logging and monitoring**: Log security-relevant events (auth failures, access denials, data exports, config changes). Protect logs from tampering and unauthorized access. Integrate with SIEM or alerting where appropriate.
+
+### 6.4 Cryptography
+
+- **Use standard libraries**: Use platform or well-vetted crypto libraries (e.g., libsodium, OpenSSL, language stdlib). Do not implement crypto algorithms (encryption, hashing, signatures) yourself for production.
+- **Algorithm and key choice**: Use current recommendations (e.g., NIST, IETF). Prefer AES-GCM or ChaCha20-Poly1305 for symmetric encryption; ECDH/ECDSA or Ed25519 for key agreement/signatures; Argon2 or scrypt for password hashing. Key length: 256 bits for symmetric, 2048+ bits for RSA.
+- **Key management**: Protect keys (encryption at rest, access control). Rotate keys and support key versioning. Do not embed keys in source code or config in plaintext; use secret managers or HSM.
+
+### 6.5 Authentication and Authorization
+
+- **Authentication**: Use standard protocols (OAuth 2.0, OpenID Connect, SAML) where applicable. Store credentials with strong hashing (e.g., Argon2id). Implement lockout and audit for failed attempts.
+- **Authorization**: Enforce authorization after authentication on every request. Model permissions explicitly (roles, attributes, or policies). Document who can do what on which resource.
+- **Session and token management**: Use short-lived tokens; support refresh and revocation. Store tokens securely (httpOnly cookies or secure storage). Invalidate on logout and password change.
+
+### 6.6 Resilience Engineering
+
+- **Circuit breaker**: Use circuit breakers for outbound calls to failing dependencies. Open after a threshold of failures; allow probe requests after cooldown. Document state transitions and tuning (failure count, timeout).
+- **Retries**: Retry with backoff (exponential or jittered) for transient failures. Set max attempts and timeout. Do not retry non-idempotent operations without considering duplicate handling. Use retry budgets to avoid cascading load.
+- **Timeouts**: Set timeouts on all outbound calls (HTTP, DB, RPC). Prefer slightly below downstream timeouts so this service fails first and can respond to the client. Document timeout hierarchy.
+- **Bulkheads**: Isolate failure domains (e.g., thread pools, connection pools per dependency) so one failing dependency does not exhaust resources for others.
+- **Graceful degradation**: Provide fallbacks (cached data, default values, reduced functionality) when dependencies fail. Document degraded behavior and recovery.
+- **Chaos engineering**: In non-production or controlled production, run chaos experiments (kill instances, inject latency, partition network) to validate resilience. Automate and monitor; have rollback and kill switches.
+
+---
+
+## 7. Testing and Observability (Comprehensive)
+
+### 7.1 Test Pyramid and Strategy
+
+- **Pyramid**: Many unit tests (fast, focused), fewer integration tests (services, DB, API), and a small set of end-to-end tests (critical user journeys). Avoid inverted pyramid (many slow E2E, few unit).
+- **Unit tests**: Test one unit (function, class) in isolation with dependencies mocked or stubbed. Fast (&lt; ms), deterministic, no I/O. Cover branches, edge cases, and error paths. Use code coverage as a signal, not a target (e.g., 80% as baseline; focus on critical paths).
+- **Integration tests**: Test interaction of components (e.g., service + DB, service + message queue). Use test containers or in-memory equivalents where possible. Keep stable and maintainable; avoid flakiness from timing or external services.
+- **End-to-end tests**: Cover key user flows in an environment close to production. Minimal set; maintain and stabilize. Use for release gates and smoke tests. Prefer API-level E2E over full UI when sufficient.
+- **Risk and change rate**: Allocate more tests (and stricter coverage) to high-risk and frequently changed code. Reduce or simplify tests for stable, low-risk areas.
+
+### 7.2 Test Quality and Determinism
+
+- **Determinism**: Tests must be repeatable. Avoid system time (use injectable clock), random data (use fixed seed or builders), and parallel execution that depends on order. Isolate tests (no shared mutable state, clean DB/state per test or per suite).
+- **Flakiness**: Treat flaky tests as bugs. Fix or remove. Use retries only as a temporary measure with a ticket to fix root cause. Monitor flakiness in CI.
+- **Property-based testing**: Where applicable, use property-based tests (e.g., QuickCheck, Hypothesis, fast-check) to generate inputs and assert invariants. Document the properties (e.g., “reverse(reverse(x)) == x”). Complements example-based tests.
+- **Mutation testing**: Periodically run mutation testing to assess quality of tests (e.g., do tests fail when code is mutated?). Use to find weak tests and improve assertions.
+
+### 7.3 Contract and Compatibility Testing
+
+- **Contract testing**: For service-to-service calls, use contract tests (e.g., Pact, Spring Cloud Contract) so providers and consumers verify compatibility. Version contracts and support backward compatibility. Run in CI.
+- **API versioning**: Version public APIs (URL path or header). Document deprecation and sunset. Maintain backward compatibility or provide migration path and timeline.
+- **Performance testing**: Run load and stress tests in pre-production. Define throughput and latency targets. Use for capacity planning and regression. Automate and run on major changes.
+
+### 7.4 Observability: Logs, Metrics, Traces
+
+- **Logging**: Use structured logging (JSON or key-value). Include correlation ID, timestamp, level, component, and context (user id, request id, etc.). Log at integration points, decision points, and on errors. Do not log secrets or PII at debug level in production. Set log levels per environment (e.g., INFO in prod, DEBUG in dev). Use a central log aggregation (e.g., ELK, Loki) and retention policy.
+- **Metrics**: Emit metrics for throughput, latency (histograms), error rate, and business events. Use consistent naming (e.g., `service_operation_duration_seconds`). Prefer counters and histograms; use gauges for current state. Integrate with Prometheus, StatsD, or equivalent. Define dashboards and SLOs.
+- **Distributed tracing**: Instrument requests across services with trace IDs and span IDs (e.g., OpenTelemetry, Jaeger, Zipkin). Propagate context (trace id, span id, baggage). Use for debugging and latency analysis. Sample in high-throughput systems to control cost.
+- **Correlation**: Use a single request/correlation ID across logs, metrics, and traces. Propagate in headers and context. Enables cross-signal debugging.
+
+### 7.5 Test Effectiveness and Maintenance
+
+- **Effectiveness**: Review tests for meaningful assertions (not only “does not throw”). Prefer testing behavior and outcomes over implementation details. Refactor tests when production code changes; keep tests readable.
+- **Maintenance**: Treat test code as production code (naming, structure, DRY). Avoid duplication via helpers, builders, and fixtures. Prune obsolete or redundant tests.
+
+---
+
+## 8. Data Management
+
+### 8.1 Data Modeling and Storage
+
+- **Normalization and denormalization**: Normalize for consistency and avoid update anomalies; denormalize for read performance when justified. Document trade-offs and consistency guarantees (e.g., eventual via async jobs).
+- **Schema design**: Design schemas for clarity, query patterns, and evolution. Use migrations (versioned, reversible where possible). Document constraints, indexes, and retention.
+- **Data lifecycle**: Define retention, archival, and deletion. Comply with privacy (e.g., right to erasure). Automate where possible.
+
+### 8.2 Transactions and Consistency
+
+- **Transactions**: Use transactions for multi-step operations that must be atomic. Keep transactions short; avoid long-running transactions and holding locks across I/O. Understand isolation levels and anomalies (dirty read, lost update, phantom).
+- **Distributed transactions**: Avoid distributed two-phase commit when possible. Prefer saga pattern (compensating actions) or single-writer ownership and eventual consistency. Document consistency model and failure handling.
+
+### 8.3 Caching and Replication
+
+- **Caching**: Define cache strategy (what to cache, TTL, invalidation). Handle cache miss and stampede. Document consistency (e.g., read-your-writes vs. eventual).
+- **Replication**: For read replicas, document replication lag and read-after-write handling. Route reads appropriately (primary vs. replica). For multi-region, document conflict resolution and RTO/RPO.
+
+---
+
+## 9. DevOps and Infrastructure
+
+### 9.1 Version Control (Git)
+
+- **Workflow**: Use a consistent workflow (e.g., trunk-based development with short-lived branches, or Git Flow for release branches). Prefer small, focused commits. Require pull/merge requests and passing CI before merge.
+- **Branches**: Branch from main/develop; name branches by purpose (e.g., `feature/`, `fix/`, `refactor/`). Delete branches after merge. Protect main (e.g., require review, status checks).
+- **Commit messages**: Use clear messages (imperative, summary line &lt; 72 chars, body when needed). Reference tickets (e.g., `Fix login timeout (#123)`). Follow project convention (e.g., Conventional Commits).
+
+### 9.2 Code Review
+
+- **Checklist**: Use a review checklist: correctness, tests, security (input validation, no secrets), performance, readability, and documentation. Enforce via template or tooling.
+- **Review scope**: Prefer smaller, reviewable diffs. Split large changes into logical commits. Comment on design and alternatives, not only style (style enforced by tools).
+- **Response**: Address all comments (fix or discuss). Use follow-up commits or squash as per team policy.
+
+### 9.3 Continuous Integration and Deployment
+
+- **CI**: Run on every push (build, lint, unit tests, integration tests). Fail fast; keep pipeline under a reasonable duration (e.g., &lt; 15 min for fast feedback). Use caching and parallel jobs. Store artifacts and test results.
+- **CD**: Automate deployment (build → test → deploy). Use stages (e.g., dev → staging → prod). Require approval or gates for production. Support rollback (e.g., previous version, feature flags). Document deployment process and runbooks.
+- **Infrastructure as Code**: Manage infrastructure in version control (Terraform, Pulumi, CloudFormation, etc.). Review infra changes like code. Use modules and reuse. Document resources and dependencies.
+
+### 9.4 Documentation as Code
+
+- **Location**: Keep docs in repo (e.g., `docs/`) or alongside code. Use same review process as code. Generate API docs from code or OpenAPI/Swagger where possible.
+- **Types**: README (overview, setup, run), architecture (ADRs, diagrams), runbooks (operations, incidents), API reference (generated or hand-maintained). Keep README and setup up to date for new contributors.
+- **Diagrams**: Use text-based diagrams (e.g., Mermaid, PlantUML) for versioning and diffing. Store in repo and reference from docs.
+
+### 9.5 Technical Debt Management
+
+- **Track**: Record technical debt (tickets, comments, ADR). Classify (e.g., intentional vs. inadvertent, impact, effort). Prioritize and schedule payoff.
+- **Limit**: Set policy (e.g., no new critical debt without ticket, pay down N% per sprint). Review in retrospectives. Avoid unchecked accumulation.
+- **Refactoring**: Refactor in dedicated changes or as part of feature work. Ensure tests exist before major refactors. Prefer incremental refactors over big-bang rewrites.
+
+---
+
+## 10. Documentation and Collaboration
+
+### 10.1 README and Onboarding
+
+- **README**: Include project purpose, prerequisites, setup (clone, install, configure, run), how to run tests, and how to contribute. Link to architecture, API docs, and ADRs. Keep current with code changes.
+- **Onboarding**: Document local dev environment, debugging, and common tasks. Provide runbooks for operations. Assign onboarding buddy or owner for new contributors.
+
+### 10.2 API and Configuration Documentation
+
+- **Public APIs**: Document endpoints, request/response schemas, errors, rate limits, and examples. Use OpenAPI/Swagger or equivalent. Version and maintain changelog.
+- **Configuration**: Document every config option (name, type, default, description, valid values). Use environment-specific examples. Document secrets and where they are stored (no values in repo).
+- **Deployment**: Document deployment steps, environments, dependencies, and rollback procedure. Keep runbooks updated after incidents.
+
+### 10.3 Formatting and Style
+
+- **Automation**: Use formatters (Prettier, Black, gofmt, etc.) and linters (ESLint, Pylint, etc.). Enforce in CI. No manual style debates; fix and move on.
+- **Consistency**: Apply same style across codebase (indentation, quotes, line length, naming). Configure in shared config files (e.g., `.eslintrc`, `pyproject.toml`).
+
+---
+
+## 11. General Engineering Practice
+
+### 11.1 Incremental and Reviewable Changes
+
+- **Small changes**: Prefer small, logical commits and PRs. Easier to review and revert. Split large features into incremental deliverables (feature flags, vertical slices).
+- **Reviewability**: Ensure diffs are readable (no unrelated changes, no mass reformat in same commit as logic). Use meaningful commit messages and PR descriptions.
+
+### 11.2 Backward Compatibility and Migrations
+
+- **Compatibility**: When changing public APIs, data formats, or config, preserve backward compatibility or provide a clear migration path. Version APIs and schemas. Document deprecation and sunset timeline.
+- **Migrations**: For data or schema migrations, plan for zero-downtime where required. Use expand-contract or parallel run strategies. Test rollback. Document steps and rollback procedure.
+
+### 11.3 Simplicity and Abstraction
+
+- **Simplicity**: Prefer the simplest design that meets current requirements. Avoid speculative abstraction (YAGNI). Add abstraction when a second concrete use case exists.
+- **Abstraction cost**: Every abstraction has a cost (indirection, concepts). Ensure benefit (reuse, clarity, testability) outweighs cost. Prefer composition and small abstractions over deep hierarchies.
+
+---
+
+## 12. Ethics and Professionalism
+
+### 12.1 Ethical Considerations
+
+- **Privacy**: Handle personal and sensitive data according to policy and regulation (e.g., GDPR, CCPA). Minimize collection and retention. Document data usage and obtain consent where required.
+- **Bias and fairness**: Be aware of bias in data, algorithms, and UX. Test for fairness and representativeness where the system affects people. Document assumptions and limitations.
+- **Transparency**: Document system behavior, limitations, and failure modes. Avoid dark patterns. Provide clear terms and user control where applicable.
+
+### 12.2 Professional Conduct
+
+- **Quality**: Deliver work that meets standards (correctness, security, maintainability). Do not ship known critical bugs or security issues without documented exception and mitigation.
+- **Collaboration**: Communicate clearly, document decisions, and support teammates. Participate in reviews and retrospectives. Share knowledge (docs, talks, pairing).
+- **Continuous learning**: Stay current with relevant technologies and practices. Apply learning to improve processes and outcomes. Contribute to standards and open source when aligned with project goals.
+
+---
+
+## 13. Standards and References
+
+- **Software quality**: Align with ISO/IEC 25010 (product quality model: functional suitability, performance, compatibility, usability, reliability, security, maintainability, portability) where applicable. Use as a checklist for non-functional requirements.
+- **Documentation**: Follow IEEE or project-specific documentation standards for requirements, design, and operations. Maintain traceability (requirements → design → tests) where required by domain.
+- **Security**: Use NIST guidelines (e.g., NIST SP 800-63 for identity, NIST Cybersecurity Framework), OWASP recommendations, and CWE/SANS Top 25 for secure coding. Reference in security reviews and training.
+- **Further reading**: Encourage use of authoritative books and references (e.g., “Designing Data-Intensive Applications,” “Release It!,” “The Phoenix Project,” OWASP guides, NIST publications) for deep dives and ongoing education.
+
+---
+
+*This document supersedes the original “Systems and Computing Engineer — Workspace Rules.” Integrate and expand upon every original rule; when in doubt, prefer the more rigorous and detailed guidance above.*
