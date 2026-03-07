@@ -9,8 +9,8 @@ import { z } from "zod";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseEventLogs } from "viem";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock } from "lucide-react";
-import { createMarketBackend } from "@/lib/api";
+import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock, Copy, CheckCircle } from "lucide-react";
+import { createMarketBackend, registerPrivateMarket } from "@/lib/api";
 import { predictionMarketContract, EXPLORER_URL, BET_TOKENS, type BetToken } from "@/lib/constants";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
@@ -28,6 +28,14 @@ import {
   type ResolutionSourceParams,
 } from "@/components/resolution-source-picker";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const MARKET_TYPES = [
   { value: "base",        label: "Base",        description: "Standard binary outcome market"                                    },
@@ -76,6 +84,8 @@ export default function CreateMarketPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [deploySuccess, setDeploySuccess] = useState(false);
+  const [accessKeyModal, setAccessKeyModal] = useState<{ open: boolean; accessKey?: string }>({ open: false });
+  const [copiedKey, setCopiedKey] = useState(false);
   const [betToken, setBetToken] = useState<BetToken>(BET_TOKENS[0]!);
   const [resolutionParams, setResolutionParams] = useState<ResolutionSourceParams>({
     type: "price_above",
@@ -242,18 +252,40 @@ export default function CreateMarketPage() {
       }
 
       let newId: number | null = null;
-      if (!isPrivate) {
+      if (isPrivate) {
+        const logs = parseEventLogs({ abi: privatePredictionMarketAbi, logs: receipt.logs });
+        const created = logs.find((e) => e.eventName === "MarketCreated");
+        newId = created?.args?.marketId != null ? Number(created.args.marketId) : null;
+
+        if (newId != null) {
+          try {
+            const reg = await registerPrivateMarket({
+              on_chain_market_id: newId,
+              creator_address: address,
+              question: data.question,
+              close_time: closeUnix,
+              resolve_time: resolveUnix,
+            });
+            toast.success("Private market created!");
+            setDeploySuccess(true);
+            setAccessKeyModal({ open: true, accessKey: reg.access_key });
+            return; // Modal handles redirect
+          } catch (err) {
+            toast.warning("Market is on-chain but access key could not be generated. Others can still join if you add the market ID to env.", { duration: 8000 });
+          }
+        }
+        setDeploySuccess(true);
+        setTimeout(() => router.push("/markets/private"), 1500);
+      } else {
         const logs = parseEventLogs({ abi: predictionMarketContract.abi, logs: receipt.logs });
         const created = logs.find((e) => e.eventName === "MarketCreated");
         newId = created?.args?.marketId != null ? Number(created.args.marketId) : null;
-      }
 
-      toast.success(isPrivate ? "Private market created!" : "Market created!", {
-        action: { label: "View on Etherscan", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") },
-      });
-      setDeploySuccess(true);
+        toast.success("Market created!", {
+          action: { label: "View on Etherscan", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") },
+        });
+        setDeploySuccess(true);
 
-      if (!isPrivate) {
         try {
           await createMarketBackend({
             question: data.question,
@@ -273,17 +305,12 @@ export default function CreateMarketPage() {
             { duration: 8000 }
           );
         }
-      }
 
-      setTimeout(
-        () =>
-          isPrivate
-            ? router.push("/markets/private")
-            : newId != null
-            ? router.push(`/markets/${newId}`)
-            : router.push("/"),
-        1500
-      );
+        setTimeout(
+          () => (newId != null ? router.push(`/markets/${newId}`) : router.push("/")),
+          1500
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       const isUserRejected =
@@ -700,6 +727,59 @@ export default function CreateMarketPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Access key modal for private markets */}
+      <Dialog open={accessKeyModal.open} onOpenChange={(open) => !open && setAccessKeyModal({ open: false })}>
+        <DialogContent className="max-w-md border-border bg-surface" showClose>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-violet">
+              <Lock className="h-5 w-5" aria-hidden />
+              Access key generated
+            </DialogTitle>
+            <DialogDescription>
+              Share this key so others can join the private market. They can paste it in the Join section on the Private Markets page.
+            </DialogDescription>
+          </DialogHeader>
+          {accessKeyModal.accessKey && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-lg border border-violet/30 bg-violet-dim/50 p-3 font-mono text-sm">
+                <code className="flex-1 break-all text-foreground">{accessKeyModal.accessKey}</code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(accessKeyModal.accessKey!);
+                    setCopiedKey(true);
+                    toast.success("Key copied to clipboard");
+                    setTimeout(() => setCopiedKey(false), 2000);
+                  }}
+                >
+                  {copiedKey ? (
+                    <CheckCircle className="h-4 w-4 text-green" aria-hidden />
+                  ) : (
+                    <Copy className="h-4 w-4 text-text-muted" aria-hidden />
+                  )}
+                </Button>
+              </div>
+              <p className="font-mono text-[10px] text-text-muted">
+                Or share the link: {typeof window !== "undefined" && `${window.location.origin}/markets/private?key=${accessKeyModal.accessKey}`}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              className="bg-violet text-white hover:bg-violet/90"
+              onClick={() => {
+                setAccessKeyModal({ open: false });
+                router.push("/markets/private");
+              }}
+            >
+              Continue to Private Markets
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

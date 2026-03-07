@@ -7,6 +7,9 @@ import type {
   SentimentResponse,
   HybridPredictResponse,
   FeedPriceResponse,
+  PrivateMarketRegisterRequest,
+  PrivateMarketRegisterResponse,
+  PrivateMarketAccessResponse,
   ConditionalConditionView,
   SourceInfo,
   FetchResponse,
@@ -166,4 +169,20 @@ export async function checkHealth(): Promise<boolean> {
 export async function getFeedPrice(feed: string): Promise<FeedPriceResponse> {
   const params = new URLSearchParams({ feed });
   return fetchApi<FeedPriceResponse>(`/api/feeds/price?${params}`);
+}
+
+export async function registerPrivateMarket(
+  body: PrivateMarketRegisterRequest
+): Promise<PrivateMarketRegisterResponse> {
+  return fetchApi<PrivateMarketRegisterResponse>("/api/markets/private/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function validatePrivateMarketKey(
+  key: string
+): Promise<PrivateMarketAccessResponse> {
+  const params = new URLSearchParams({ key: key.trim() });
+  return fetchApi<PrivateMarketAccessResponse>(`/api/markets/private/access?${params}`);
 }

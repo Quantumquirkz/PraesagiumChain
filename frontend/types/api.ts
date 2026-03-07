@@ -87,5 +87,27 @@ export interface FeedPriceResponse {
   updated_at: number;
 }
 
+export interface PrivateMarketRegisterRequest {
+  on_chain_market_id: number;
+  creator_address: string;
+  question: string;
+  close_time: number;
+  resolve_time: number;
+}
+
+export interface PrivateMarketRegisterResponse {
+  access_key: string;
+  market_id: number;
+  message: string;
+}
+
+export interface PrivateMarketAccessResponse {
+  market_id: number;
+  question: string;
+  close_time: number;
+  resolve_time: number;
+  creator: string;
+}
+
 export type OutcomeEnum = 0 | 1 | 2;
 export type MarketStatusEnum = 0 | 1 | 2 | 3;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
   Lock,
@@ -14,6 +15,7 @@ import {
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
+import { JoinPrivateMarketCard, getStoredPrivateMarketIds } from "@/components/join-private-market-card";
 import { usePrivateMarket } from "@/hooks/use-private-markets";
 import { cn } from "@/lib/utils";
 
@@ -187,8 +189,18 @@ const KNOWN_MARKET_IDS: number[] = process.env.NEXT_PUBLIC_PRIVATE_MARKET_IDS
   ? process.env.NEXT_PUBLIC_PRIVATE_MARKET_IDS.split(",").map(Number).filter(Boolean)
   : [];
 
-export default function PrivateMarketsPage() {
+function PrivateMarketsPageInner() {
   const { isConnected } = useAccount();
+  const searchParams = useSearchParams();
+  const keyFromUrl = searchParams.get("key") ?? "";
+
+  const [joinedIds, setJoinedIds] = useState<number[]>(() => getStoredPrivateMarketIds());
+  const allMarketIds = [...new Set([...KNOWN_MARKET_IDS, ...joinedIds])];
+
+  // Sync joinedIds from localStorage on mount (e.g. from another tab)
+  useEffect(() => {
+    setJoinedIds(getStoredPrivateMarketIds());
+  }, []);
 
   return (
     <div className="space-y-10">
@@ -309,6 +321,14 @@ export default function PrivateMarketsPage() {
         </div>
       )}
 
+      {/* ── Join private market ── */}
+      <section>
+        <JoinPrivateMarketCard
+          initialKey={keyFromUrl}
+          onJoined={(marketId) => setJoinedIds((prev) => (prev.includes(marketId) ? prev : [...prev, marketId]))}
+        />
+      </section>
+
       {/* ── How it works ── */}
       <section>
         <p className="font-mono text-xs text-violet uppercase tracking-widest mb-3">
@@ -424,7 +444,7 @@ export default function PrivateMarketsPage() {
           </div>
         )}
 
-        {isConnected && KNOWN_MARKET_IDS.length === 0 && (
+        {isConnected && allMarketIds.length === 0 && (
           <div className="rounded-xl border border-dashed border-border-bright bg-elevated px-5 py-10 text-center">
             <Lock className="mx-auto h-8 w-8 text-text-muted mb-3" aria-hidden />
             <p className="font-display font-bold text-[16px] text-text-secondary mb-1">
@@ -447,14 +467,27 @@ export default function PrivateMarketsPage() {
           </div>
         )}
 
-        {isConnected && KNOWN_MARKET_IDS.length > 0 && (
+        {isConnected && allMarketIds.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {KNOWN_MARKET_IDS.map((id) => (
+            {allMarketIds.map((id) => (
               <PrivateMarketCard key={id} marketId={id} />
             ))}
           </div>
         )}
       </section>
     </div>
+  );
+}
+
+export default function PrivateMarketsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-10 animate-pulse">
+        <div className="h-48 rounded-2xl bg-elevated" />
+        <div className="h-32 rounded-xl bg-elevated" />
+      </div>
+    }>
+      <PrivateMarketsPageInner />
+    </Suspense>
   );
 }
