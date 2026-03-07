@@ -123,7 +123,9 @@ function DashboardContent() {
 
   const statsRef = useRef<HTMLElement>(null);
 
-  if (marketsError) toast.error("Failed to load markets.");
+  useEffect(() => {
+    if (marketsError) toast.error("Failed to load markets.");
+  }, [marketsError]);
 
   return (
     <div className="space-y-8">

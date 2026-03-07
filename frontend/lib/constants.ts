@@ -1,5 +1,27 @@
 import { predictionMarketAbi } from "@/lib/abis/prediction-market";
 
+/** Chain IDs que la app acepta (red correcta). Por defecto Sepolia; para desarrollo local usar NEXT_PUBLIC_CHAIN_IDS=11155111,31337 */
+function getAllowedChainIds(): number[] {
+  const idsEnv = process.env.NEXT_PUBLIC_CHAIN_IDS;
+  if (idsEnv && idsEnv.trim()) {
+    const ids = idsEnv.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0);
+    if (ids.length > 0) return ids;
+  }
+  const single = process.env.NEXT_PUBLIC_CHAIN_ID;
+  const n = single ? Number(single) : NaN;
+  return [Number.isFinite(n) ? n : 11155111]; // default Sepolia
+}
+
+export const ALLOWED_CHAIN_IDS: number[] = getAllowedChainIds();
+
+/** Chain ID por defecto para "Switch network" (primera de la lista). */
+export const DEFAULT_CHAIN_ID = ALLOWED_CHAIN_IDS[0] ?? 11155111;
+
+export function isAllowedChain(chainId: number | undefined): boolean {
+  if (chainId === undefined) return false;
+  return ALLOWED_CHAIN_IDS.includes(chainId);
+}
+
 export const PREDICTION_MARKET_ADDRESS = (process.env
   .NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS ?? "0xf2397b5827860b361427240d1D1F6F89e9bF197f") as `0x${string}`;
 

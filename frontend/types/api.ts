@@ -79,6 +79,11 @@ export interface HybridPredictResponse {
   market_id?: number;
 }
 
+export interface AIAnalysisResponse {
+  analysis: string;
+  description: string;
+}
+
 export interface FeedPriceResponse {
   feed: string;
   price: number;

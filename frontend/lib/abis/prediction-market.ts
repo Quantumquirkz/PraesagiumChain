@@ -1,15 +1,9 @@
 export const predictionMarketAbi = [
   {
-    inputs: [],
-    name: "creationFee",
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [{ name: "marketId", type: "uint256" }],
     name: "getMarket",
     outputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
       { name: "question", type: "string", internalType: "string" },
       { name: "closeTime", type: "uint256", internalType: "uint256" },
       { name: "resolveTime", type: "uint256", internalType: "uint256" },
@@ -17,7 +11,6 @@ export const predictionMarketAbi = [
       { name: "outcome", type: "uint8", internalType: "enum PredictionMarket.Outcome" },
       { name: "totalYesStake", type: "uint256", internalType: "uint256" },
       { name: "totalNoStake", type: "uint256", internalType: "uint256" },
-      { name: "creator", type: "address", internalType: "address" },
     ],
     stateMutability: "view",
     type: "function",

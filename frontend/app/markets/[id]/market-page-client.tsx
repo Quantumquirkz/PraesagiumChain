@@ -18,14 +18,14 @@ import { MarketDetailSkeleton } from "@/components/skeletons";
 function parseMarketResult(data: readonly unknown[] | undefined): MarketOnChain | null {
   if (!data || data.length < 8) return null;
   return {
-    question: data[0] as string,
-    closeTime: data[1] as bigint,
-    resolveTime: data[2] as bigint,
-    status: data[3] as number,
-    outcome: data[4] as number,
-    totalYesStake: data[5] as bigint,
-    totalNoStake: data[6] as bigint,
-    creator: data[7] as string,
+    id: data[0] as bigint,
+    question: data[1] as string,
+    closeTime: data[2] as bigint,
+    resolveTime: data[3] as bigint,
+    status: data[4] as number,
+    outcome: data[5] as number,
+    totalYesStake: data[6] as bigint,
+    totalNoStake: data[7] as bigint,
   };
 }
 

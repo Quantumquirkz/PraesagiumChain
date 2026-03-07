@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { usePHPEPrediction } from "@/hooks/use-phpe-prediction";
+import { useAIAnalysis } from "@/hooks/use-ai-analysis";
 import type { Timeframe } from "@/lib/ohlcv-utils";
 
 import { UncertaintyBar } from "@/components/uncertainty-bar";
@@ -59,6 +60,7 @@ const TVChart = dynamic(
 );
 
 export interface MarketOnChain {
+  id: bigint;
   question: string;
   closeTime: bigint;
   resolveTime: bigint;
@@ -66,7 +68,6 @@ export interface MarketOnChain {
   outcome: number;
   totalYesStake: bigint;
   totalNoStake: bigint;
-  creator: string;
 }
 
 export interface UserStakeOnChain {
@@ -460,6 +461,13 @@ export function MarketDetail({
                 <Info className="h-3.5 w-3.5" />
               </button>
             </div>
+
+            {/* Análisis y descripción generados por IA (mercado, datos, noticias) */}
+            <AIAnalysisBlock
+              marketId={marketId}
+              binanceSymbol={chartSymbol ?? "BTCUSDT"}
+            />
+
             {predictions.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <BarChart2 className="h-8 w-8 text-text-muted opacity-30" />
@@ -561,13 +569,13 @@ export function MarketDetail({
                     Checking on-chain status…
                   </p>
                 )}
-                {/* Aviso informativo si confirmamos que NO existe on-chain */}
+                {/* Aviso informativo si el mercado aún no está en la red */}
                 {!onChainLoading && (onChainError || !marketOnChain) && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2">
-                    <span className="text-amber-400 text-sm shrink-0 mt-0.5" aria-hidden>⚠</span>
-                    <p className="font-mono text-[10px] text-amber-300/80 leading-relaxed">
-                      This market is not deployed on-chain yet. Your transaction will likely fail until it is created via{" "}
-                      <Link href="/markets/create" className="text-amber-400 underline underline-offset-2 hover:text-amber-300">
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-cyan-500/25 bg-cyan-500/8 px-3 py-2">
+                    <span className="text-cyan-400 text-sm shrink-0 mt-0.5" aria-hidden>ℹ</span>
+                    <p className="font-mono text-[10px] text-cyan-200/90 leading-relaxed">
+                      Para apostar on-chain, el mercado debe estar desplegado en la red. Puedes crearlo desde{" "}
+                      <Link href="/markets/create" className="text-cyan-300 underline underline-offset-2 hover:text-cyan-200">
                         Create Market
                       </Link>.
                     </p>
@@ -701,6 +709,83 @@ function TimelineBar({ closeUnix, resolveUnix }: { closeUnix: number; resolveUni
   );
 }
 
+// ─── AI Analysis Block ─────────────────────────────────────────────────────────
+
+function AIAnalysisBlock({
+  marketId,
+  binanceSymbol,
+}: {
+  marketId: number;
+  binanceSymbol: string;
+}) {
+  const [sentimentText, setSentimentText] = useState("");
+  const { mutate: generate, data, isPending, error } = useAIAnalysis(marketId);
+
+  return (
+    <div className="mb-6 space-y-3">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Textarea
+          placeholder="Opcional: pega noticias, tweets o contexto de redes para enriquecer el análisis..."
+          value={sentimentText}
+          onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
+          className="font-mono text-xs min-h-[60px] bg-elevated border-border resize-none flex-1"
+          disabled={isPending}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            generate({
+              sentimentText: sentimentText.trim() || undefined,
+              binanceSymbol,
+            })
+          }
+          disabled={isPending}
+          className="border-violet text-violet hover:bg-violet-dim font-display font-bold tracking-widest h-9 shrink-0"
+          aria-label="Generar análisis IA"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" aria-hidden />
+              Generando…
+            </>
+          ) : (
+            "Generar análisis IA"
+          )}
+        </Button>
+      </div>
+      {error && (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-3" role="alert">
+          <p className="font-mono text-xs text-amber-200">
+            {error instanceof Error ? error.message : "Error al generar análisis"}
+          </p>
+          {(error instanceof Error && /429|quota|RESOURCE_EXHAUSTED|límite/i.test(error.message)) && (
+            <p className="mt-2 font-mono text-[11px] text-amber-200/80">
+              Espera 1–2 minutos y pulsa de nuevo «Generar análisis IA».
+            </p>
+          )}
+        </div>
+      )}
+      {data && !isPending && (
+        <div className="rounded-lg border border-violet/20 bg-violet-dim/30 p-4 space-y-4">
+          <div>
+            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">Análisis IA</p>
+            <p className="font-body text-sm text-foreground leading-relaxed">{data.analysis}</p>
+          </div>
+          <div className="border-t border-border/50 pt-3">
+            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">Fuentes de información</p>
+            <p className="font-body text-sm text-text-secondary leading-relaxed">{data.description}</p>
+          </div>
+          <p className="font-mono text-[9px] text-text-muted italic">
+            Generado a partir del mercado, datos de precio (Binance, Chainlink) y contexto de noticias/redes.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PHPE Components ──────────────────────────────────────────────────────────
 
 const BINANCE_SYMBOLS_PHPE = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"] as const;
@@ -792,7 +877,14 @@ function PHPEWidget({ marketId }: { marketId: number }) {
           {isPending ? <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" aria-hidden />Analyzing…</> : "ANALYZE"}
         </Button>
       </div>
-      {error && <p className="font-mono text-xs text-red" role="alert">{error instanceof Error ? error.message : "Prediction failed"}</p>}
+      {error && (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-3" role="alert">
+          <p className="font-mono text-xs text-amber-200">{error instanceof Error ? error.message : "Prediction failed"}</p>
+          {(error instanceof Error && /429|quota|RESOURCE_EXHAUSTED|límite/i.test(error.message)) && (
+            <p className="mt-2 font-mono text-[11px] text-amber-200/80">Espera 1–2 minutos y vuelve a pulsar ANALYZE.</p>
+          )}
+        </div>
+      )}
       {data && !isPending && <PHPEResult probability={data.probability} uncertainty={data.uncertainty} />}
     </div>
   );

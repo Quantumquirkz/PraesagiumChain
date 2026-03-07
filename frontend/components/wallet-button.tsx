@@ -38,6 +38,8 @@ interface ConnectModalProps {
 function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
   const { connectors, connectAsync, isPending, variables } = useConnect();
   const [connectorErrors, setConnectorErrors] = useState<Record<string, string>>({});
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const anyPending = isPending || connectingId != null;
 
   const handleConnect = useCallback(
     async (connectorId: string) => {
@@ -45,10 +47,12 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
       if (!connector) return;
 
       setConnectorErrors((prev: Record<string, string>) => ({ ...prev, [connectorId]: "" }));
+      setConnectingId(connectorId);
 
       try {
-        // Enfocar la pestaña para que la wallet no devuelva "La pestaña no está activa"
         if (typeof window !== "undefined") window.focus();
+        // Pequeña pausa para que la pestaña y MetaMask estén listos (reduce cierres inesperados).
+        await new Promise((r) => setTimeout(r, 180));
 
         const result = await connectAsync({ connector });
         const addr = result.accounts?.[0];
@@ -69,13 +73,15 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
           ? "This tab must be active. Click the page, leave the tab in focus, then try again."
           : full;
         setConnectorErrors((prev: Record<string, string>) => ({ ...prev, [connectorId]: displayMsg }));
+      } finally {
+        setConnectingId(null);
       }
     },
     [connectors, connectAsync, onOpenChange]
   );
 
-  const pendingConnectorId = isPending
-    ? (variables?.connector as { id?: string } | undefined)?.id ?? null
+  const pendingConnectorId = anyPending
+    ? (variables?.connector as { id?: string } | undefined)?.id ?? connectingId ?? null
     : null;
 
   return (
@@ -99,9 +105,9 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
               <div key={connector.uid} className="flex flex-col gap-1">
                 <button
                   onClick={() => handleConnect(connector.id)}
-                  disabled={isPending}
+                  disabled={anyPending}
                   aria-label={`Connect with ${connector.name}`}
-                  className="flex items-center gap-3 w-full rounded-lg border border-border bg-transparent px-4 py-3 text-left transition-colors hover:bg-elevated disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-3 w-full rounded-lg border border-border bg-transparent px-4 py-3 text-left transition-colors hover:bg-elevated disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
                 >
                   <span className="text-xl leading-none" aria-hidden>
                     {getConnectorIcon(connector.id)}
