@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 
@@ -22,7 +23,15 @@ export function WrongNetworkBanner() {
       </span>
       <button
         type="button"
-        onClick={switchToRequired}
+        onClick={async () => {
+          try {
+            await switchToRequired();
+          } catch (e) {
+            toast.error("Failed to switch network", {
+              description: e instanceof Error ? e.message : "Please switch manually in your wallet.",
+            });
+          }
+        }}
         disabled={isSwitching}
         className="shrink-0 rounded-md border border-red/40 bg-red/10 px-3 py-1 font-mono text-xs text-red transition-colors hover:bg-red/20 disabled:cursor-not-allowed disabled:opacity-60"
         aria-label="Switch to Sepolia network"
