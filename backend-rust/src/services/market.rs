@@ -293,11 +293,13 @@ impl MarketService {
         if req.creator.as_ref().map(|c| c.len()).unwrap_or(0) > 100 {
             return Err(AppError::Validation("creator too long (max 100 chars)".to_string()));
         }
-        if req.close_time <= now {
-            return Err(AppError::Validation("closeTime must be in the future".to_string()));
-        }
         if req.resolve_time <= req.close_time {
             return Err(AppError::Validation("resolveTime must be after closeTime".to_string()));
+        }
+        // Cuando on_chain_market_id está presente, estamos sincronizando un mercado ya confirmado on-chain.
+        // No exigir close_time > now: la tx pudo tardar en confirmar (Sepolia).
+        if req.on_chain_market_id.is_none() && req.close_time <= now {
+            return Err(AppError::Validation("closeTime must be in the future".to_string()));
         }
 
         info!("Creating market: {}", req.question);
