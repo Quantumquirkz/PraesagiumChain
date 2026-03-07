@@ -138,8 +138,21 @@ function BetButton({ state, disabled }: BetButtonProps) {
 export function BetForm({ marketId, marketStatus, question, metadata, onBetSuccess }: BetFormProps) {
   const { address, isConnected } = useAccount();
   const { isWrongNetwork, switchToRequired, isSwitching } = useNetworkGuard();
-  const { data: balance } = useBalance({ address });
+  const { data: balance, isLoading: balanceLoading } = useBalance({ address });
   const queryClient = useQueryClient();
+
+  // Si el balance tarda mucho (ej. RPC lenta), no bloquear el formulario para siempre
+  const [balanceLoadTimedOut, setBalanceLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (!balanceLoading) {
+      setBalanceLoadTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setBalanceLoadTimedOut(true), 10_000);
+    return () => clearTimeout(t);
+  }, [balanceLoading]);
+
+  const balanceReady = !balanceLoading || balanceLoadTimedOut;
 
   const betToken = parseBetToken(metadata);
 
@@ -224,6 +237,10 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
       setFieldError("Enter a valid amount greater than 0.");
       return false;
     }
+    if (!balanceReady) {
+      setFieldError("Please wait for your balance to load.");
+      return false;
+    }
     if (balance) {
       const amtWei = BigInt(Math.floor(Number(amount) * 1e18));
       if (amtWei > balance.value) {
@@ -235,7 +252,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     }
     setFieldError(null);
     return true;
-  }, [selectedOutcome, amount, balance]);
+  }, [selectedOutcome, amount, balance, balanceReady]);
 
   // ── Submit ────────────────────────────────────────────────────────────────────
 
@@ -289,7 +306,15 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
         </p>
         <button
           type="button"
-          onClick={switchToRequired}
+          onClick={async () => {
+            try {
+              await switchToRequired();
+            } catch (e) {
+              toast.error("Failed to switch network", {
+                description: e instanceof Error ? e.message : "Please switch manually in your wallet.",
+              });
+            }
+          }}
           disabled={isSwitching}
           className="rounded-md border border-red/40 bg-red/10 px-4 py-1.5 font-mono text-xs text-red transition-colors hover:bg-red/20 disabled:opacity-60"
         >
@@ -431,7 +456,13 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
         </div>
 
         {/* Balance */}
-        {balance && (
+        {balanceLoading && !balanceLoadTimedOut && (
+          <p className="mt-1.5 font-mono text-[11px] text-text-muted">Loading balance…</p>
+        )}
+        {balanceLoadTimedOut && balanceLoading && (
+          <p className="mt-1.5 font-mono text-[11px] text-amber-500/90">Balance took long to load — you can try placing a bet.</p>
+        )}
+        {balance && !balanceLoading && (
           <p className="mt-1.5 font-mono text-[11px] text-text-muted">
             Balance: <span className="text-foreground">{formatEth(balance.value)}</span>
             <span className="ml-1 opacity-60">SepoliaETH</span>
