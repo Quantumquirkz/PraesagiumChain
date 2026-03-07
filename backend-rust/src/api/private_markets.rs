@@ -48,6 +48,12 @@ pub async fn register(
     if req.on_chain_market_id < 1 {
         return Err(AppError::Validation("on_chain_market_id must be >= 1".into()));
     }
+    if req.question.len() > 500 {
+        return Err(AppError::Validation("question too long (max 500 chars)".into()));
+    }
+    if creator.len() > 100 {
+        return Err(AppError::Validation("creator_address too long (max 100 chars)".into()));
+    }
 
     let created_at = chrono::Utc::now().timestamp();
 
@@ -105,6 +111,10 @@ pub async fn access(
     let key = q.key.trim();
     if key.is_empty() {
         return Err(AppError::Validation("key query param required (e.g. PRIV-XXXXXXXX)".into()));
+    }
+    // Prevent DoS with excessively long keys (format is PRIV- + 8 chars)
+    if key.len() > 64 {
+        return Err(AppError::Validation("key too long or invalid format".into()));
     }
 
     let row: Option<PrivateMarketAccessKeyRow> = sqlx::query_as(

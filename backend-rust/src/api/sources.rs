@@ -77,6 +77,20 @@ pub async fn fetch(
     State(state): State<Arc<AppState>>,
     Query(q): Query<FetchQuery>,
 ) -> Result<Json<FetchResponse>> {
+    const MAX_PARAM_LEN: usize = 64;
+    if q.symbol.as_ref().map(|s| s.len()).unwrap_or(0) > MAX_PARAM_LEN {
+        return Err(crate::error::AppError::Validation("symbol too long (max 64 chars)".into()));
+    }
+    if q.fsym.as_ref().map(|s| s.len()).unwrap_or(0) > MAX_PARAM_LEN {
+        return Err(crate::error::AppError::Validation("fsym too long (max 64 chars)".into()));
+    }
+    if q.tsym.as_ref().map(|s| s.len()).unwrap_or(0) > MAX_PARAM_LEN {
+        return Err(crate::error::AppError::Validation("tsym too long (max 64 chars)".into()));
+    }
+    if q.pair.as_ref().map(|s| s.len()).unwrap_or(0) > MAX_PARAM_LEN {
+        return Err(crate::error::AppError::Validation("pair too long (max 64 chars)".into()));
+    }
+
     let source = q.source.to_lowercase();
     let resp = match source.as_str() {
         "binance" => {

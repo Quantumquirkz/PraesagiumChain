@@ -36,7 +36,15 @@ impl IntoResponse for AppError {
             AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             AppError::ExternalApi(msg) => {
                 tracing::warn!("External API error: {}", msg);
-                (StatusCode::BAD_GATEWAY, msg.clone())
+                let is_dev = std::env::var("ENVIRONMENT")
+                    .map(|v| v == "development" || v.eq_ignore_ascii_case("dev"))
+                    .unwrap_or(false);
+                let message = if is_dev {
+                    msg.clone()
+                } else {
+                    "External service error".to_string()
+                };
+                (StatusCode::BAD_GATEWAY, message)
             }
             AppError::Database(e) => {
                 let detail = e.to_string();
