@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
-import "./interfaces/IPredictionMarket.sol";
 import "./CREWorkflow.sol";
 
 /// @title PredictionMarketFunctionsConsumer
@@ -84,8 +83,8 @@ contract PredictionMarketFunctionsConsumer is FunctionsClient {
         uint8 outcome = uint8(response[0]);
         if (outcome != 0 && outcome != 1) revert InvalidOutcome();
 
-        IPredictionMarket.Outcome out = outcome == 1 ? IPredictionMarket.Outcome.Yes : IPredictionMarket.Outcome.No;
-        creWorkflow.resolveFromOracle(marketId, out);
+        // CREWorkflow accepts rawOutcome 0=No, 1=Yes and maps to enum internally
+        creWorkflow.resolveFromOracle(marketId, outcome);
 
         emit MarketResolvedFromFunctions(requestId, marketId, outcome);
     }

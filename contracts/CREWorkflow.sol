@@ -37,13 +37,13 @@ contract CREWorkflow {
     }
 
     /// @notice Called from the oracle (off-chain / Chainlink) when there is a final result.
-    /// @dev Additional validation or multi-sig logic could be added here if desired.
-    function resolveFromOracle(uint256 marketId, IPredictionMarket.Outcome outcome) external onlyOracle {
-        // Encapsulates the resolution call to PredictionMarket.
-        // We use a low-level call; PredictionMarket exposes resolveMarket publicly.
-        // Para simplicidad asumimos que PredictionMarket expone `resolveMarket`.
+    /// @param rawOutcome 0 = No, 1 = Yes (convention from AutomationResolver / OracleConsumer).
+    /// @dev Maps raw 0/1 to Outcome enum (Yes=1, No=2) before calling PredictionMarket.
+    function resolveFromOracle(uint256 marketId, uint8 rawOutcome) external onlyOracle {
+        IPredictionMarket.Outcome outcome = rawOutcome == 1
+            ? IPredictionMarket.Outcome.Yes
+            : IPredictionMarket.Outcome.No;
 
-        // ABI-encode and low-level call to avoid extra interface coupling.
         (bool ok, ) = address(predictionMarket).call(
             abi.encodeWithSignature("resolveMarket(uint256,uint8)", marketId, uint8(outcome))
         );

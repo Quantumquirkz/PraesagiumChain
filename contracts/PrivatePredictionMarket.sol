@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IPredictionMarket.sol";
 
 /// @title PrivatePredictionMarket
 /// @notice Prediction market with commit-reveal for private positions (Chainlink Confidential Compute use case).
 /// @dev Positions are hidden until reveal; resolution uses CRE/oracle same as PredictionMarket.
-contract PrivatePredictionMarket {
+contract PrivatePredictionMarket is ReentrancyGuard {
     struct MarketInternal {
         string question;
         uint256 closeTime;
@@ -152,7 +153,7 @@ contract PrivatePredictionMarket {
     }
 
     /// @notice Claim payout after revealing. Only winners can claim.
-    function claimPayout(uint256 marketId) external {
+    function claimPayout(uint256 marketId) external nonReentrant {
         MarketInternal storage m = _markets[marketId];
         require(bytes(m.question).length > 0, "Market does not exist");
         require(m.status == IPredictionMarket.MarketStatus.Resolved, "Market not resolved");
