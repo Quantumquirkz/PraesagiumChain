@@ -3,6 +3,8 @@
 //!
 //! Now exposes real-time metrics via `IndexerState` and publishes events to
 //! `EventBus` so SSE subscribers receive on-chain updates immediately.
+//!
+//! Includes retry logic for RPC calls (e.g. Cloudflare 522 from public rpc.sepolia.org).
 
 use crate::error::Result;
 use crate::models::UpdateStatusRequest;
@@ -25,6 +27,37 @@ fn market_resolved_topic() -> H256 {
 
 fn bet_placed_topic() -> H256 {
     ethers::utils::keccak256("BetPlaced(uint256,address,uint8,uint256)").into()
+}
+
+const RPC_RETRIES: u32 = 4;
+const RPC_RETRY_DELAY_MS: u64 = 2000;
+
+/// Retries an async operation with exponential backoff. Handles transient RPC errors (e.g. 522).
+async fn retry_rpc<F, Fut, T>(mut f: F) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    let mut last_err = None;
+    for attempt in 1..=RPC_RETRIES {
+        match f().await {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                last_err = Some(e);
+                if attempt < RPC_RETRIES {
+                    let delay_ms = RPC_RETRY_DELAY_MS * (1 << (attempt - 1));
+                    debug!(
+                        "RPC attempt {}/{} failed, retrying in {}ms",
+                        attempt, RPC_RETRIES, delay_ms
+                    );
+                    tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+                }
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| {
+        crate::error::AppError::Internal(anyhow::anyhow!("RPC failed after {} retries", RPC_RETRIES))
+    }))
 }
 
 pub struct EventIndexer {
@@ -73,12 +106,13 @@ impl EventIndexer {
         event_bus: EventBus,
     ) -> anyhow::Result<Self> {
         let provider = Arc::new(Provider::<Http>::try_from(rpc_url)?);
-        let current: u64 = provider
-            .get_block_number()
-            .await
-            .ok()
-            .map(|n: U64| n.as_u64())
-            .unwrap_or(0);
+        let current: u64 = match provider.get_block_number().await {
+            Ok(n) => n.as_u64(),
+            Err(e) => {
+                warn!("Initial get_block_number failed ({}), using start_block or 0", e);
+                start_block.unwrap_or(0)
+            }
+        };
         let last_processed_block = start_block.unwrap_or(current);
 
         state.update_block(last_processed_block);
@@ -115,7 +149,12 @@ impl EventIndexer {
                     }
                 }
                 Err(e) => {
-                    error!("Indexer error: {}", e);
+                    let msg = e.to_string();
+                    if msg.contains("522") || msg.contains("timeout") || msg.contains("Deserialization") {
+                        warn!("Indexer RPC unavailable ({}), will retry. Markets sync via createMarketBackend.", msg.split(':').next().unwrap_or(""));
+                    } else {
+                        error!("Indexer error: {}", e);
+                    }
                 }
             }
 
@@ -124,12 +163,15 @@ impl EventIndexer {
     }
 
     async fn process_events(&mut self) -> Result<usize> {
-        let current_block: u64 = self
-            .provider
-            .get_block_number()
-            .await
-            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("get_block_number: {}", e)))?
-            .as_u64();
+        let provider = self.provider.clone();
+        let current_block: u64 = retry_rpc(|| async {
+            provider
+                .get_block_number()
+                .await
+                .map(|n: U64| n.as_u64())
+                .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("get_block_number: {}", e)))
+        })
+        .await?;
 
         if current_block <= self.last_processed_block {
             return Ok(0);
@@ -144,9 +186,15 @@ impl EventIndexer {
             .from_block(from_block)
             .to_block(to_block);
 
-        let logs: Vec<ethers::types::Log> = self.provider.get_logs(&filter).await.map_err(|e| {
-            crate::error::AppError::Internal(anyhow::anyhow!("get_logs failed: {}", e))
-        })?;
+        let provider = self.provider.clone();
+        let filter_clone = filter.clone();
+        let logs: Vec<ethers::types::Log> = retry_rpc(|| async {
+            provider
+                .get_logs(&filter_clone)
+                .await
+                .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("get_logs failed: {}", e)))
+        })
+        .await?;
 
         let mut processed = 0usize;
         for log in logs {

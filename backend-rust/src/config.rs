@@ -56,6 +56,20 @@ pub struct Config {
 }
 
 impl Config {
+    /// Resolves RPC URL: prefer SEPOLIA_RPC_URL (more reliable) for Sepolia indexer, else RPC_URL.
+    /// Falls back to publicnode when rpc.sepolia.org would be used (Cloudflare 522 issues).
+    fn resolve_rpc_url() -> Option<String> {
+        let sepolia = std::env::var("SEPOLIA_RPC_URL").ok();
+        let rpc = std::env::var("RPC_URL").ok();
+        let url = sepolia.or(rpc);
+        if let Some(ref u) = url {
+            if u.contains("rpc.sepolia.org") {
+                return Some("https://ethereum-sepolia-rpc.publicnode.com".to_string());
+            }
+        }
+        url
+    }
+
     /// Returns true when ENVIRONMENT=production (enables strict checks).
     pub fn is_production(&self) -> bool {
         self.environment
@@ -102,7 +116,7 @@ impl Config {
             database_url,
             db_pool_size,
             prediction_cache_ttl,
-            rpc_url: std::env::var("RPC_URL").ok(),
+            rpc_url: Self::resolve_rpc_url(),
             prediction_market_address: std::env::var("PREDICTION_MARKET_ADDRESS").ok(),
             start_block: std::env::var("START_BLOCK")
                 .ok()
