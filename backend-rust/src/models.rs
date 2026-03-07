@@ -326,6 +326,7 @@ pub struct PrivateMarketAccessResponse {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+#[allow(dead_code)]
 pub struct PrivateMarketAccessKeyRow {
     pub id: i64,
     pub on_chain_market_id: i64,

@@ -2,6 +2,8 @@
 //! When CLICKHOUSE_URL is set, events from the EventBus are written to ClickHouse.
 //! Failures are logged and do not affect the API.
 
+#![allow(dead_code)]
+
 use serde::Serialize;
 use std::sync::Arc;
 
