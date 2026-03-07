@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "install:all": "bash scripts/install-all.sh",
+    "install:frontend": "bash scripts/install-frontend.sh",
     "test": "HARDHAT_DISABLE_ANALYTICS=1 CI=1 node node_modules/hardhat/internal/cli/bootstrap.js test",
     "compile": "hardhat compile && npm run sync:cre-abi",
     "node": "hardhat node",
