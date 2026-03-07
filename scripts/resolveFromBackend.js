@@ -120,7 +120,7 @@ async function main() {
 
   const pmAddress = process.env.PREDICTION_MARKET_ADDRESS;
   if (pmAddress) {
-    const pmAbi = ["function getMarket(uint256) view returns (tuple(string question, uint256 closeTime, uint256 resolveTime, uint8 status, uint8 outcome, uint256 totalYesStake, uint256 totalNoStake, address creator))"];
+    const pmAbi = ["function getMarket(uint256) view returns (uint256 id, string question, uint256 closeTime, uint256 resolveTime, uint8 status, uint8 outcome, uint256 totalYesStake, uint256 totalNoStake)"];
     const pm = new ethers.Contract(pmAddress, pmAbi, provider);
     const market = await pm.getMarket(marketId);
     if (market && Number(market.status) === 2) {

@@ -5,6 +5,12 @@
  * 2. Crea cada uno en el contrato PredictionMarket en Sepolia
  * 3. Registra el mercado en el backend con el on_chain_market_id correcto
  *
+ * Suposición: Para mercados sin on_chain_market_id, el script usa el ID de backend (m.id)
+ * para comprobar si ya existe on-chain (getMarket(m.id)). Esto es válido cuando los mercados
+ * se crean en el mismo orden (backend primero, luego este script). Si los mercados on-chain
+ * se crean por otra vía (p. ej. frontend), los IDs pueden no coincidir; en ese caso usar
+ * on_chain_market_id en el backend cuando ya exista.
+ *
  * Uso:
  *   npx hardhat run scripts/deploy-markets-onchain.js --network sepolia
  */
@@ -118,9 +124,10 @@ async function main() {
       expiredSkip.push(m);
       continue;
     }
-    // Verificar si ya existe on-chain con este ID de backend
+    // Si el backend ya tiene on_chain_market_id, considerar ya desplegado si existe en chain
+    const chainIdToCheck = m.on_chain_market_id ?? m.id;
     try {
-      await contract.getFunction("getMarket")(BigInt(m.id));
+      await contract.getFunction("getMarket")(BigInt(chainIdToCheck));
       alreadySynced.push(m);
     } catch {
       toCreate.push(m);
