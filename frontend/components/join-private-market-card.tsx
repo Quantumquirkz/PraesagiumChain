@@ -60,7 +60,11 @@ export function JoinPrivateMarketCard({
       onJoined?.(data.market_id);
       toast.success("Market unlocked! You can now view and interact with it.");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Invalid or expired key";
+      const rawMsg = err instanceof Error ? err.message : "";
+      const msg =
+        rawMsg === "Not found" || rawMsg.toLowerCase().includes("not found")
+          ? "Invalid or expired access key. Please check the code and try again."
+          : rawMsg || "Invalid or expired key";
       toast.error(msg);
     } finally {
       setIsLoading(false);

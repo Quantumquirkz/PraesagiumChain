@@ -200,7 +200,7 @@ export default function PositionsPage() {
   const { address, isConnected } = useAccount();
 
   // 1. Cargar lista de mercados desde la API
-  const { data: marketsData, isLoading: marketsLoading } = useQuery({
+  const { data: marketsData, isLoading: marketsLoading, isError: marketsError, error: marketsErrorDetail, refetch: refetchMarkets } = useQuery({
     queryKey: ["markets-positions", 1, LIMIT],
     queryFn: () => getMarkets(1, LIMIT),
     enabled: !!address,
@@ -208,14 +208,14 @@ export default function PositionsPage() {
 
   const markets = useMemo(() => marketsData?.items ?? [], [marketsData?.items]);
 
-  // 2. Leer getUserStake para todos los mercados
+  // 2. Leer getUserStake para todos los mercados (usar on_chain_market_id cuando exista para coincidir con el contrato)
   const stakeContracts = useMemo(
     () =>
       address
         ? markets.map((m: MarketView) => ({
             ...predictionMarketContract,
             functionName: "getUserStake" as const,
-            args: [BigInt(m.id), address] as const,
+            args: [BigInt(m.on_chain_market_id ?? m.id), address] as const,
           }))
         : [],
     [address, markets]
@@ -240,13 +240,13 @@ export default function PositionsPage() {
       .filter((x: { market: MarketView; idx: number } | null): x is { market: MarketView; idx: number } => x !== null);
   }, [markets, stakesResult]);
 
-  // 4. Leer getMarket on-chain solo para mercados resueltos con stake
+  // 4. Leer getMarket on-chain solo para mercados resueltos con stake (usar on_chain_market_id cuando exista)
   const marketOnChainContracts = useMemo(
     () =>
       resolvedWithStake.map(({ market }: { market: MarketView; idx: number }) => ({
         ...predictionMarketContract,
         functionName: "getMarket" as const,
-        args: [BigInt(market.id)] as const,
+        args: [BigInt(market.on_chain_market_id ?? market.id)] as const,
       })),
     [resolvedWithStake]
   );
@@ -402,6 +402,34 @@ export default function PositionsPage() {
     );
   }
 
+  // ── Guard: error al cargar mercados ─────────────────────────────────────────
+
+  if (marketsError) {
+    const errMsg = marketsErrorDetail instanceof Error ? marketsErrorDetail.message : "Failed to load positions.";
+    return (
+      <div className="container py-8 px-4">
+        <h1 className="font-display font-extrabold text-[36px] text-foreground mb-8">
+          MY POSITIONS
+        </h1>
+        <div
+          className="flex flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 py-12 px-4 text-center"
+          role="alert"
+        >
+          <p className="font-body font-medium text-foreground mb-2">Failed to load positions.</p>
+          <p className="font-body text-sm text-text-secondary mb-3 max-w-md">{errMsg}</p>
+          <Button
+            onClick={() => refetchMarkets()}
+            variant="outline"
+            className="border-destructive/50 text-destructive hover:bg-destructive/10"
+            aria-label="Retry loading positions"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-8 px-4">
       <h1 className="font-display font-extrabold text-[36px] text-foreground mb-8">
@@ -531,7 +559,7 @@ export default function PositionsPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <ActionCell
-                          marketId={market.id}
+                          marketId={market.on_chain_market_id ?? market.id}
                           result={result}
                           estimatedPayout={estimatedPayout}
                         />
@@ -580,7 +608,7 @@ export default function PositionsPage() {
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                     <ResultBadge result={result} />
                     <ActionCell
-                      marketId={market.id}
+                      marketId={market.on_chain_market_id ?? market.id}
                       result={result}
                       estimatedPayout={estimatedPayout}
                     />

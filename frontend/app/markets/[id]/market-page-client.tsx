@@ -55,8 +55,11 @@ export function MarketPageClient() {
     dataUpdatedAt: marketUpdatedAt,
   } = useMarket(id);
 
+  // Contract calls use on_chain_market_id when present (indexed from chain); otherwise URL id. API predictions use market.id.
   const chainIdForContract =
-    market?.on_chain_market_id ?? (market ? 0 : id);
+    market != null
+      ? (market.on_chain_market_id ?? id)
+      : id;
 
   const { data: predictions } = useQuery({
     queryKey: ["market-predictions", market?.id ?? id],
