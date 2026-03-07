@@ -366,6 +366,7 @@ cre workflow simulate praesagium-resolver --target staging-settings
 ## Configuration
 
 Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.  
+**Minimal env for create market + bet on Sepolia:** [docs/env.md](docs/env.md).  
 **Checklist de keys y APIs:** [docs/keys-and-apis.md](docs/keys-and-apis.md).
 
 ### Backend
