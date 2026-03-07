@@ -17,7 +17,7 @@ pub struct HealthResponse {
 }
 
 pub async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
-    let res: Result<sqlx::any::AnyQueryResult, sqlx::Error> =
+    let res: Result<sqlx::postgres::PgQueryResult, sqlx::Error> =
         sqlx::query("SELECT 1").execute(state.db.pool()).await;
     let db_ok = res.is_ok();
 

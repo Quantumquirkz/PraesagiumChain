@@ -97,7 +97,7 @@ impl MarketService {
         amount: u64,
     ) -> Result<()> {
         let amount_i64 = amount.min(i64::MAX as u64) as i64;
-        let result: sqlx::any::AnyQueryResult = if outcome.eq_ignore_ascii_case("yes") {
+        let result: sqlx::postgres::PgQueryResult = if outcome.eq_ignore_ascii_case("yes") {
             sqlx::query(
                 "UPDATE markets SET total_yes_stake = total_yes_stake + $1 WHERE on_chain_market_id = $2",
             )
@@ -286,6 +286,12 @@ impl MarketService {
         }
         if req.question.len() > 500 {
             return Err(AppError::Validation("question too long (max 500 chars)".to_string()));
+        }
+        if req.metadata.as_ref().map(|m| m.len()).unwrap_or(0) > 10_000 {
+            return Err(AppError::Validation("metadata too long (max 10000 chars)".to_string()));
+        }
+        if req.creator.as_ref().map(|c| c.len()).unwrap_or(0) > 100 {
+            return Err(AppError::Validation("creator too long (max 100 chars)".to_string()));
         }
         if req.close_time <= now {
             return Err(AppError::Validation("closeTime must be in the future".to_string()));

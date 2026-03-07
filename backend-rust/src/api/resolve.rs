@@ -422,7 +422,7 @@ async fn resolve_hybrid(
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 async fn persist_resolution(state: &AppState, r: &ResolveResponse) -> Result<()> {
-    let _: sqlx::any::AnyQueryResult = sqlx::query(
+    let _: sqlx::postgres::PgQueryResult = sqlx::query(
         "INSERT INTO market_resolutions \
          (market_id, resolution_type, outcome, confidence, source, raw_value, resolved_at) \
          VALUES ($1, $2, $3, $4, $5, $6, $7)",

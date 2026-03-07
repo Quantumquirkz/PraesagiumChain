@@ -45,6 +45,8 @@ pub struct Config {
     pub jwt_secret: Option<String>,
     /// Redis URL for SIWE nonce store (e.g. redis://localhost:6379). If unset, nonces are stored in memory.
     pub redis_url: Option<String>,
+    /// ClickHouse URL for analytics events (e.g. http://localhost:8123). If unset, events are not persisted to ClickHouse.
+    pub clickhouse_url: Option<String>,
     /// Chainlink ETH/USD price feed address (Sepolia/mainnet).
     pub chainlink_eth_usd_feed: Option<String>,
     /// Chainlink BTC/USD price feed address (Sepolia/mainnet).
@@ -68,8 +70,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(4000);
 
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite:./praesagium.db".to_string());
+        let database_url = std::env::var("DATABASE_URL").map_err(|_| {
+            anyhow::anyhow!(
+                "DATABASE_URL is required. Set it to a PostgreSQL URL (e.g. postgresql://user:pass@localhost:5432/praesagium)"
+            )
+        })?;
 
         let cors_origins = std::env::var("CORS_ORIGINS").ok().map(|s| {
             s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()
@@ -114,6 +119,7 @@ impl Config {
             rate_limit_burst,
             jwt_secret: std::env::var("JWT_SECRET").ok(),
             redis_url: std::env::var("REDIS_URL").ok(),
+            clickhouse_url: std::env::var("CLICKHOUSE_URL").ok(),
             environment: std::env::var("ENVIRONMENT").ok(),
             chainlink_eth_usd_feed: std::env::var("CHAINLINK_ETH_USD_FEED").ok(),
             chainlink_btc_usd_feed: std::env::var("CHAINLINK_BTC_USD_FEED").ok(),
