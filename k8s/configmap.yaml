@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: praesagium-config
+data:
+  PORT: "4000"
+  RPC_URL: "https://rpc.sepolia.org"
+  AI_PROVIDER: "mock"
+  ENVIRONMENT: "production"
