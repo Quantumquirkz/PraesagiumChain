@@ -403,8 +403,7 @@ async fn resolve_hybrid(
             p.binance_symbol.as_deref(),
             false,
         )
-        .await
-        .unwrap_or((0.5, None));
+        .await?;
 
     let outcome = if prob >= threshold { 1 } else { 0 };
     let confidence = ((prob - threshold).abs() * 2.0).min(1.0);

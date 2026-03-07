@@ -3,7 +3,7 @@
 //! Callers: Frontend = Next.js app; CRE = Chainlink CRE workflow; Scripts = resolveFromBackend, demoE2E, simulateCRE; Admin/API = external or future use.
 
 use axum::{
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -25,11 +25,14 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
         .route("/api/markets/:id/conditions", get(api::markets::get_conditions))
         .route("/api/markets/:id/resolutions", get(api::resolve::list_resolutions)) // Admin/API
+        // Admin (dev only: clear markets)
+        .route("/api/admin/clear-markets", delete(api::admin::clear_markets))
         // Private markets (access keys)
         .route("/api/markets/private/register", post(api::private_markets::register))
         .route("/api/markets/private/access", get(api::private_markets::access))
         .route("/api/markets/:id/stream", get(api::stream::market_stream))
         .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict)) // Admin/API
+        .route("/api/markets/:id/ai/analysis", post(api::ai::market_ai_analysis)) // Frontend: AI analysis + description
         // Predictions (Frontend uses /hybrid; /api/predict for direct PHPE)
         .route("/api/predict", post(api::predictions::run_predict)) // Admin/API
         .route("/api/predict/hybrid", post(api::hybrid::hybrid_predict))

@@ -56,7 +56,7 @@ pub async fn hybrid_predict(
         .await?;
 
     if let Some(market_id) = req.market_id {
-        let _ = state
+        state
             .market_service
             .set_prediction(
                 market_id,
@@ -65,7 +65,7 @@ pub async fn hybrid_predict(
                 Some("hybrid".to_string()),
                 None,
             )
-            .await;
+            .await?;
     }
 
     Ok(Json(HybridPredictResponse {

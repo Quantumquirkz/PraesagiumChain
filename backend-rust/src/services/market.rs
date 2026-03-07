@@ -72,6 +72,21 @@ impl MarketService {
         self.invalidate_list_cache().await;
     }
 
+    /// Deletes all markets and related data (predictions, conditions, resolutions).
+    /// Only for development/reset. Caller must ensure this is not exposed in production.
+    pub async fn delete_all(&self) -> Result<u64> {
+        let pool = self.db.pool();
+        sqlx::query("DELETE FROM predictions").execute(pool).await?;
+        sqlx::query("DELETE FROM conditional_conditions").execute(pool).await?;
+        sqlx::query("DELETE FROM market_resolutions").execute(pool).await?;
+        let result = sqlx::query("DELETE FROM markets").execute(pool).await?;
+        let n = result.rows_affected();
+        self.market_cache.write().await.clear();
+        self.invalidate_list_cache().await;
+        info!("Deleted all markets ({} rows)", n);
+        Ok(n)
+    }
+
     /// Updates total_yes_stake or total_no_stake when BetPlaced is indexed.
     /// `outcome` must be "Yes" or "No"; `amount` is in wei.
     /// Returns Ok even if no row was updated (market may not exist yet if BetPlaced precedes MarketCreated in the same block).
@@ -306,7 +321,13 @@ impl MarketService {
         .fetch_one(self.db.pool())
         .await?;
 
-        self.get_by_id(id).await
+        match self.get_by_id(id).await {
+            Ok(m) => Ok(m),
+            Err(AppError::NotFound) if req.on_chain_market_id.is_some() => {
+                self.get_by_on_chain_market_id(req.on_chain_market_id.unwrap()).await
+            }
+            other => other,
+        }
     }
 
     /// Upserts a market from on-chain indexer (by on_chain_market_id).

@@ -14,6 +14,8 @@ use crate::models::{
 };
 use crate::state::AppState;
 
+const ALLOWED_MARKET_TYPES: &[&str] = &["base", "conditional", "private", "tokenized", "ai"];
+
 #[derive(Deserialize)]
 pub struct ListQuery {
     page: Option<i64>,
@@ -55,6 +57,13 @@ pub async fn create(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreateMarketRequest>,
 ) -> Result<impl IntoResponse> {
+    let market_type = req.market_type.as_deref().unwrap_or("base");
+    if !ALLOWED_MARKET_TYPES.contains(&market_type) {
+        return Err(crate::error::AppError::Validation(format!(
+            "market_type must be one of: {}",
+            ALLOWED_MARKET_TYPES.join(", ")
+        )));
+    }
     let market = state.market_service.create(req).await?;
     state.market_service.invalidate_market_cache(market.id).await;
     if let Some(ref creator) = market.creator {

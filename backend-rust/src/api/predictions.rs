@@ -5,17 +5,25 @@ use crate::error::Result;
 use crate::models::{RunPredictRequest, RunPredictResponse};
 use crate::state::AppState;
 
+const MAX_SERIES_LEN: usize = 10_000;
+
 pub async fn run_predict(
     State(state): State<Arc<AppState>>,
     Json(req): Json<RunPredictRequest>,
 ) -> Result<Json<RunPredictResponse>> {
+    if req.time_series.len() > MAX_SERIES_LEN {
+        return Err(crate::error::AppError::Validation(format!(
+            "time_series exceeds max {} points",
+            MAX_SERIES_LEN
+        )));
+    }
     let result = state
         .prediction_service
         .run_prediction(&req.time_series, req.market_id)
         .await;
 
     if let Some(market_id) = req.market_id {
-        let _ = state
+        state
             .market_service
             .set_prediction(
                 market_id,
@@ -24,7 +32,7 @@ pub async fn run_predict(
                 Some(result.model_version.clone()),
                 Some(hex::encode(result.model_hash)),
             )
-            .await;
+            .await?;
     }
 
     Ok(Json(RunPredictResponse {

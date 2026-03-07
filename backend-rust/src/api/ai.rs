@@ -80,3 +80,102 @@ pub async fn market_ai_predict(
         "probability": prob
     })))
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct AIAnalysisRequest {
+    pub sentiment_text: Option<String>,
+    pub binance_symbol: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct AIAnalysisResponse {
+    pub analysis: String,
+    pub description: String,
+}
+
+/// Generates an AI analysis and description from market, data, and news context.
+pub async fn market_ai_analysis(
+    State(state): State<Arc<AppState>>,
+    Path(market_id): Path<i64>,
+    Json(req): Json<AIAnalysisRequest>,
+) -> Result<Json<AIAnalysisResponse>> {
+    if let Some(ref t) = req.sentiment_text {
+        if t.len() > MAX_TEXT_LEN {
+            return Err(crate::error::AppError::Validation(format!(
+                "sentiment_text exceeds max {} chars",
+                MAX_TEXT_LEN
+            )));
+        }
+    }
+
+    let market = match state.market_service.get_by_id(market_id).await {
+        Ok(m) => m,
+        Err(crate::error::AppError::NotFound) => {
+            state.market_service.get_by_on_chain_market_id(market_id).await?
+        }
+        Err(e) => return Err(e),
+    };
+
+    let symbol = req.binance_symbol.as_deref().unwrap_or("BTCUSDT");
+    let sentiment_text = req.sentiment_text.as_deref();
+
+    let (prob, _uncertainty) = state
+        .hybrid_predictor
+        .predict_hybrid(None, sentiment_text, None, Some(symbol), true)
+        .await?;
+
+    let prob_pct = (prob * 100.0).round() as u32;
+
+    let mut price_info = String::new();
+    if let Ok(sig) = state.sources_registry.binance.fetch_ticker(symbol).await {
+        price_info = format!(
+            "Precio {}: ${:.2} (24h: {:.2}%)",
+            symbol,
+            sig.price.unwrap_or(0.0),
+            sig.price_change_24h.unwrap_or(0.0) * 100.0
+        );
+    }
+
+    let yes_stake = market.total_yes_stake as f64 / 1e18;
+    let no_stake = market.total_no_stake as f64 / 1e18;
+    let total = yes_stake + no_stake;
+    let yes_pct = if total > 0.0 { (yes_stake / total * 100.0).round() } else { 50.0 };
+
+    let news_context = sentiment_text
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| format!("Contexto de noticias/redes: {}", s))
+        .unwrap_or_else(|| "Sin contexto de noticias proporcionado.".to_string());
+
+    let prompt = format!(
+        r#"Eres un analista de mercados predictivos. Genera un análisis y una descripción basados en estos datos.
+
+MERCADO: {}
+Estado: {}
+Stakes: YES {:.4} ETH ({:.0}%), NO {:.4} ETH. Total: {:.4} ETH.
+{}
+Predicción híbrida PHPE: {}% (fusión: series temporales 35%, sentimiento IA 40%, precio 25%).
+
+{}
+
+Responde EXACTAMENTE con este formato, sin más texto:
+
+ANALYSIS:
+[2-3 oraciones sintetizando el mercado, los datos, el contexto de noticias y la predicción híbrida. Explica si el mercado favorece YES o NO y por qué.]
+
+DESCRIPTION:
+[1 párrafo describiendo de dónde se recopila la información: fuentes de datos (Binance, Chainlink), series temporales PHPE, noticias/redes sociales. Explica cómo estas fuentes informan la predicción.]"#,
+        market.question,
+        market.status,
+        yes_stake,
+        yes_pct,
+        no_stake,
+        total,
+        price_info,
+        prob_pct,
+        news_context
+    );
+
+    let (analysis, description) = state.ai_service.generate_analysis(&prompt).await?;
+
+    Ok(Json(AIAnalysisResponse { analysis, description }))
+}
