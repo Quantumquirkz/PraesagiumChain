@@ -379,7 +379,7 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RPC_URL` | Ethereum RPC URL (for event indexer) | — |
-| `PREDICTION_MARKET_ADDRESS` | Deployed contract address | — |
+| `PREDICTION_MARKET_ADDRESS` | Deployed contract address (backend). Must match `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` in the frontend for the same network. | — |
 | `START_BLOCK` | Block number to start indexing from | — |
 
 ### Hardhat / Testnet
@@ -692,10 +692,11 @@ PraesagiumChain/
 │   │   ├── markets/create/       # Create market wizard (3-step, Sepolia-enforced)
 │   │   ├── markets/[id]/         # Market detail + interactive chart + bet form
 │   │   ├── positions/            # My positions + payout claiming
-│   │   ├── reputation/           # Creator reputation profiles + leaderboard
+│   │   ├── about/                # About page
 │   │   └── signals/              # Live signals dashboard (PHPE + hybrid)
 │   ├── components/               # Reusable UI components
 │   │   ├── ui/                   # shadcn/ui primitives (Button, Card, Dialog, etc.)
+│   │   ├── logo.tsx              # Brand logo (hexagon + circles, theme-aware)
 │   │   ├── market-card.tsx       # Market list item with YES/NO stake bar
 │   │   ├── market-detail.tsx     # Full market view (CoinGecko-inspired layout)
 │   │   ├── tv-chart.tsx          # Interactive candlestick chart (lightweight-charts v5)
@@ -719,7 +720,8 @@ PraesagiumChain/
 │   │   ├── utils.ts              # cn, formatEth, truncateAddress, formatRelativeTime
 │   │   └── abis/                 # PredictionMarket ABI
 │   ├── types/api.ts              # TypeScript types for API responses
-│   ├── next.config.js            # Rewrites: /api/* → backend :4000
+│   ├── next.config.js            # Rewrites: /api/* → backend :4000; Turbopack aliases
+│   ├── empty-module.js           # Stub for Turbopack (node-only modules in browser)
 │   ├── tailwind.config.ts        # Custom design tokens (dark/light theme)
 │   ├── tsconfig.json             # TypeScript config (@/* alias)
 │   └── package.json              # Frontend dependencies
@@ -849,6 +851,12 @@ The following improvements were implemented after the initial release:
 - Removed unused Rust crates: `config`, `url`.
 - Removed dead Rust code: `run_prediction_with_context()` in `prediction.rs`, unused `cache` field in `HybridPredictor`.
 - Standardized ETH formatting: all display uses `formatEth` from `@/lib/utils`.
+
+### Codebase Cleanup (latest)
+- **Removed unused components:** `automation-status-badge.tsx`, `creator-reputation-badge.tsx`.
+- **Removed unused exports/functions:** `formatCountdown` and `statusColor` from `lib/utils.ts`; `getSentiment` and `getSources` from `lib/api.ts`; `wagmiConfig` export from `lib/wagmi.ts` (only `config` is exported); unused indicators from `lib/ohlcv-utils.ts` (`computeStochastic`, `computeStochasticRSI`, `computeIchimoku`, `computeATR`, `computeOBV`, `computeBOP`, `formatTimeLabel`); unused `Countdown` component from `countdown.tsx` (kept `useCountdown`, `formatCountdownDisplay`, `CountdownBlocks`); `ResolutionSourceType` no longer exported from `resolution-source-picker.tsx`.
+- **Config:** Removed `recharts` from `optimizePackageImports` in `next.config.js`; marked `NEXT_PUBLIC_AUTOMATION_RESOLVER_ADDRESS` as optional/reserved in `config/frontend.env.example`.
+- **Backend:** Removed unused `trace` feature from `tower-http` in `backend-rust/Cargo.toml`.
 
 ### Backend Stability
 - Migrated from PostgreSQL to **SQLite** for zero-config local development (`DATABASE_URL=sqlite://praesagium.db`).
