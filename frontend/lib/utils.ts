@@ -47,20 +47,6 @@ export function formatDate(unix: number): string {
   });
 }
 
-export function formatCountdown(unix: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = unix - now;
-  if (diff <= 0) return "Expired";
-  const d = Math.floor(diff / 86400);
-  const h = Math.floor((diff % 86400) / 3600);
-  const m = Math.floor((diff % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
-  parts.push(`${h}h`);
-  parts.push(`${m}m`);
-  return parts.join(" ");
-}
-
 // ─── Category detection ───────────────────────────────────────────────────────
 
 export type MarketCategory = "Crypto" | "Sports" | "Weather" | "Other";
@@ -88,13 +74,4 @@ export function detectCategory(question: string): MarketCategory {
     if (keywords.test(question)) return category;
   }
   return "Other";
-}
-
-export function statusColor(status: string): string {
-  const s = status.toLowerCase();
-  if (s === "open") return "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30";
-  if (s === "locked") return "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
-  if (s === "resolved") return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
-  if (s === "cancelled") return "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30";
-  return "bg-muted text-muted-foreground border border-border";
 }

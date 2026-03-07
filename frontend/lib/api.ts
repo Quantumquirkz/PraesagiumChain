@@ -4,14 +4,13 @@ import type {
   PaginatedResponse,
   PredictionView,
   CreatorReputation,
-  SentimentResponse,
   HybridPredictResponse,
+  AIAnalysisResponse,
   FeedPriceResponse,
   PrivateMarketRegisterRequest,
   PrivateMarketRegisterResponse,
   PrivateMarketAccessResponse,
   ConditionalConditionView,
-  SourceInfo,
   FetchResponse,
 } from "@/types/api";
 
@@ -116,13 +115,6 @@ export async function createMarketBackend(body: {
   });
 }
 
-export async function getSentiment(text: string): Promise<SentimentResponse> {
-  return fetchApi<SentimentResponse>("/api/ai/sentiment", {
-    method: "POST",
-    body: JSON.stringify({ text }),
-  });
-}
-
 export async function getHybridPrediction(body: {
   market_id?: number;
   question?: string;
@@ -134,6 +126,22 @@ export async function getHybridPrediction(body: {
   });
 }
 
+export async function getMarketAIAnalysis(
+  marketId: number,
+  params?: { sentimentText?: string; binanceSymbol?: string }
+): Promise<AIAnalysisResponse> {
+  return fetchApi<AIAnalysisResponse>(
+    `/api/markets/${marketId}/ai/analysis`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        sentiment_text: params?.sentimentText,
+        binance_symbol: params?.binanceSymbol,
+      }),
+    }
+  );
+}
+
 export async function getReputation(address: string): Promise<CreatorReputation> {
   return fetchApi<CreatorReputation>(`/api/reputation/${address}`);
 }
@@ -142,10 +150,6 @@ export async function getMarketConditions(
   id: number
 ): Promise<ConditionalConditionView[]> {
   return fetchApi<ConditionalConditionView[]>(`/api/markets/${id}/conditions`);
-}
-
-export async function getSources(): Promise<SourceInfo[]> {
-  return fetchApi<SourceInfo[]>("/api/sources");
 }
 
 export async function fetchSource(

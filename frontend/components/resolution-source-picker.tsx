@@ -5,7 +5,7 @@ import { DollarSign, Cloud, Trophy, Brain } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export type ResolutionSourceType = "price_above" | "weather_rained" | "sports_winner" | "ai_sentiment";
+type ResolutionSourceType = "price_above" | "weather_rained" | "sports_winner" | "ai_sentiment";
 
 export interface ResolutionSourceParams {
   type: ResolutionSourceType;

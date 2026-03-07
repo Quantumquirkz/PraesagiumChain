@@ -50,34 +50,7 @@ export function formatCountdownDisplay(value: CountdownValue, expiredLabel?: "da
   return parts.join(" ");
 }
 
-export interface CountdownProps {
-  targetUnix: number;
-  className?: string;
-  pulseWhenUrgent?: boolean;
-}
-
 const URGENT_THRESHOLD_SEC = 3600; // 1 hour
-
-export function Countdown({ targetUnix, className, pulseWhenUrgent = true }: CountdownProps) {
-  const value = useCountdown(targetUnix);
-  const isUrgent = !value.expired && value.totalSeconds < URGENT_THRESHOLD_SEC;
-  const display = formatCountdownDisplay(value, "days_ago");
-
-  return (
-    <span
-      className={cn(
-        "font-mono tabular-nums",
-        isUrgent && pulseWhenUrgent && "text-red animate-pulse",
-        className
-      )}
-      role="status"
-      aria-live="polite"
-      aria-label={value.expired ? display : `Time remaining: ${display}`}
-    >
-      {display}
-    </span>
-  );
-}
 
 /** Blocks [02]d [14]h [35]m [22]s for sidebar; red when < 1h */
 export function CountdownBlocks({

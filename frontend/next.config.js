@@ -54,7 +54,16 @@ const nextConfig = {
     ];
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts"],
+    optimizePackageImports: ["lucide-react"],
+    turbo: {
+      resolveAlias: {
+        "@react-native-async-storage/async-storage": "./empty-module.js",
+        "pino-pretty": "./empty-module.js",
+        fs: "./empty-module.js",
+        net: "./empty-module.js",
+        tls: "./empty-module.js",
+      },
+    },
   },
   webpack(config, { dev, isServer }) {
     // Dependencias opcionales de node que no existen en el entorno browser/Next.js
