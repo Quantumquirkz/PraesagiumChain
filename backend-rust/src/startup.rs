@@ -3,6 +3,7 @@
 //! When RUN_INDEXER_ONLY=1, use `run_indexer_only` to run only the event indexer (no API).
 
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
@@ -196,6 +197,29 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     .map_err(|e| anyhow::anyhow!("Chainlink feeds: {}", e))?
     .map(Arc::new);
 
+    let clickhouse = config_arc
+        .clickhouse_url
+        .as_deref()
+        .and_then(crate::clickhouse::ClickHouseClient::new)
+        .map(Arc::new);
+
+    if let Some(ref ch) = clickhouse {
+        let ch_clone = ch.clone();
+        let mut subscriber = event_bus.subscribe();
+        tokio::spawn(async move {
+            loop {
+                match subscriber.recv().await {
+                    Ok(event) => ch_clone.insert_market_event(&event),
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        tracing::debug!("ClickHouse event subscriber lagged by {} events", n);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+        info!("ClickHouse analytics enabled");
+    }
+
     let state = Arc::new(AppState {
         market_service,
         prediction_service,
@@ -208,13 +232,18 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
         config: config_arc,
         db,
         event_bus,
+        clickhouse,
         indexer_state,
         started_at,
         nonce_store,
         chainlink_feeds,
     });
 
+    /// Max request body size: 2 MB. Larger bodies get 413. See docs/audit-inventory.md.
+    const BODY_LIMIT_BYTES: usize = 2 * 1024 * 1024;
+
     let router = build_router(state)
+        .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         .layer(middleware::tracing::TracingLayer)
         .layer(middleware::request_id::RequestIdLayer)
         .layer(GovernorLayer { config: governor_conf })

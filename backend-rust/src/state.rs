@@ -27,6 +27,8 @@ pub struct AppState {
     pub db: Database,
     /// In-process event bus for SSE streams.
     pub event_bus: EventBus,
+    /// ClickHouse client for analytics (None if CLICKHOUSE_URL not set).
+    pub clickhouse: Option<Arc<crate::clickhouse::ClickHouseClient>>,
     /// Shared indexer metrics (None if indexer is not configured).
     pub indexer_state: Option<Arc<IndexerState>>,
     /// Application start time (Unix seconds) for uptime calculation.

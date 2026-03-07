@@ -1,4 +1,5 @@
 mod api;
+mod clickhouse;
 mod config;
 mod constants;
 mod db;
