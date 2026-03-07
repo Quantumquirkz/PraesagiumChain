@@ -16,13 +16,11 @@ const FOOTER_COLUMNS = [
       { label: "Markets",    href: "/"               },
       { label: "Create",     href: "/markets/create" },
       { label: "Signals",    href: "/signals"        },
-      { label: "Positions",  href: "/positions"      },
     ],
   },
   {
     heading: "Resources",
     links: [
-      { label: "About",           href: "/about"                                                                        },
       { label: "Block Explorer",  href: EXPLORER_URL,                                    external: true                },
       { label: "GitHub",          href: "https://github.com/quantumquirkz/PraesagiumChain", external: true             },
     ],

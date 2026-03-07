@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Radio, Info, ShieldCheck } from "lucide-react";
+import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Radio } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { isAllowedChain, DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -27,10 +27,7 @@ const EXPECTED_CHAIN_ID = DEFAULT_CHAIN_ID;
 const NAV_LINKS = [
   { href: "/",               label: "Markets",    icon: LayoutGrid,  accent: "cyan"   },
   { href: "/markets/create", label: "Create",     icon: PlusCircle,  accent: "violet" },
-  { href: "/positions",      label: "Positions",  icon: Wallet,      accent: "green"  },
   { href: "/signals",        label: "Signals",    icon: Radio,       accent: "cyan"   },
-  { href: "/markets/private", label: "Private",    icon: ShieldCheck, accent: "violet" },
-  { href: "/about",          label: "About",      icon: Info,        accent: "violet" },
 ] as const;
 
 function LiveIndicator() {
@@ -373,7 +370,6 @@ export function Header() {
                           "text-foreground",
                           accent === "cyan"   && "bg-cyan-dim text-cyan",
                           accent === "violet" && "bg-violet-dim text-violet",
-                          accent === "green"  && "bg-green-dim text-green",
                         )
                       : "text-text-secondary hover:text-foreground hover:bg-surface"
                   )}
@@ -383,20 +379,18 @@ export function Header() {
                       "h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110",
                       isActive && accent === "cyan"   && "text-cyan",
                       isActive && accent === "violet" && "text-violet",
-                      isActive && accent === "green"  && "text-green",
                     )}
                     aria-hidden
                   />
                   <span className="hidden lg:inline">{label}</span>
                   {/* Punto indicador activo en md (cuando el label está oculto) */}
                   {isActive && (
-                    <span
-                      className={cn(
-                        "absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full lg:hidden",
-                        accent === "cyan"   && "bg-cyan",
-                        accent === "violet" && "bg-violet",
-                        accent === "green"  && "bg-green",
-                      )}
+                      <span
+                        className={cn(
+                          "absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full lg:hidden",
+                          accent === "cyan"   && "bg-cyan",
+                          accent === "violet" && "bg-violet",
+                        )}
                       aria-hidden
                     />
                   )}
@@ -465,7 +459,6 @@ export function Header() {
                           ? cn(
                               accent === "cyan"   && "text-cyan bg-cyan-dim",
                               accent === "violet" && "text-violet bg-violet-dim",
-                              accent === "green"  && "text-green bg-green-dim",
                             )
                           : "text-text-secondary hover:text-foreground hover:bg-elevated"
                       )}
