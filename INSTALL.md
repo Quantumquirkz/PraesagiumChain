@@ -49,18 +49,22 @@ Vuelve a comprobar: `node -p "process.platform"` debe ser `linux`.
 
 ## 3. Instalar todo el proyecto
 
-# En la raíz del proyecto ejecuta (directamente con bash, no con npm):
-#
-#   ./scripts/install-all.sh
-#
-# No uses "npm run install:all" si en WSL tu npm es el de Windows (falla con CMD/UNC).
+En la raíz del proyecto ejecuta **directamente con bash** (no con npm, para evitar CMD/UNC):
+
+```bash
+./scripts/install-all.sh
+```
 
 Ese script instala:
 
 - Dependencias **raíz** (Hardhat, OpenZeppelin, Chainlink)
 - Dependencias **frontend** (Next.js, Wagmi, etc.)
 - Dependencias **CRE** (con `--ignore-scripts`, el postinstall `cre-setup` no está en npm público)
-- **Backend Rust** (si tienes `cargo` instalado)
+- **Backend Rust** (si tienes `cargo` y `build-essential` instalados). Si falta `cc` o `pkg-config`, ejecuta:
+  ```bash
+  sudo apt install -y build-essential pkg-config libssl-dev
+  ```
+  Luego instala Rust si no lo tienes: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 ---
 
@@ -92,11 +96,40 @@ Debe decir algo como: `OK: Node es de Linux`.
 
 ---
 
-## 6. Cómo arrancar
+## 6. Cómo ejecutar el proyecto
 
-- **Frontend:** `cd frontend && npm run dev` → http://localhost:3000  
-- **Nodo Hardhat local:** `npm run node`  
-- **Backend (tras tener Hardhat en marcha):** `npm run backend`
+### Comandos de ejecución (copiar y pegar en terminal WSL)
+
+| Componente        | Comando                               | URL                  |
+|-------------------|----------------------------------------|----------------------|
+| **Frontend**      | `cd frontend && npm run dev`           | http://localhost:3000 |
+| **Backend (API)** | `npm run backend` o `./scripts/setup-and-run-backend.sh` | http://localhost:4000 |
+| **Nodo Hardhat**  | `npm run node`                         | RPC local            |
+| **Deploy local**  | `npm run deploy`                       | (tras `npm run node`) |
+
+### Orden recomendado para desarrollo
+
+1. **Terminal 1 — Backend:**
+   ```bash
+   cd /home/keru/PraesagiumChain
+   npm run backend
+   ```
+   *(O `./scripts/setup-and-run-backend.sh` si falta build-essential/pkg-config/libssl-dev.)*
+
+2. **Terminal 2 — Frontend:**
+   ```bash
+   cd /home/keru/PraesagiumChain/frontend
+   npm run dev
+   ```
+
+3. Abrir **http://localhost:3000** en el navegador.
+
+### Para probar con blockchain local
+
+1. **Terminal 1:** `npm run node` (nodo Hardhat)
+2. **Terminal 2:** `npm run deploy` (desplegar contratos)
+3. **Terminal 3:** `npm run backend`
+4. **Terminal 4:** `cd frontend && npm run dev`
 
 ---
 
@@ -104,5 +137,5 @@ Debe decir algo como: `OK: Node es de Linux`.
 
 1. Abrir **nueva terminal** en Cursor (debe ser WSL).
 2. Comprobar `node -p "process.platform"` → `linux`.
-3. En la raíz: `./scripts/install-all.sh` (o `npm run install:all`).
-4. Arrancar: `cd frontend && npm run dev`.
+3. En la raíz: `./scripts/install-all.sh`.
+4. Ejecutar: `npm run backend` en una terminal y `cd frontend && npm run dev` en otra.

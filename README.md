@@ -211,6 +211,8 @@ Before running the project, ensure you have the following installed:
 
 ## Quick Start
 
+> **Guía detallada:** Para instalación paso a paso y **comandos para ejecutar** el proyecto (frontend, backend, Hardhat), ver [INSTALL.md](INSTALL.md).
+
 ### Development on Windows (WSL)
 
 If you develop on **Windows**, always use a **WSL (Ubuntu)** terminal for project commands — not CMD or PowerShell. This avoids UNC path errors and the system not finding Node binaries.
