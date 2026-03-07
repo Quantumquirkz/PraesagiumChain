@@ -14,6 +14,7 @@ export function useClaimWinnings() {
       abi: predictionMarketAbi,
       functionName: 'claimPayout',
       args: [BigInt(marketId)],
+      gas: 2_000_000n,
     })
   }
 

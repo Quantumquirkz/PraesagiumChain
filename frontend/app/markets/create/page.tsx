@@ -28,6 +28,7 @@ import {
   type ResolutionSourceParams,
 } from "@/components/resolution-source-picker";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 import {
   Dialog,
   DialogContent,
@@ -97,6 +98,7 @@ export default function CreateMarketPage() {
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const { isWrongNetwork, switchToRequired, isSwitching, walletChainId } = useNetworkGuard();
+  const mounted = useIsMounted();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(createMarketSchema),
@@ -211,11 +213,13 @@ export default function CreateMarketPage() {
             abi: privatePredictionMarketAbi,
             functionName: "createMarket",
             args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
+            gas: 2_000_000n,
           })
         : await writeContractAsync({
             ...predictionMarketContract,
             functionName: "createMarket",
             args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
+            gas: 2_000_000n,
           });
 
       if (!publicClient || !hash) {
@@ -286,24 +290,41 @@ export default function CreateMarketPage() {
         });
         setDeploySuccess(true);
 
-        try {
-          await createMarketBackend({
-            question: data.question,
-            close_time: closeUnix,
-            resolve_time: resolveUnix,
-            market_type: data.marketType,
-            metadata: JSON.stringify({
-              resolution: resolutionParams,
-              betToken: betToken.symbol,
-              symbol: resolutionParams.symbol ?? betToken.symbol,
-            }),
-            on_chain_market_id: newId ?? undefined,
-          });
-        } catch (err) {
-          toast.warning(
-            "Market is on-chain but could not register in the app. Click Retry on the markets page or refresh.",
-            { duration: 8000 }
-          );
+        const registerPayload = {
+          question: data.question,
+          close_time: closeUnix,
+          resolve_time: resolveUnix,
+          creator: address,
+          market_type: data.marketType,
+          metadata: JSON.stringify({
+            resolution: resolutionParams,
+            betToken: betToken.symbol,
+            symbol: resolutionParams.symbol ?? betToken.symbol,
+          }),
+          on_chain_market_id: newId ?? undefined,
+        };
+        // Solo registrar en backend si tenemos on_chain_market_id; si no, el indexer lo hará más tarde.
+        if (newId != null) {
+          const maxRetries = 3;
+          let lastErr: unknown;
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              await createMarketBackend(registerPayload);
+              lastErr = undefined;
+              break;
+            } catch (err) {
+              lastErr = err;
+              if (attempt < maxRetries) {
+                await new Promise((r) => setTimeout(r, 1500 * attempt));
+              }
+            }
+          }
+          if (lastErr != null) {
+            toast.warning(
+              "Market is on-chain but could not register in the app. It may appear in a few seconds. Refresh the page.",
+              { duration: 10000 }
+            );
+          }
         }
 
         setTimeout(
@@ -336,8 +357,8 @@ export default function CreateMarketPage() {
         </p>
       </header>
 
-      {/* Network guard — visible en todos los pasos */}
-      {!isConnected && (
+      {/* Network guard — visible en todos los pasos (solo tras mount para evitar hydration mismatch) */}
+      {mounted && !isConnected && (
         <div className="mb-6 flex items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3">
           <Wifi className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
           <p className="font-body text-sm text-amber-400">
@@ -345,7 +366,7 @@ export default function CreateMarketPage() {
           </p>
         </div>
       )}
-      {isConnected && isWrongNetwork && (
+      {mounted && isConnected && isWrongNetwork && (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-red/40 bg-red-dim px-4 py-3">
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="h-4 w-4 shrink-0 text-red" aria-hidden />
@@ -358,7 +379,15 @@ export default function CreateMarketPage() {
             size="sm"
             variant="outline"
             className="shrink-0 border-red text-red hover:bg-red-dim font-mono text-xs"
-            onClick={switchToRequired}
+            onClick={async () => {
+              try {
+                await switchToRequired();
+              } catch (e) {
+                toast.error("Failed to switch network", {
+                  description: e instanceof Error ? e.message : "Please switch manually in your wallet.",
+                });
+              }
+            }}
             disabled={isSwitching}
             aria-label="Switch to Sepolia"
           >
@@ -370,7 +399,7 @@ export default function CreateMarketPage() {
           </Button>
         </div>
       )}
-      {isConnected && walletChainId !== null && !isWrongNetwork && (
+      {mounted && isConnected && walletChainId !== null && !isWrongNetwork && (
         <div className="mb-6 flex items-center gap-2 rounded-md border border-green/20 bg-green-dim px-4 py-2.5">
           <span className="h-2 w-2 rounded-full bg-green shrink-0" style={{ boxShadow: "0 0 6px var(--green)" }} aria-hidden />
           <p className="font-mono text-xs text-green font-medium">

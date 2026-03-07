@@ -12,6 +12,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { toast } from "sonner";
+import { parseContractError } from "@/lib/contract-errors";
 import { EXPLORER_URL } from "@/lib/constants";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
@@ -135,6 +136,7 @@ export function useCommitReveal(marketId: number) {
           functionName: "commitBet",
           args: [BigInt(marketId), commitment],
           value: amountWei,
+          gas: 2_000_000n,
         });
 
         setState((s) => ({
@@ -154,7 +156,7 @@ export function useCommitReveal(marketId: number) {
         });
       } catch (e) {
         setState((s) => ({ ...s, step: "commit" }));
-        toast.error(e instanceof Error ? e.message : "Error submitting commit");
+        toast.error(parseContractError(e));
       }
     },
     [marketId, writeContractAsync]
@@ -178,7 +180,13 @@ export function useCommitReveal(marketId: number) {
         let index: number;
 
         if (stored) {
-          const parsed = JSON.parse(stored) as StoredCommit;
+          let parsed: StoredCommit;
+          try {
+            parsed = JSON.parse(stored) as StoredCommit;
+          } catch {
+            toast.error("Saved commitment data is invalid. Enter the nonce manually.");
+            return;
+          }
           nonce = (manualNonce ?? parsed.nonce) as `0x${string}`;
           outcome = parsed.outcome;
           amount = parsed.amount;
@@ -215,6 +223,7 @@ export function useCommitReveal(marketId: number) {
           functionName: "revealBet",
           // Contract signature: revealBet(marketId, index, outcome, amount, nonce)
           args: [BigInt(marketId), BigInt(index), outcome, amountWei, nonce],
+          gas: 2_000_000n,
         });
 
         setState((s) => ({
@@ -236,7 +245,7 @@ export function useCommitReveal(marketId: number) {
         });
       } catch (e) {
         setState((s) => ({ ...s, step: "reveal" }));
-        toast.error(e instanceof Error ? e.message : "Error submitting reveal");
+        toast.error(parseContractError(e));
       }
     },
     [marketId, state.commitment, writeContractAsync]
@@ -259,6 +268,7 @@ export function useCommitReveal(marketId: number) {
         abi: privatePredictionMarketAbi,
         functionName: "claimPayout",
         args: [BigInt(marketId)],
+        gas: 2_000_000n,
       });
 
       setState((s) => ({
@@ -278,7 +288,7 @@ export function useCommitReveal(marketId: number) {
       });
     } catch (e) {
       setState((s) => ({ ...s, step: "done" }));
-      toast.error(e instanceof Error ? e.message : "Error claiming payout");
+      toast.error(parseContractError(e));
     }
   }, [marketId, writeContractAsync]);
 

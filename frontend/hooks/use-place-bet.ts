@@ -15,6 +15,8 @@ export function usePlaceBet() {
       functionName: 'placeBet',
       args: [BigInt(marketId), outcome],
       value: parseEther(amountEth),
+      // Sepolia block gas limit ~16.7M; 2M es suficiente para placeBet y evita que la wallet use > cap
+      gas: 2_000_000n,
     })
   }
 
