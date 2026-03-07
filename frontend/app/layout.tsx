@@ -33,7 +33,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </div>
   );
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#00D4FF" />
         <link rel="apple-touch-icon" href="/icon-192.png" />

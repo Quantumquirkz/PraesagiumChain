@@ -5,29 +5,9 @@ import Link from "next/link";
 import { Github, Twitter, MessageCircle } from "lucide-react";
 import { checkHealth } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 
 const EXPLORER_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ?? "https://sepolia.etherscan.io";
-
-function LogoIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden
-    >
-      <path d="M14 2L24 8V20L14 26L4 20V8L14 2Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <circle cx="10" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="14" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="18" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="14" cy="18" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <path d="M12.5 12.5L15.5 9.5M15.5 15.5L12.5 18.5M9.5 15.5L12.5 12.5M18.5 12.5L15.5 15.5" stroke="currentColor" strokeWidth="1" fill="none" />
-    </svg>
-  );
-}
 
 const FOOTER_COLUMNS = [
   {
@@ -77,8 +57,8 @@ export function Footer() {
               className="inline-flex items-center gap-2 transition-[filter] duration-150 hover:[filter:drop-shadow(0_0_6px_var(--cyan))]"
               aria-label="PraesagiumChain home"
             >
-              <span className="text-cyan">
-                <LogoIcon />
+              <span className="text-black dark:text-white">
+                <Logo size="footer" />
               </span>
               <span className="font-display font-extrabold text-[15px] tracking-widest text-foreground">
                 PRAESAGIUM

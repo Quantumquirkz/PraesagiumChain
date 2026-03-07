@@ -6,7 +6,9 @@ import { useState, useEffect, useRef } from "react";
 import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Wallet, Radio, Info, ShieldCheck } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { isAllowedChain, DEFAULT_CHAIN_ID } from "@/lib/constants";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +22,7 @@ import { config } from "@/lib/wagmi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
-  ? Number(process.env.NEXT_PUBLIC_CHAIN_ID)
-  : 11155111;
+const EXPECTED_CHAIN_ID = DEFAULT_CHAIN_ID;
 
 const NAV_LINKS = [
   { href: "/",               label: "Markets",    icon: LayoutGrid,  accent: "cyan"   },
@@ -32,39 +32,6 @@ const NAV_LINKS = [
   { href: "/markets/private", label: "Private",    icon: ShieldCheck, accent: "violet" },
   { href: "/about",          label: "About",      icon: Info,        accent: "violet" },
 ] as const;
-
-function LogoIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden
-    >
-      {/* Hexagon */}
-      <path
-        d="M14 2L24 8V20L14 26L4 20V8L14 2Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      {/* Chain links inside */}
-      <circle cx="10" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="14" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="18" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <circle cx="14" cy="18" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <path
-        d="M12.5 12.5L15.5 9.5M15.5 15.5L12.5 18.5M9.5 15.5L12.5 12.5M18.5 12.5L15.5 15.5"
-        stroke="currentColor"
-        strokeWidth="1"
-        fill="none"
-      />
-    </svg>
-  );
-}
 
 function LiveIndicator() {
   const [, setTick] = useState(0);
@@ -205,8 +172,9 @@ function WalletButtonInner() {
               key={connector.uid}
               variant="outline"
               className="w-full justify-start font-mono border-border hover:bg-cyan-dim"
-              onClick={() => {
+              onClick={async () => {
                 if (typeof window !== "undefined") window.focus();
+                await new Promise((r) => setTimeout(r, 180));
                 connectAsync({ connector })
                   .then(() => setConnectOpen(false))
                   .catch((err: unknown) => {
@@ -260,8 +228,9 @@ function WalletButtonMobile() {
                 key={connector.uid}
                 variant="outline"
                 className="w-full justify-start font-mono"
-                onClick={() => {
+                onClick={async () => {
                   if (typeof window !== "undefined") window.focus();
+                  await new Promise((r) => setTimeout(r, 180));
                   connectAsync({ connector })
                     .then(() => setConnectOpen(false))
                     .catch((err: unknown) => {
@@ -327,8 +296,8 @@ export function Header() {
   const { isConnected } = useAccount();
   const mounted = useIsMounted();
 
-  // Solo evaluar red incorrecta tras el montaje para evitar hydration mismatch
-  const isWrongNetwork = mounted && chainId !== undefined && chainId !== EXPECTED_CHAIN_ID;
+  // Solo evaluar red incorrecta tras el montaje; usa la misma lógica que WrongNetworkBanner (wagmi + allowed chains).
+  const isWrongNetwork = mounted && isConnected && !isAllowedChain(chainId);
 
   return (
     <div key="header-root">
@@ -374,8 +343,8 @@ export function Header() {
             className="flex items-center gap-2 transition-[filter] duration-150 hover:[filter:drop-shadow(0_0_6px_var(--cyan))]"
             aria-label="PraesagiumChain home"
           >
-            <span className="text-cyan">
-              <LogoIcon />
+            <span className="text-black dark:text-white">
+              <Logo size="header" />
             </span>
             <span className="font-display font-extrabold text-[18px] tracking-widest text-foreground">
               PRAESAGIUM
