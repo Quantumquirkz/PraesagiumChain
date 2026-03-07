@@ -184,6 +184,19 @@ body {
 .fade-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
 .fade-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes demo-tab-transition {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.demo-tab-enter {
+  animation: demo-tab-transition 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 @keyframes count-fade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -452,3 +465,66 @@ body {
 }
 .private-hex-float-2 { animation-delay: 1.5s; }
 .private-hex-float-3 { animation-delay: 3s; }
+
+/* Navbar live pill pulse */
+@keyframes navbar-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 60%, #00D4FF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease infinite;
+}
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+/* Demo panel progress bar */
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* Bounce down for CTA arrow */
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+/* Scroll hint */
+@keyframes scroll-hint {
+  0% { transform: translateY(-4px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+/* Particle float */
+@keyframes particle-float {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(6px, -14px); }
+  66% { transform: translate(-4px, -8px); }
+}
+
+/* Demo panel content transition */
+.demo-panel-content {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.demo-panel-content.exiting {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+.demo-panel-content.entering {
+  opacity: 0;
+  transform: translateX(8px);
+}
+.demo-panel-content.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
