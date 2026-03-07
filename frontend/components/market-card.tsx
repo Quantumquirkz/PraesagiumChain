@@ -94,7 +94,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
 
   return (
     <Link
-      href={`/markets/${market.id}`}
+      href={`/markets/${market.on_chain_market_id ?? market.id}`}
       className={cn(
         "group block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
         "transition-all duration-200 ease-out",
