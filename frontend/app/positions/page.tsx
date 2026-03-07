@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useClaimWinnings } from "@/hooks/use-claim-winnings";
 import { TxStatus } from "@/components/tx-status";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 import { parseContractError } from "@/lib/contract-errors";
 import { TableRowSkeleton, PositionsSummarySkeleton } from "@/components/skeletons";
 
@@ -121,6 +122,7 @@ function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
     if (error) {
       toast.error("Claim failed", { description: parseContractError(error) });
     }
+    // Intentionally omit hash, marketId, queryClient — we only react to isSuccess/error transitions
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess, error]);
 
@@ -141,7 +143,15 @@ function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
     return (
       <button
         type="button"
-        onClick={switchToRequired}
+        onClick={async () => {
+          try {
+            await switchToRequired();
+          } catch (e) {
+            toast.error("Failed to switch network", {
+              description: e instanceof Error ? e.message : "Please switch manually in your wallet.",
+            });
+          }
+        }}
         disabled={isSwitching}
         title="Switch to Sepolia to continue"
         className="rounded-md border border-red/40 bg-red/10 px-3 py-1 font-mono text-xs text-red transition-colors hover:bg-red/20 disabled:opacity-60 h-8"
@@ -198,6 +208,7 @@ function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
 
 export default function PositionsPage() {
   const { address, isConnected } = useAccount();
+  const mounted = useIsMounted();
 
   // 1. Cargar lista de mercados desde la API
   const { data: marketsData, isLoading: marketsLoading, isError: marketsError, error: marketsErrorDetail, refetch: refetchMarkets } = useQuery({
@@ -383,9 +394,9 @@ export default function PositionsPage() {
 
   const isLoading = marketsLoading || (markets.length > 0 && stakesLoading);
 
-  // ── Guard: wallet no conectada ──────────────────────────────────────────────
+  // ── Guard: wallet no conectada (solo tras mount para evitar hydration mismatch) ──
 
-  if (!isConnected) {
+  if (mounted && !isConnected) {
     return (
       <div className="container py-8 px-4">
         <h1 className="font-display font-extrabold text-[36px] text-foreground mb-8">

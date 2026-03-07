@@ -246,8 +246,16 @@ export function MarketDetail({
             <span className="rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] uppercase text-text-secondary">
               {market.market_type || "Base"}
             </span>
-            {/* On-chain indicator */}
-            {onChainLoading && !marketOnChain ? (
+            {/* On-chain indicator: si la API ya tiene on_chain_market_id, mostramos On-chain de inmediato (no "Checking…") */}
+            {market.on_chain_market_id != null ? (
+              <span className="flex items-center gap-1.5 rounded-full border border-green/30 bg-green-dim px-3 py-1 font-mono text-[11px] text-green">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className={cn("absolute inline-flex h-full w-full rounded-full bg-green", onChainLoading && "animate-ping opacity-60")} />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
+                </span>
+                {onChainLoading ? "On-chain · Updating…" : "On-chain"}
+              </span>
+            ) : onChainLoading && !marketOnChain ? (
               <span className="flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] text-text-muted animate-pulse">
                 <span className="h-1.5 w-1.5 rounded-full bg-text-muted shrink-0" />
                 Checking…
@@ -485,7 +493,7 @@ export function MarketDetail({
 
           {/* ── SIGNAL FUSION ── */}
           <div className="mt-6">
-            <SignalFusionPanel defaultParams={{ binanceSymbol: "BTCUSDT", marketId }} />
+            <SignalFusionPanel defaultParams={{ binanceSymbol: chartSymbol ?? "BTCUSDT", marketId }} />
           </div>
 
           {/* ── PHPE HISTORY ── */}
@@ -563,14 +571,14 @@ export function MarketDetail({
             ) : (
               <div className="rounded-xl border border-border bg-surface p-4">
                 <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-4">Place Bet</h3>
-                {/* Aviso suave si aún está cargando el estado on-chain */}
-                {onChainLoading && !marketOnChain && (
+                {/* Aviso suave solo cuando la API no tiene on_chain_market_id y estamos cargando */}
+                {market.on_chain_market_id == null && onChainLoading && !marketOnChain && (
                   <p className="mb-3 font-mono text-[10px] text-text-muted animate-pulse">
                     Checking on-chain status…
                   </p>
                 )}
-                {/* Aviso informativo si el mercado aún no está en la red */}
-                {!onChainLoading && (onChainError || !marketOnChain) && (
+                {/* Aviso informativo si el mercado aún no está en la red (solo cuando no tenemos on_chain_market_id) */}
+                {market.on_chain_market_id == null && !onChainLoading && (onChainError || !marketOnChain) && (
                   <div className="mb-3 flex items-start gap-2 rounded-lg border border-cyan-500/25 bg-cyan-500/8 px-3 py-2">
                     <span className="text-cyan-400 text-sm shrink-0 mt-0.5" aria-hidden>ℹ</span>
                     <p className="font-mono text-[10px] text-cyan-200/90 leading-relaxed">
