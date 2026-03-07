@@ -1,370 +1,173 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { ArrowDown, PlusCircle } from "lucide-react";
-import { useMarketStats } from "@/hooks/use-markets";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-// ─── Typewriter hook ──────────────────────────────────────────────────────────
-
-const TYPEWRITER_WORDS = ["FUTURE.", "MARKET.", "OUTCOME.", "CHAIN."];
-const TYPEWRITER_SPEED = 75;
-const TYPEWRITER_DELETE_SPEED = 45;
-const TYPEWRITER_PAUSE = 2000;
-
-function useTypewriter() {
-  const [displayed, setDisplayed] = useState("FUTURE.");
-  const [wordIdx, setWordIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(7);
-  const [deleting, setDeleting] = useState(false);
-  const [pausing, setPausing] = useState(true);
-
-  useEffect(() => {
-    const word = TYPEWRITER_WORDS[wordIdx];
-    if (pausing) {
-      const t = setTimeout(() => setPausing(false), TYPEWRITER_PAUSE);
-      return () => clearTimeout(t);
-    }
-    if (!deleting && charIdx < word.length) {
-      const t = setTimeout(() => {
-        setDisplayed(word.slice(0, charIdx + 1));
-        setCharIdx((c: number) => c + 1);
-      }, TYPEWRITER_SPEED);
-      return () => clearTimeout(t);
-    }
-    if (!deleting && charIdx === word.length) {
-      const t = setTimeout(() => setDeleting(true), TYPEWRITER_PAUSE);
-      return () => clearTimeout(t);
-    }
-    if (deleting && charIdx > 0) {
-      const t = setTimeout(() => {
-        setDisplayed(word.slice(0, charIdx - 1));
-        setCharIdx((c: number) => c - 1);
-      }, TYPEWRITER_DELETE_SPEED);
-      return () => clearTimeout(t);
-    }
-    if (deleting && charIdx === 0) {
-      const nextIdx = (wordIdx + 1) % TYPEWRITER_WORDS.length;
-      setWordIdx(nextIdx);
-      setDeleting(false);
-      setCharIdx(0);
-      setPausing(false);
-    }
-  }, [displayed, wordIdx, charIdx, deleting, pausing]);
-
-  return displayed;
-}
-
-// ─── Animated background ─────────────────────────────────────────────────────
-
-interface Particle {
-  id: number;
-  left: string;
-  top: string;
-  duration: string;
-  delay: string;
-  color: string;
-}
-
-function HeroBackground() {
-  const [mounted, setMounted] = useState(false);
-  const particles = useMemo<Particle[]>(() => {
-    const colors = ["var(--cyan)", "var(--violet)", "var(--green)"];
-    return Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      left: `${5 + (i * 4.7) % 90}%`,
-      top: `${10 + (i * 7.3) % 80}%`,
-      duration: `${6 + (i % 7) * 1.5}s`,
-      delay: `${(i % 5) * 1.2}s`,
-      color: colors[i % 3],
-    }));
-  }, []);
-
-  useEffect(() => setMounted(true), []);
-
-  const hexes = [
-    { x: "6%",  y: "18%", size: 90,  delay: "0s",   cls: "hex-float"   },
-    { x: "86%", y: "12%", size: 65,  delay: "1.5s", cls: "hex-float-2" },
-    { x: "78%", y: "62%", size: 110, delay: "3s",   cls: "hex-float-3" },
-    { x: "12%", y: "68%", size: 55,  delay: "0.8s", cls: "hex-float"   },
-    { x: "48%", y: "3%",  size: 45,  delay: "2.2s", cls: "hex-float-2" },
-    { x: "93%", y: "45%", size: 75,  delay: "4s",   cls: "hex-float-3" },
-    { x: "35%", y: "80%", size: 50,  delay: "1s",   cls: "hex-float"   },
-    { x: "60%", y: "25%", size: 40,  delay: "3.5s", cls: "hex-float-2" },
-  ];
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {/* Grid */}
-      <div className="hero-grid-bg absolute inset-0" />
-
-      {/* Scan line */}
-      <div className="hero-scan-line" />
-
-      {/* Orbs */}
-      <div className="hero-orb hero-orb-cyan" />
-      <div className="hero-orb hero-orb-violet" />
-      <div className="hero-orb hero-orb-green" />
-
-      {/* Hexagons */}
-      {hexes.map((h, i) => (
-        <svg
-          key={i}
-          className={h.cls}
-          style={{
-            position: "absolute",
-            left: h.x,
-            top: h.y,
-            width: h.size,
-            height: h.size,
-            animationDelay: h.delay,
-          }}
-          viewBox="0 0 100 100"
-          fill="none"
-        >
-          <path
-            d="M50 5L90 27.5V72.5L50 95L10 72.5V27.5L50 5Z"
-            stroke="var(--cyan)"
-            strokeWidth="1"
-          />
-        </svg>
-      ))}
-
-      {/* Particles */}
-      {mounted && particles.map((p) => (
-        <span
-          key={p.id}
-          className="particle"
-          style={{
-            left: p.left,
-            top: p.top,
-            background: p.color,
-            animationDuration: p.duration,
-            animationDelay: p.delay,
-          }}
-        />
-      ))}
-
-      {/* Corner accents */}
-      <div
-        className="absolute top-0 left-0 w-64 h-64 opacity-20"
-        style={{
-          background: "linear-gradient(135deg, rgba(0,212,255,0.15) 0%, transparent 60%)",
-        }}
-      />
-      <div
-        className="absolute bottom-0 right-0 w-64 h-64 opacity-20"
-        style={{
-          background: "linear-gradient(315deg, rgba(139,92,246,0.15) 0%, transparent 60%)",
-        }}
-      />
-    </div>
-  );
-}
-
-// ─── Stat pill ────────────────────────────────────────────────────────────────
-
-interface StatPillProps {
-  label: string;
-  value: number | undefined;
-  color: "green" | "violet" | "cyan";
-}
-
-const PILL_COLORS = {
-  green:  { bg: "bg-green-dim",  text: "text-green",  border: "border-green/20"  },
-  violet: { bg: "bg-violet-dim", text: "text-violet", border: "border-violet/20" },
-  cyan:   { bg: "bg-cyan-dim",   text: "text-cyan",   border: "border-cyan/20"   },
-} as const;
-
-function StatPill({ label, value, color }: StatPillProps) {
-  const c = PILL_COLORS[color];
-  const display = value != null ? value.toLocaleString() : "—";
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2.5 rounded-full border px-5 py-2.5 backdrop-blur-sm",
-        c.bg, c.border
-      )}
-    >
-      <span className={cn("font-mono text-[22px] font-bold tabular-nums leading-none", c.text)}>
-        {display}
-      </span>
-      <span className="font-body text-xs text-text-secondary">{label}</span>
-    </div>
-  );
-}
-
-// ─── Hero Section ─────────────────────────────────────────────────────────────
+import { DemoPanel } from "@/components/hero-demo-panel";
+import { LiveTicker } from "@/components/live-ticker";
 
 interface HeroSectionProps {
   marketsRef?: React.RefObject<HTMLElement | null>;
 }
 
+const PARTICLE_COLORS = ["rgba(0,212,255,0.5)", "rgba(139,92,246,0.5)", "rgba(0,232,122,0.4)"];
+
+function HeroParticles() {
+  const [mounted, setMounted] = useState(false);
+  const particles = useMemo(() => {
+    if (!mounted) return [];
+    return Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      size: 2 + Math.random() * 2,
+      duration: 4 + Math.random() * 4,
+      delay: Math.random() * 3,
+      color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+    }));
+  }, [mounted]);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {particles.map((p) => (
+        <span
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            animation: `particle-float ${p.duration}s ease-in-out ${p.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function HeroSection({ marketsRef }: HeroSectionProps) {
-  const word = useTypewriter();
-  const { data: stats } = useMarketStats();
+  const [scrollTop, setScrollTop] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => setScrollTop(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const scrollToMarkets = useCallback(() => {
-    if (marketsRef?.current) {
-      marketsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    marketsRef?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [marketsRef]);
 
   return (
-    <section
-      className="relative overflow-hidden text-center"
-      style={{ minHeight: "92vh", display: "flex", alignItems: "center", justifyContent: "center" }}
-      aria-label="Hero"
-    >
-      <HeroBackground />
-
-      {/* Vignette overlay — dark only; light uses none */}
+    <section className="relative min-h-screen overflow-hidden pt-16" style={{ background: "#080B12" }} aria-label="Hero">
       <div
         className="pointer-events-none absolute inset-0"
-        style={{
-          background: "var(--hero-vignette)",
-        }}
+        style={{ backgroundImage: "radial-gradient(rgba(0,212,255,0.12) 1px, transparent 1px)", backgroundSize: "40px 40px" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, #080B12 100%)" }}
+        aria-hidden
+      />
+      <HeroParticles />
+      <div
+        className="pointer-events-none absolute top-[20%] left-[-10%] h-[500px] w-[500px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute top-[30%] right-[-5%] h-[500px] w-[500px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }}
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12">
-        {/* Eyebrow badge */}
-        <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-cyan/25 bg-cyan-dim px-5 py-2 backdrop-blur-sm"
-          style={{ animation: "hero-sub-fade 0.5s ease 0.05s both" }}
-        >
-          <span
-            className="h-2 w-2 rounded-full bg-green animate-pulse"
-            style={{ boxShadow: "0 0 8px var(--green)" }}
-            aria-hidden
-          />
-          <span className="font-mono text-[11px] text-cyan uppercase tracking-[0.2em]">
-            Live on Ethereum Sepolia
-          </span>
-        </div>
-
-        {/* Main headline */}
-        <h1
-          className="font-display font-extrabold"
-          style={{
-            fontSize: "clamp(52px, 10vw, 96px)",
-            lineHeight: 1.1,
-            letterSpacing: "0.02em",
-          }}
-        >
-          {/* Línea 1 — letras caen desde arriba */}
-          <span className="block text-foreground" aria-label="PREDICT THE">
-            {"PREDICT THE".split("").map((ch, i) =>
-              ch === " " ? (
-                <span key={i} className="hero-letter-space" aria-hidden />
-              ) : (
-                <span
-                  key={i}
-                  className="hero-letter"
-                  style={{ animationDelay: `${0.1 + i * 0.045}s` }}
-                  aria-hidden
-                >
-                  {ch}
-                </span>
-              )
-            )}
-          </span>
-
-          {/* Línea 2 — typewriter con glow */}
-          <span
-            className="block relative"
-            style={{ minHeight: "1.15em" }}
-            aria-live="polite"
-          >
-            <span
-              className="text-gradient-cyan-violet"
-              style={{ filter: "drop-shadow(0 0 32px rgba(0,212,255,0.5))" }}
-            >
-              {word}
-            </span>
-            <span className="cursor-blink ml-1 text-cyan" aria-hidden>|</span>
-          </span>
-
-          {/* Línea 3 — letras suben desde abajo + shimmer de color continuo */}
-          <span className="hero-line3-shimmer" aria-label="ON-CHAIN.">
-            {"ON-CHAIN.".split("").map((ch, i) =>
-              ch === " " ? (
-                <span key={i} className="hero-letter-space" aria-hidden />
-              ) : (
-                <span
-                  key={i}
-                  className="hero-letter-rise shimmer-loop"
-                  style={{
-                    animationDelay: `${0.55 + i * 0.05}s`,
-                    animationDuration: "0.55s, 3s",
-                    animationIterationCount: "1, infinite",
-                  }}
-                  aria-hidden
-                >
-                  {ch}
-                </span>
-              )
-            )}
-          </span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="hero-sub mx-auto mt-6 max-w-lg font-body text-sm text-text-secondary leading-relaxed">
-          Decentralized prediction markets powered by the PHPE hybrid AI engine.
-          Stake ETH, analyze signals, and claim winnings — all on-chain.
-        </p>
-
-        {/* CTAs */}
-        <div className="hero-cta mt-7 flex flex-wrap items-center justify-center gap-4">
-          {/* Primary — gradient border button */}
-          <button
-            type="button"
-            onClick={scrollToMarkets}
-            className="group relative inline-flex items-center gap-2.5 rounded-xl overflow-hidden font-body font-semibold text-sm transition-all duration-300 hover:scale-[1.03]"
-            style={{
-              padding: "1px",
-              background: "linear-gradient(135deg, var(--cyan), var(--violet))",
-              boxShadow: "0 0 24px rgba(0,212,255,0.2)",
-            }}
-            aria-label="Browse markets"
-          >
-            <span className="flex items-center gap-2.5 rounded-[calc(0.75rem-1px)] bg-surface px-6 py-3 transition-colors group-hover:bg-transparent">
-              <span className="text-foreground group-hover:text-black transition-colors">Browse Markets</span>
-              <ArrowDown className="h-4 w-4 text-cyan group-hover:text-black transition-colors" aria-hidden />
-            </span>
-          </button>
-
-          {/* Secondary */}
-          <Button
-            variant="outline"
-            asChild
-            className="rounded-xl border-border-bright bg-transparent hover:border-violet/50 hover:bg-violet-dim transition-all duration-300 hover:scale-[1.03] px-6 py-3 h-auto"
-          >
-            <Link href="/markets/create" className="flex items-center gap-2.5">
-              <PlusCircle className="h-4 w-4 text-violet" aria-hidden />
-              <span className="font-body font-semibold text-sm">Create Market</span>
-            </Link>
-          </Button>
-        </div>
-
-        {/* Stat pills */}
-        <div className="hero-stats mt-8 flex flex-wrap items-center justify-center gap-3">
-          <StatPill label="Open Markets"      value={stats?.open_markets}      color="green"  />
-          <StatPill label="Total Predictions" value={stats?.total_predictions} color="violet" />
-          <StatPill label="Resolved"          value={stats?.resolved_markets}  color="cyan"   />
-        </div>
-
-        {/* Scroll hint */}
-        <div className="hero-stats mt-8 flex flex-col items-center gap-1.5 opacity-40">
-          <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Scroll</span>
+      <div className="relative z-10 mx-auto grid max-w-[1280px] grid-cols-1 items-center gap-[60px] px-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:px-10">
+        <div className="flex flex-col">
           <div
-            className="w-px h-6"
-            style={{ background: "linear-gradient(to bottom, var(--cyan), transparent)" }}
-            aria-hidden
-          />
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1.5"
+            style={{
+              background: "rgba(139,92,246,0.1)",
+              borderColor: "rgba(139,92,246,0.3)",
+              color: "#8B5CF6",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              animation: "fade-up 0.5s ease 0s both",
+            }}
+          >
+            <span className="animate-pulse">✦</span> POWERED BY PHPE HYBRID AI ENGINE
+          </div>
+          <h1
+            className="mt-4 font-display font-extrabold leading-[0.92] tracking-[-0.02em] text-white"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(64px, 10vw, 96px)", animation: "fade-up 0.5s ease 0.1s both" }}
+          >
+            <span className="block">PREDICT THE</span>
+            <span className="gradient-text block">FUTURE.</span>
+            <span className="block">ON-CHAIN.</span>
+          </h1>
+          <p
+            className="mt-5 max-w-[440px] text-base leading-[1.7] text-white/50"
+            style={{ fontFamily: "'DM Sans', sans-serif", animation: "fade-up 0.5s ease 0.2s both" }}
+          >
+            Decentralized prediction markets powered by the PHPE hybrid AI engine.
+            Stake ETH, analyze signals, and claim winnings — all on-chain.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2" style={{ animation: "fade-up 0.5s ease 0.3s both" }}>
+            {[
+              { label: "Ethereum", bg: "rgba(98,126,234,0.1)", border: "rgba(98,126,234,0.3)", color: "#627EEA" },
+              { label: "Chainlink", bg: "rgba(55,91,210,0.1)", border: "rgba(55,91,210,0.3)", color: "#375BD2" },
+              { label: "PHPE AI", bg: "rgba(139,92,246,0.1)", border: "rgba(139,92,246,0.3)", color: "#8B5CF6" },
+              { label: "Solidity", bg: "rgba(0,212,255,0.08)", border: "rgba(0,212,255,0.25)", color: "#00D4FF" },
+              { label: "Next.js", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" },
+            ].map((b) => (
+              <span
+                key={b.label}
+                className="rounded px-2.5 py-1 font-mono text-[10px] uppercase"
+                style={{ background: b.bg, border: `1px solid ${b.border}`, color: b.color }}
+              >
+                {b.label}
+              </span>
+            ))}
+          </div>
+          <div className="mt-8 flex items-center gap-3" style={{ animation: "fade-up 0.5s ease 0.4s both" }}>
+            <button
+              type="button"
+              onClick={scrollToMarkets}
+              className="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3.5 text-sm font-bold text-[#080B12] transition-all duration-200 hover:-translate-y-px hover:bg-white/90 hover:shadow-[0_8px_24px_rgba(255,255,255,0.12)]"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Browse Markets <span className="animate-[bounce-down_1.5s_ease-in-out_infinite]">↓</span>
+            </button>
+            <Link
+              href="/markets/create"
+              className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-transparent px-6 py-3.5 text-sm font-semibold text-white/70 transition-all duration-200 hover:border-white/40 hover:bg-white/5 hover:text-white"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              ⊕ Create Market
+            </Link>
+          </div>
+        </div>
+        <div className="flex w-full max-w-[680px] justify-center md:max-w-[680px] md:justify-end">
+          <DemoPanel />
         </div>
       </div>
+
+      {/* Infinity scroll — debajo del hero main */}
+      <div className="relative z-10 w-full -mt-4">
+        <LiveTicker />
+      </div>
+
+      {scrollTop < 20 && (
+        <div className="absolute bottom-8 left-1/2 flex flex-col items-center gap-2 -translate-x-1/2">
+          <span className="font-mono text-[9px] tracking-[0.3em] text-white/20">SCROLL</span>
+          <div className="h-5 w-px animate-[scroll-hint_2s_ease-in-out_infinite] bg-gradient-to-b from-transparent to-white/30" aria-hidden />
+        </div>
+      )}
     </section>
   );
 }

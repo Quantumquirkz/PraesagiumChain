@@ -3,13 +3,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
-import { Header } from "@/components/header";
+import { Navbar } from "@/components/navbar";
 import { WrongNetworkBanner } from "@/components/wrong-network-banner";
 import { Footer } from "@/components/footer";
 import { PWAInstallBanner } from "@/components/pwa-install-banner";
 import { MarketWatcherProvider } from "@/components/market-watcher-provider";
-import { LiveTicker } from "@/components/live-ticker";
-
 export const metadata: Metadata = {
   title: "PraesagiumChain",
   description: "Decentralized Prediction Markets",
@@ -22,9 +20,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const content = (
     <div className="flex min-h-screen flex-col bg-base">
       <div className="flex flex-col flex-1">
-        <Header />
+        <Navbar />
         <WrongNetworkBanner />
-        <LiveTicker />
         <main className="container flex-1 px-4 py-6 hero-gradient page-enter">
           {children}
         </main>
