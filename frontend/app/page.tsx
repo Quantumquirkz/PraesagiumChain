@@ -61,9 +61,14 @@ function DashboardContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Estado inicial desde URL
-  const initialFilters = useMemo(() => filterStateFromParams(searchParams), []);  // eslint-disable-line react-hooks/exhaustive-deps
+  // Estado inicial desde URL — recalculado cuando searchParams cambia
+  const initialFilters = useMemo(() => filterStateFromParams(searchParams), [searchParams]);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+
+  // Sincronizar filtros cuando la URL cambia externamente (ej. navegación atrás)
+  useEffect(() => {
+    setFilters(filterStateFromParams(searchParams));
+  }, [searchParams]);
 
   // Sincronizar filtros → URL sin reload
   useEffect(() => {
