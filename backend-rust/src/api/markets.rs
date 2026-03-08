@@ -33,7 +33,7 @@ pub async fn list(
     Query(params): Query<ListQuery>,
 ) -> Result<Json<PaginatedResponse<MarketView>>> {
     let page = params.page.unwrap_or(1).max(1);
-    let limit = params.limit.unwrap_or(20).min(100).max(1);
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
     let status = params.status.as_deref();
     let result = state.market_service.list(page, limit, status).await?;
     Ok(Json(result))
@@ -126,7 +126,7 @@ pub async fn get_predictions(
     Path(id): Path<i64>,
     Query(params): Query<PredictionsQuery>,
 ) -> Result<Json<Vec<PredictionView>>> {
-    let limit = params.limit.unwrap_or(10).min(100).max(1);
+    let limit = params.limit.unwrap_or(10).clamp(1, 100);
     let predictions = state.market_service.get_predictions(id, limit).await?;
     Ok(Json(predictions))
 }

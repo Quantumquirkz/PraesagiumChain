@@ -462,12 +462,12 @@ impl MarketService {
         model_version: Option<String>,
         model_hash: Option<String>,
     ) -> Result<MarketView> {
-        if probability < 0.0 || probability > 1.0 {
+        if !(0.0..=1.0).contains(&probability) {
             return Err(AppError::Validation("probability must be between 0 and 1".to_string()));
         }
 
         if let Some(unc) = uncertainty {
-            if unc < 0.0 || unc > 1.0 {
+            if !(0.0..=1.0).contains(&unc) {
                 return Err(AppError::Validation("uncertainty must be between 0 and 1".to_string()));
             }
         }

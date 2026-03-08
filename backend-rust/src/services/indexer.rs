@@ -73,29 +73,7 @@ pub struct EventIndexer {
 }
 
 impl EventIndexer {
-    /// Legacy constructor (no shared state / event bus). Used in tests.
-    #[allow(dead_code)]
-    pub async fn new(
-        rpc_url: &str,
-        contract_address: Address,
-        market_service: Arc<MarketService>,
-        reputation_service: Arc<ReputationService>,
-        start_block: Option<u64>,
-    ) -> anyhow::Result<Self> {
-        let dummy_state = IndexerState::new(start_block.unwrap_or(0));
-        Self::new_with_state(
-            rpc_url,
-            contract_address,
-            market_service,
-            reputation_service,
-            start_block,
-            dummy_state,
-            EventBus::new(),
-        )
-        .await
-    }
-
-    /// Full constructor with shared observability state and event bus.
+    /// Constructor with shared observability state and event bus.
     pub async fn new_with_state(
         rpc_url: &str,
         contract_address: Address,

@@ -124,7 +124,7 @@ pub async fn fetch(
             };
             FetchResponse {
                 source: source_name,
-                price: price,
+                price,
                 price_change_24h: price_change,
                 volume_24h: None,
                 sentiment: None,

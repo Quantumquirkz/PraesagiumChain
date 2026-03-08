@@ -27,7 +27,7 @@ pub async fn list_reputation(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ListReputationQuery>,
 ) -> Result<Json<Vec<CreatorReputation>>> {
-    let limit = params.limit.unwrap_or(20).min(100).max(1);
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
     let offset = params.offset.unwrap_or(0).max(0);
     let rows = state.reputation_service.list(limit, offset).await?;
     Ok(Json(rows))

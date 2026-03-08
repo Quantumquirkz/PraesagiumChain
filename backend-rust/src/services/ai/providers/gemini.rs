@@ -103,7 +103,7 @@ impl AiProvider for GeminiProvider {
         let parsed: GeminiResponse = resp.json().await.map_err(|e| AppError::Validation(format!("Gemini parse failed: {e}")))?;
         let text_response = parsed.candidates.and_then(|c| c.into_iter().next())
             .and_then(|c| c.content.parts.into_iter().next()).and_then(|p| p.text).unwrap_or_default();
-        let score_str = text_response.trim().split_whitespace().next().unwrap_or("0");
+        let score_str = text_response.split_whitespace().next().unwrap_or("0");
         let score: f32 = score_str.parse().unwrap_or(0.0);
         Ok(score.clamp(-1.0, 1.0))
     }

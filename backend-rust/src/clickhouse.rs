@@ -2,8 +2,6 @@
 //! When CLICKHOUSE_URL is set, events from the EventBus are written to ClickHouse.
 //! Failures are logged and do not affect the API.
 
-#![allow(dead_code)]
-
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -17,16 +15,6 @@ pub struct MarketEventRow {
     pub market_id: i64,
     pub on_chain_market_id: Option<i64>,
     pub payload: String,
-}
-
-/// Row for prediction_events table.
-#[derive(clickhouse::Row, Serialize)]
-pub struct PredictionEventRow {
-    pub created_at: u32,
-    pub market_id: i64,
-    pub probability: f32,
-    pub uncertainty: Option<f32>,
-    pub model_version: Option<String>,
 }
 
 /// Optional ClickHouse client. None when CLICKHOUSE_URL is not set.
@@ -121,41 +109,6 @@ impl ClickHouseClient {
             }
             if let Err(e) = insert.end().await {
                 tracing::warn!("ClickHouse end market_events: {}", e);
-            }
-        });
-    }
-
-    /// Insert a prediction event (e.g. from PHPE). Fire-and-forget.
-    pub fn insert_prediction_event(
-        &self,
-        market_id: i64,
-        probability: f32,
-        uncertainty: Option<f32>,
-        model_version: Option<String>,
-    ) {
-        let now = chrono::Utc::now().timestamp() as u32;
-        let row = PredictionEventRow {
-            created_at: now,
-            market_id,
-            probability,
-            uncertainty,
-            model_version,
-        };
-        let client = self.client.clone();
-        tokio::spawn(async move {
-            let mut insert = match client.insert("prediction_events") {
-                Ok(i) => i,
-                Err(e) => {
-                    tracing::warn!("ClickHouse insert prediction_events: {}", e);
-                    return;
-                }
-            };
-            if let Err(e) = insert.write(&row).await {
-                tracing::warn!("ClickHouse write prediction_events: {}", e);
-                return;
-            }
-            if let Err(e) = insert.end().await {
-                tracing::warn!("ClickHouse end prediction_events: {}", e);
             }
         });
     }

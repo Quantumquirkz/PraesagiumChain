@@ -58,7 +58,7 @@ pub async fn run_indexer_only(config: Config, db: Database) -> anyhow::Result<()
 
 /// Builds the full Axum application with all layers and routes.
 pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
-    if config.is_production() && config.jwt_secret.as_deref().map_or(true, |s| s.trim().is_empty()) {
+    if config.is_production() && config.jwt_secret.as_deref().is_none_or(|s| s.trim().is_empty()) {
         return Err(anyhow::anyhow!(
             "JWT_SECRET must be set in production (ENVIRONMENT=production). Use a strong random secret."
         ));
