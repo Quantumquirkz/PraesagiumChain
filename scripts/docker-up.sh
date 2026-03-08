@@ -35,5 +35,5 @@ fi
 
 echo "Done. Set in .env:"
 echo "  DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium"
-echo "  REDIS_URL=redis://localhost:6379"
+echo "  REDIS_URL=redis://localhost:6380"
 echo "  CLICKHOUSE_URL=http://localhost:8123"

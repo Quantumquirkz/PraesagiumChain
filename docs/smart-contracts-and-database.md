@@ -486,7 +486,7 @@ The contract verifies `keccak256(abi.encode(outcome, amount, nonce)) == stored_c
 
 **File:** `backend-rust/migrations_pg/`
 
-The database schema mirrors on-chain state and stores off-chain data (predictions, reputation). The backend's `EventIndexer` keeps it synchronized with the blockchain.
+The database schema mirrors on-chain state and stores off-chain data (predictions, reputation). The backend's `EventIndexer` keeps it synchronized with the blockchain. Migrations are numbered `001`, `007`, `008` (002–006 were consolidated or removed in prior refactors).
 
 > **Database engine:** The backend uses **PostgreSQL** only. Set `DATABASE_URL=postgresql://...` in `.env`. Migrations are in `backend-rust/migrations_pg/` and are applied automatically by SQLx on backend startup.
 
