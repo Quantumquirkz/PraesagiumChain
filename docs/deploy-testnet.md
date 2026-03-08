@@ -75,7 +75,7 @@ PRIVATE_ORACLE_CONSUMER_ADDRESS=0x...
 
 ## 5. Configurar el frontend para Sepolia
 
-En `frontend/.env.local`:
+En `.env` (raíz):
 
 ```env
 NEXT_PUBLIC_CHAIN_ID=11155111
@@ -116,9 +116,9 @@ npx hardhat run scripts/verify/verify.js --network sepolia
 | Variable | Dónde | Uso |
 |----------|--------|-----|
 | `PRIVATE_KEY` | `.env` (raíz) | Deploy y scripts Hardhat |
-| `PREDICTION_MARKET_ADDRESS` | `.env` + `frontend/.env.local` (como `NEXT_PUBLIC_*`) | Backend indexer + frontend |
+| `PREDICTION_MARKET_ADDRESS` / `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` | `.env` | Backend indexer + frontend |
 | `CRE_WORKFLOW_ADDRESS` / `ORACLE_CONSUMER_ADDRESS` | `.env` | Backend / CRE |
-| `NEXT_PUBLIC_CHAIN_ID=11155111` | `frontend/.env.local` | Wallet / red en la UI |
+| `NEXT_PUBLIC_CHAIN_ID=11155111` | `.env` | Wallet / red en la UI |
 
 ## Troubleshooting
 

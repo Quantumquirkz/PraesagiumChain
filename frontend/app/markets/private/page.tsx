@@ -315,7 +315,7 @@ function PrivateMarketsPageInner() {
               . For <strong>localhost</strong>, run{" "}
               <code className="font-mono text-xs text-cyan">npm run deploy:private</code>.
               Then set <code className="font-mono text-xs">NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS</code> in{" "}
-              <code className="font-mono text-xs">.env.local</code>.
+              <code className="font-mono text-xs">.env</code>.
             </p>
           </div>
         </div>

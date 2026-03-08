@@ -41,7 +41,7 @@ async function main() {
   await tx.wait();
   console.log("  OracleConsumer.setAuthorizedCallback(deployer) OK");
 
-  console.log("\nSetup complete. Use these in .env and frontend/.env.local:");
+  console.log("\nSetup complete. Add to .env (single file for backend + frontend):");
   console.log("PREDICTION_MARKET_ADDRESS=" + pmAddr);
   console.log("CRE_WORKFLOW_ADDRESS=" + creAddr);
   console.log("ORACLE_CONSUMER_ADDRESS=" + oracleAddr);

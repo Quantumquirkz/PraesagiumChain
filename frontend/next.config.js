@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+const path = require("path");
+const { loadEnvConfig } = require("@next/env");
+
+// Single .env at repo root (backend + frontend)
+loadEnvConfig(path.join(__dirname, ".."));
+
 const withPWA = require("next-pwa")({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
@@ -54,7 +60,7 @@ const nextConfig = {
     ];
   },
   experimental: {
-    optimizePackageImports: ["lucide-react"],
+    optimizePackageImports: ["lucide-react", "recharts"],
     turbo: {
       resolveAlias: {
         "@react-native-async-storage/async-storage": "./empty-module.js",

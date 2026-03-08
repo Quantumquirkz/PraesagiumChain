@@ -21,7 +21,7 @@ Lista de claves, APIs y URLs que puedes configurar según lo que vayas a usar. N
 
 ---
 
-## Frontend (`frontend/.env.local`)
+## Frontend (variables `NEXT_PUBLIC_*` en `.env` raíz)
 
 | Variable | ¿Para qué? | Dónde conseguirla | ¿Obligatoria? |
 |----------|------------|-------------------|----------------|
@@ -63,7 +63,7 @@ Puedes usar `NEXT_PUBLIC_RPC_URL=https://rpc.sepolia.org` y no hace falta Infura
 
 - **Con Sepolia (apostar y desplegar):**  
   `.env` con `PRIVATE_KEY` y, tras deploy, `PREDICTION_MARKET_ADDRESS` y opcionalmente `SEPOLIA_RPC_URL`.  
-  `frontend/.env.local` con `NEXT_PUBLIC_CHAIN_ID=11155111`, `NEXT_PUBLIC_RPC_URL=https://rpc.sepolia.org` (o tu Alchemy/Infura) y `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` igual al contrato desplegado.
+  `.env` con `NEXT_PUBLIC_CHAIN_ID=11155111`, `NEXT_PUBLIC_RPC_URL=https://rpc.sepolia.org` (o tu Alchemy/Infura) y `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` igual al contrato desplegado.
 
 - **Predicciones con IA:**  
   En `.env`: `GEMINI_API_KEY` (o `HF_API_KEY`) o `AI_PROVIDER=mock` para no usar clave.

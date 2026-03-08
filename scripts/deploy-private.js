@@ -5,8 +5,7 @@
  *   npx hardhat run scripts/deploy-private.js --network sepolia
  *   npx hardhat run scripts/deploy-private.js --network localhost
  *
- * After deployment, copy the printed address into frontend/.env.local:
- *   NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=<address>
+ * After deployment, the script appends NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to root .env
  *
  * Env (required for Sepolia):
  *   PRIVATE_KEY       — deployer private key (without 0x prefix)
@@ -37,28 +36,26 @@ async function main() {
   const address = await contract.getAddress();
   console.log("\n✅  PrivatePredictionMarket deployed to:", address);
 
-  // ── Optionally write address to frontend/.env.local ──────────────────────
-  const envPath = path.resolve(__dirname, "../frontend/.env.local");
+  // ── Optionally append to root .env ───────────────────────────────────────
+  const envPath = path.resolve(__dirname, "../.env");
   if (fs.existsSync(envPath)) {
     let envContent = fs.readFileSync(envPath, "utf8");
-
     const key = "NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS";
+
     if (envContent.includes(key)) {
-      // Replace existing value
       envContent = envContent.replace(
         new RegExp(`^${key}=.*$`, "m"),
         `${key}=${address}`
       );
     } else {
-      // Append new line
       envContent += `\n# PrivatePredictionMarket (commit-reveal)\n${key}=${address}\n`;
     }
 
     fs.writeFileSync(envPath, envContent);
-    console.log(`\n📝  Updated frontend/.env.local with ${key}=${address}`);
+    console.log(`\n📝  Updated .env with ${key}=${address}`);
   } else {
     console.log(
-      `\n⚠  frontend/.env.local not found. Add manually:\n   NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=${address}`
+      `\n⚠  .env not found. Add manually: NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=${address}`
     );
   }
 

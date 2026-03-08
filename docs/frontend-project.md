@@ -7,7 +7,7 @@
 ## Quick start for the frontend developer
 
 1. **Read this document end-to-end** — every API, contract call, type, and page is specified here.
-2. **Copy** `config/frontend.env.example` to `frontend/.env.local` and fill with backend URL, chain ID, RPC, and contract address.
+2. **Copy** `config/env.example` to `.env` at repo root and fill backend URL, chain ID, RPC, and contract address. Next.js loads from root.
 3. **Copy** the PredictionMarket ABI from `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`.
 4. **Start backend** — `npm run backend` (port 4000) and **Hardhat node** — `npm run node` (port 8545) if using local chain.
 5. **Follow the implementation checklist** (§ 12) in order.
@@ -70,7 +70,7 @@ These can be added later using the same patterns described here.
 
 ### 3.2 Environment variables
 
-Copy **`config/frontend.env.example`** to **`frontend/.env.local`**. The `frontend/.env.example` file has been removed; use `config/frontend.env.example` as the canonical template. Define every variable used by the app.
+Copy **`config/env.example`** to **`.env`** at the repo root. Next.js loads this file via `loadEnvConfig` in `next.config.js`. All backend and frontend variables go in this single `.env`.
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
@@ -497,7 +497,7 @@ For demo only: "Resolve (demo)" button that opens modal: "Run `node scripts/reso
 
 ```
 frontend/
-├── .env.local                        # gitignored — copy from config/frontend.env.example
+├── .env (at repo root)               # gitignored — copy from config/env.example
 ├── app/
 │   ├── globals.css                   # CSS variables, design tokens, keyframe animations
 │   ├── layout.tsx                    # Root: header, wallet provider, theme, live ticker
@@ -613,7 +613,7 @@ frontend/
 
 ## 12. Implementation checklist (recommended order)
 
-- [ ] **Setup:** Next.js, TypeScript, Tailwind, wagmi, React Query, env from `config/frontend.env.example`
+- [ ] **Setup:** Next.js, TypeScript, Tailwind, wagmi, React Query, env from `config/env.example`
 - [ ] **Types:** Add all types (§ 4)
 - [ ] **API client:** `lib/api.ts` with functions for every endpoint (§ 5)
 - [ ] **Contract:** Copy ABI, configure wagmi; hooks for getMarket, getUserStake, createMarket, placeBet, claimPayout
@@ -635,7 +635,7 @@ frontend/
 - **API and data:** [development-and-deployment.md](development-and-deployment.md) §§ 2–3
 - **Architecture and CRE flow:** [architecture-and-design.md](architecture-and-design.md)
 - **Testnet deployment:** [deploy-testnet.md](deploy-testnet.md)
-- **Env:** `config/frontend.env.example`
+- **Env:** `config/env.example` (single .env at repo root)
 - **ABIs:** `contracts/artifacts/contracts/PredictionMarket.sol/PredictionMarket.json`
 
 ---

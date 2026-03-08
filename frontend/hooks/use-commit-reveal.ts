@@ -112,7 +112,7 @@ export function useCommitReveal(marketId: number) {
   const executeCommit = useCallback(
     async (outcome: number, amountEth: string, currentCommitCount: number) => {
       if (!PRIVATE_MARKET_ADDRESS) {
-        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.");
         return;
       }
       try {
@@ -169,7 +169,7 @@ export function useCommitReveal(marketId: number) {
   const executeReveal = useCallback(
     async (manualNonce?: string) => {
       if (!PRIVATE_MARKET_ADDRESS) {
-        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+        toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.");
         return;
       }
       try {
@@ -257,7 +257,7 @@ export function useCommitReveal(marketId: number) {
 
   const executeClaim = useCallback(async () => {
     if (!PRIVATE_MARKET_ADDRESS) {
-      toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.local.");
+      toast.error("Private market not configured. Add NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to .env.");
       return;
     }
     try {
