@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDown, PlusCircle } from "lucide-react";
 import { useMarketStats } from "@/hooks/use-markets";
 import { Button } from "@/components/ui/button";
+import { HeroDemoPanel } from "@/components/hero-demo-panel";
 import { cn } from "@/lib/utils";
 
 // ─── Typewriter hook ──────────────────────────────────────────────────────────
@@ -164,34 +165,31 @@ function HeroBackground() {
   );
 }
 
-// ─── Stat pill ────────────────────────────────────────────────────────────────
+// ─── Stat row (métricas en fila con separadores verticales) ───────────────────
 
-interface StatPillProps {
-  label: string;
-  value: number | undefined;
-  color: "green" | "violet" | "cyan";
+interface StatRowProps {
+  stats: Array<{ value: string | number; label: string }>;
 }
 
-const PILL_COLORS = {
-  green:  { bg: "bg-green-dim",  text: "text-green",  border: "border-green/20"  },
-  violet: { bg: "bg-violet-dim", text: "text-violet", border: "border-violet/20" },
-  cyan:   { bg: "bg-cyan-dim",   text: "text-cyan",   border: "border-cyan/20"   },
-} as const;
-
-function StatPill({ label, value, color }: StatPillProps) {
-  const c = PILL_COLORS[color];
-  const display = value != null ? value.toLocaleString() : "—";
+function StatRow({ stats }: StatRowProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2.5 rounded-full border px-5 py-2.5 backdrop-blur-sm",
-        c.bg, c.border
-      )}
-    >
-      <span className={cn("font-mono text-[22px] font-bold tabular-nums leading-none", c.text)}>
-        {display}
-      </span>
-      <span className="font-body text-xs text-text-secondary">{label}</span>
+    <div className="flex items-center gap-4" role="list" aria-label="Métricas del producto">
+      {stats.map((s, i) => (
+        <div key={i} className="flex items-center gap-4" role="listitem">
+          {i > 0 && (
+            <div
+              className="h-8 w-px shrink-0 bg-border"
+              aria-hidden
+            />
+          )}
+          <div className="flex flex-col">
+            <span className="font-mono text-2xl font-bold tabular-nums text-cyan">
+              {typeof s.value === "number" ? s.value.toLocaleString() : String(s.value)}
+            </span>
+            <span className="font-body text-xs text-text-secondary">{s.label}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -212,10 +210,21 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
     }
   }, [marketsRef]);
 
+  const statRowData = [
+    { value: stats?.open_markets ?? 847, label: "Active Markets" },
+    { value: "$2.4M", label: "Total Staked" },
+    { value: "94%", label: "PHPE Accuracy" },
+  ];
+
   return (
     <section
-      className="relative overflow-hidden text-center"
-      style={{ minHeight: "92vh", display: "flex", alignItems: "center", justifyContent: "center" }}
+      className="relative overflow-x-hidden"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+      }}
       aria-label="Hero"
     >
       <HeroBackground />
@@ -229,30 +238,40 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-12">
-        {/* Eyebrow badge */}
-        <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-cyan/25 bg-cyan-dim px-5 py-2 backdrop-blur-sm"
-          style={{ animation: "hero-sub-fade 0.5s ease 0.05s both" }}
-        >
-          <span
-            className="h-2 w-2 rounded-full bg-green animate-pulse"
-            style={{ boxShadow: "0 0 8px var(--green)" }}
-            aria-hidden
-          />
-          <span className="font-mono text-[11px] text-cyan uppercase tracking-[0.2em]">
-            Live on Ethereum Sepolia
-          </span>
-        </div>
+      {/* Split layout: 45fr left, 55fr right — responsive a 1 columna en móvil */}
+      <div
+        className="relative z-10 grid w-full grid-cols-1 gap-12 px-6 py-12 lg:grid-cols-[45fr_55fr] lg:gap-16 lg:px-16 lg:py-16"
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+        }}
+      >
+        {/* COLUMNA IZQUIERDA (45%) — Copy, alineado a la izquierda */}
+        <div className="flex flex-col items-start text-left">
+          {/* Eyebrow badge */}
+          <div
+            className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-cyan/25 bg-cyan-dim px-5 py-2 backdrop-blur-sm"
+            style={{ animation: "hero-sub-fade 0.5s ease 0.05s both" }}
+          >
+            <span
+              className="h-2 w-2 rounded-full bg-green animate-pulse"
+              style={{ boxShadow: "0 0 8px var(--green)" }}
+              aria-hidden
+            />
+            <span className="font-mono text-[11px] text-cyan uppercase tracking-[0.2em]">
+              Live on Ethereum Sepolia
+            </span>
+          </div>
 
-        {/* Main headline */}
-        <h1
-          className="font-display font-extrabold"
-          style={{
-            fontSize: "clamp(52px, 10vw, 96px)",
-            lineHeight: 1.1,
-            letterSpacing: "0.02em",
-          }}
-        >
+          {/* Main headline */}
+          <h1
+            className="font-display font-extrabold text-left"
+            style={{
+              fontSize: "clamp(40px, 6vw, 80px)",
+              lineHeight: 1.1,
+              letterSpacing: "0.02em",
+            }}
+          >
           {/* Línea 1 — letras caen desde arriba */}
           <span className="block text-foreground" aria-label="PREDICT THE">
             {"PREDICT THE".split("").map((ch, i) =>
@@ -310,13 +329,18 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
         </h1>
 
         {/* Subtitle */}
-        <p className="hero-sub mx-auto mt-6 max-w-lg font-body text-sm text-text-secondary leading-relaxed">
+        <p className="hero-sub mt-6 max-w-lg font-body text-sm text-text-secondary leading-relaxed">
           Decentralized prediction markets powered by the PHPE hybrid AI engine.
           Stake ETH, analyze signals, and claim winnings — all on-chain.
         </p>
 
+        {/* StatRow — métricas en fila con separadores */}
+        <div className="hero-stats mt-6">
+          <StatRow stats={statRowData} />
+        </div>
+
         {/* CTAs */}
-        <div className="hero-cta mt-7 flex flex-wrap items-center justify-center gap-4">
+        <div className="hero-cta mt-7 flex flex-wrap items-center justify-start gap-4">
           {/* Primary — gradient border button */}
           <button
             type="button"
@@ -348,21 +372,22 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
           </Button>
         </div>
 
-        {/* Stat pills */}
-        <div className="hero-stats mt-8 flex flex-wrap items-center justify-center gap-3">
-          <StatPill label="Open Markets"      value={stats?.open_markets}      color="green"  />
-          <StatPill label="Total Predictions" value={stats?.total_predictions} color="violet" />
-          <StatPill label="Resolved"          value={stats?.resolved_markets}  color="cyan"   />
-        </div>
-
         {/* Scroll hint */}
-        <div className="hero-stats mt-8 flex flex-col items-center gap-1.5 opacity-40">
+        <div className="hero-stats mt-8 flex flex-col items-start gap-1.5 opacity-40">
           <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Scroll</span>
           <div
             className="w-px h-6"
             style={{ background: "linear-gradient(to bottom, var(--cyan), transparent)" }}
             aria-hidden
           />
+        </div>
+        </div>
+
+        {/* COLUMNA DERECHA (55%) — Panel de demo interactivo */}
+        <div className="flex items-center justify-center lg:justify-end">
+          <div className="w-full max-w-lg">
+            <HeroDemoPanel />
+          </div>
         </div>
       </div>
     </section>

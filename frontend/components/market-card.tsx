@@ -155,11 +155,11 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
           </span>
           <div className="flex-1 h-2.5 min-w-0 rounded-full bg-elevated overflow-hidden flex">
             <div
-              className="h-full shrink-0 bg-green transition-[width] duration-[800ms] ease-out rounded-l-full"
+              className="h-full shrink-0 bg-green transition-[width] duration-700 ease-out rounded-l-full"
               style={{ width: barMounted ? `${yesPct}%` : "0%" }}
             />
             <div
-              className="h-full shrink-0 bg-red transition-[width] duration-[800ms] ease-out rounded-r-full"
+              className="h-full shrink-0 bg-red transition-[width] duration-700 ease-out rounded-r-full"
               style={{ width: barMounted ? `${noPct}%` : "0%" }}
             />
           </div>

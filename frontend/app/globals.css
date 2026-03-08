@@ -452,3 +452,58 @@ body {
 }
 .private-hex-float-2 { animation-delay: 1.5s; }
 .private-hex-float-3 { animation-delay: 3s; }
+
+/* ─── Hero Split Layout: column animations ─────────────────────────────────── */
+@keyframes hero-column-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes hero-column-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.hero-column-left {
+  animation: hero-column-left 0.6s ease both;
+}
+.hero-column-right {
+  animation: hero-column-right 0.6s ease 0.2s both;
+}
+
+/* Hero market transition (al cambiar mercado) */
+@keyframes hero-market-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-market-enter {
+  animation: hero-market-enter 0.3s ease both;
+}
+
+/* PHPE confidence bar shimmer */
+@keyframes php-confidence-shimmer {
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+.php-confidence-shimmer {
+  animation: php-confidence-shimmer 2s ease-in-out infinite;
+}
+
+/* Hero demo panel scroll (mobile): scrollbar visible, touch-friendly */
+.hero-demo-panel-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.hero-demo-panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.hero-demo-panel-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+  border-radius: 3px;
+}
+.hero-demo-panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,212,255,0.3);
+  border-radius: 3px;
+}
+.hero-demo-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,212,255,0.5);
+}
