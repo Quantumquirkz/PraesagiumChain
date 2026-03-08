@@ -239,30 +239,20 @@ cd ..
 **Step 2 — Configure environment**
 
 ```bash
-# Backend + contracts
 cp config/env.example .env
-
-# Frontend
-cp config/frontend.env.example frontend/.env.local
 ```
 
-Edit `.env` with at minimum these values:
+Edit `.env` (single file for backend + frontend):
 
 ```env
-DATABASE_URL=postgresql://praesagium:PASSWORD@localhost:5432/praesagium
+DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium
 AI_PROVIDER=gemini          # or "mock" to skip AI key
 GEMINI_API_KEY=your_key     # skip if AI_PROVIDER=mock
 PRIVATE_KEY=your_hardhat_or_wallet_key
 RPC_URL=http://127.0.0.1:8545
 API_BASE_URL=http://localhost:4000
-```
 
-Edit `frontend/.env.local` with:
-
-```env
-# Optional: leave NEXT_PUBLIC_API_BASE_URL unset to use the Next.js proxy to the backend (recommended for local dev).
-# Set it only if you need the browser to call the backend URL directly.
-# NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+# Frontend (Next.js loads from root)
 NEXT_PUBLIC_CHAIN_ID=11155111
 NEXT_PUBLIC_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0xf2397b5827860b361427240d1D1F6F89e9bF197f
@@ -331,7 +321,7 @@ Then set in `.env`:
 
 ```env
 DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6380
 CLICKHOUSE_URL=http://localhost:8123
 ```
 
@@ -872,7 +862,7 @@ The following improvements were implemented after the initial release:
 ### Codebase Cleanup (latest)
 - **Removed unused components:** `automation-status-badge.tsx`, `creator-reputation-badge.tsx`.
 - **Removed unused exports/functions:** `formatCountdown` and `statusColor` from `lib/utils.ts`; `getSentiment` and `getSources` from `lib/api.ts`; `wagmiConfig` export from `lib/wagmi.ts` (only `config` is exported); unused indicators from `lib/ohlcv-utils.ts` (`computeStochastic`, `computeStochasticRSI`, `computeIchimoku`, `computeATR`, `computeOBV`, `computeBOP`, `formatTimeLabel`); unused `Countdown` component from `countdown.tsx` (kept `useCountdown`, `formatCountdownDisplay`, `CountdownBlocks`); `ResolutionSourceType` no longer exported from `resolution-source-picker.tsx`.
-- **Config:** Removed `recharts` from `optimizePackageImports` in `next.config.js`; marked `NEXT_PUBLIC_AUTOMATION_RESOLVER_ADDRESS` as optional/reserved in `config/frontend.env.example`.
+- **Config:** Removed `recharts` from `optimizePackageImports` in `next.config.js`; single `.env` at repo root (Next.js loads via `loadEnvConfig`).
 - **Backend:** Removed unused `trace` feature from `tower-http` in `backend-rust/Cargo.toml`.
 
 ### Backend Stability
@@ -885,6 +875,7 @@ The following improvements were implemented after the initial release:
 
 | Document | Description |
 |----------|-------------|
+| [docs/SETUP.md](docs/SETUP.md) | **Step-by-step setup guide** — prerequisites, install, config, run (for anyone to use the project) |
 | [docs/phpe-and-hybrid-prediction.md](docs/phpe-and-hybrid-prediction.md) | PHPE pipeline, hybrid fusion algorithm, AI providers, prediction API reference |
 | [docs/smart-contracts-and-database.md](docs/smart-contracts-and-database.md) | All contracts (base, conditional, tokenized, reputation, CRE flow), DB schema, on-chain sync |
 | [docs/frontend-project.md](docs/frontend-project.md) | Frontend specification: stack, pages, API usage, contract calls, types |
@@ -944,11 +935,11 @@ This project follows the [Chainlink Prediction Markets Hackathon](https://chain.
 
 1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
 2. Install dependencies: `npm install && cd frontend && npm install && cd ../backend-rust && cargo build`
-3. Copy `config/env.example` to `.env` and `frontend/.env.example` to `frontend/.env.local`; configure both
+3. Copy `config/env.example` to `.env`; configure (single file for backend + frontend)
 4. Make your changes; ensure tests pass: `npm run test:all`
 5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`), TypeScript (`npm run lint` in `frontend/`)
 6. Open a pull request against `main` with a clear description
-7. Do not commit `.env`, `frontend/.env.local`, or any secrets
+7. Do not commit `.env` or any secrets
 
 ---
 
