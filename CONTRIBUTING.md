@@ -19,13 +19,13 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 
 1. Open an issue to discuss significant changes or new features.
 2. Check existing issues and PRs to avoid duplicates.
-3. Ensure your changes align with the project's architecture (see [docs/architecture-and-design.md](docs/architecture-and-design.md)).
+3. Ensure your changes align with the project's architecture (see [docs/architecture.md](docs/architecture.md)).
 
 ### Development Setup
 
 1. Clone the repository and run `npm install` and `cd backend-rust && cargo build`.
 2. Copy `config/env.example` to `.env` and fill required values.
-3. See [docs/development-and-deployment.md](docs/development-and-deployment.md) for the full setup guide.
+3. See [docs/setup.md](docs/setup.md) for the full setup guide.
 
 ### Pull Request Process
 

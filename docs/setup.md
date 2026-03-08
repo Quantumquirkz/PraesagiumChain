@@ -108,7 +108,7 @@ nano .env   # or: code .env, vim .env, etc.
 - `CLICKHOUSE_URL` — e.g. `http://localhost:8123` (for analytics)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` — For mobile wallet support via WalletConnect (get from [cloud.walletconnect.com](https://cloud.walletconnect.com))
 
-See [config/env.example](../config/env.example) and [docs/env.md](env.md) for all options.
+See [config/env.example](../config/env.example) and [configuration.md](configuration.md) for all options.
 
 ---
 
@@ -292,7 +292,7 @@ cd backend-rust && cargo audit
    NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=<deployed_address>
    ```
 
-See [docs/deploy-testnet.md](deploy-testnet.md) for full details.
+See [deploy.md](deploy.md) for full details.
 
 ---
 
@@ -386,6 +386,6 @@ cd frontend && npm run dev
 For more details, see:
 
 - [README.md](../README.md) — Overview and architecture
-- [docs/env.md](env.md) — Environment variables reference
-- [docs/deploy-testnet.md](deploy-testnet.md) — Sepolia deployment
-- [docs/frontend-project.md](frontend-project.md) — Frontend structure
+- [configuration.md](configuration.md) — Environment variables and API keys
+- [deploy.md](deploy.md) — Sepolia deployment
+- [architecture.md](architecture.md) — Contracts, database, PHPE, frontend

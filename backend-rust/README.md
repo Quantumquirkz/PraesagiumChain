@@ -73,7 +73,7 @@ cargo test
 - **Health:** always runs (no DB required).
 - **Markets list, get by id, predictions, private access, sources/fetch, create market:** run only if `DATABASE_URL` is set to a PostgreSQL URL; otherwise those tests are skipped.
 
-**Request body limit:** The API applies a global limit of **2 MB** on request body size (Axum `DefaultBodyLimit`). Requests with a larger body may receive **413 Payload Too Large**. See `docs/audit-inventory.md` for validation limits on specific fields.
+**Request body limit:** The API applies a global limit of **2 MB** on request body size (Axum `DefaultBodyLimit`). Requests with a larger body may receive **413 Payload Too Large**. See [docs/audit.md](../docs/audit.md) for validation limits on specific fields.
 
 ---
 
@@ -124,5 +124,5 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 
 ## 7. Documentation
 
-- **API and environment variables:** [docs/development-and-deployment.md](../docs/development-and-deployment.md)
-- **Architecture:** [docs/architecture-and-design.md](../docs/architecture-and-design.md)
+- **API and environment variables:** [docs/configuration.md](../docs/configuration.md)
+- **Architecture:** [docs/architecture.md](../docs/architecture.md)

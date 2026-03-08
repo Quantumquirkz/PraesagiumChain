@@ -7,7 +7,7 @@
  * For production, the actual oracleCallback(marketId, outcome) must be invoked by:
  * - Chainlink CRE executor (when supported), or
  * - scripts/resolveFromBackend.js (cron/Automation), or
- * - A custom resolver service. See docs/smart-contracts-and-database.md §3.3.
+ * - A custom resolver service. See docs/architecture.md §3.3.
  */
 import {
   CronCapability,
@@ -90,7 +90,7 @@ const onCronTrigger = (runtime: Runtime<Config>): string => {
 
   if (runtime.config.oracle_consumer_address) {
     runtime.log(
-      `Production: call OracleConsumer.oracleCallback(${runtime.config.market_id}, ${result.outcome}) via CRE executor, resolveFromBackend.js, or resolver service (see docs/smart-contracts-and-database.md §3.3)`
+      `Production: call OracleConsumer.oracleCallback(${runtime.config.market_id}, ${result.outcome}) via CRE executor, resolveFromBackend.js, or resolver service (see docs/architecture.md §3.3)`
     )
   }
 

@@ -356,8 +356,7 @@ cre workflow simulate praesagium-resolver --target staging-settings
 ## Configuration
 
 Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.  
-**Minimal env for create market + bet on Sepolia:** [docs/env.md](docs/env.md).  
-**Checklist de keys y APIs:** [docs/keys-and-apis.md](docs/keys-and-apis.md).
+**Minimal env for create market + bet on Sepolia:** [docs/configuration.md](docs/configuration.md).
 
 ### Backend
 
@@ -651,7 +650,7 @@ npm run deploy:sepolia
 npm run verify:sepolia
 ```
 
-See [docs/deploy-testnet.md](docs/deploy-testnet.md) for a complete step-by-step guide.
+See [docs/deploy.md](docs/deploy.md) for a complete step-by-step guide.
 
 ---
 
@@ -746,9 +745,10 @@ PraesagiumChain/
 │   └── resolveFromBackend.js     # Resolve market via backend API
 ├── notebook/                     # Python simulation notebooks
 ├── docs/
-│   ├── phpe-and-hybrid-prediction.md
-│   ├── smart-contracts-and-database.md
-│   └── frontend-project.md       # Frontend spec (Next.js 14, wagmi v2, Tailwind)
+│   ├── setup.md                  # Step-by-step setup guide
+│   ├── configuration.md          # Environment and API keys
+│   ├── deploy.md                 # Sepolia deployment
+│   └── architecture.md           # Contracts, DB, PHPE, frontend
 ├── hardhat.config.js
 ├── package.json                  # Hardhat + contracts tooling
 └── .env                          # gitignored — copy from config/env.example
@@ -833,7 +833,7 @@ npm run dev        # http://localhost:3000
 
 **Stack:** Next.js 14 (App Router) · TypeScript · wagmi v2 · viem · Tailwind CSS · shadcn/ui · React Query · lightweight-charts (TradingView)
 
-The full frontend specification — including all API endpoints, contract ABIs, TypeScript types, component structure, and UX requirements — is documented in [`docs/frontend-project.md`](docs/frontend-project.md).
+The full architecture — contracts, database, PHPE, and frontend — is documented in [docs/architecture.md](docs/architecture.md).
 
 ---
 
@@ -875,10 +875,12 @@ The following improvements were implemented after the initial release:
 
 | Document | Description |
 |----------|-------------|
-| [docs/SETUP.md](docs/SETUP.md) | **Step-by-step setup guide** — prerequisites, install, config, run (for anyone to use the project) |
-| [docs/phpe-and-hybrid-prediction.md](docs/phpe-and-hybrid-prediction.md) | PHPE pipeline, hybrid fusion algorithm, AI providers, prediction API reference |
-| [docs/smart-contracts-and-database.md](docs/smart-contracts-and-database.md) | All contracts (base, conditional, tokenized, reputation, CRE flow), DB schema, on-chain sync |
-| [docs/frontend-project.md](docs/frontend-project.md) | Frontend specification: stack, pages, API usage, contract calls, types |
+| [docs/setup.md](docs/setup.md) | **Step-by-step setup guide** — prerequisites, install, config, run (for anyone to use the project) |
+| [docs/configuration.md](docs/configuration.md) | Environment variables and API keys |
+| [docs/deploy.md](docs/deploy.md) | Sepolia deployment guide |
+| [docs/architecture.md](docs/architecture.md) | Contracts, database, PHPE, and frontend |
+| [docs/audit.md](docs/audit.md) | Audit inventory: flows, endpoints, contract API |
+| [docs/adr/adr-001-clickhouse-analytics.md](docs/adr/adr-001-clickhouse-analytics.md) | ADR: ClickHouse for analytics |
 | [cre/README.md](cre/README.md) | CRE workflow setup, simulation, and CLI reference |
 
 ---

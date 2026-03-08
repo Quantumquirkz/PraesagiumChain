@@ -131,6 +131,6 @@ Los tests de integración que requieren `DATABASE_URL` (PostgreSQL) se omiten si
 
 **Documentación actualizada**
 
-- `docs/frontend-project.md`: añadida subsección "Backend and proxy" con requisito de backend en marcha, uso del proxy y `FINNHUB_API_KEY` para señales.
-- `docs/audit-inventory.md`: inventario de flujos, contrato API, endpoints verificados, resumen de subagents y checklist E2E.
+- `docs/architecture.md`: Frontend section documents backend proxy, `FINNHUB_API_KEY` for Signals.
+- Este documento (`docs/audit.md`): inventario de flujos, contrato API, endpoints verificados, resumen de subagents y checklist E2E.
 - Tests de integración en backend: documentados en § 6; ejecutar `cargo test` en `backend-rust/` (los tests que requieren `DATABASE_URL` se omiten si no está definida para PostgreSQL).
