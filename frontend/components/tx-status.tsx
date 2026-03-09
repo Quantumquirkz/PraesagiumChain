@@ -6,20 +6,20 @@ import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EXPLORER_URL } from "@/lib/constants";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface TxStatusProps {
   hash: `0x${string}` | undefined;
-  /** Número de confirmaciones para considerar la tx final (default 3) */
+  /** Number of confirmations required to consider the tx final (default 3) */
   requiredConfirmations?: number;
   /** Callback called when the tx confirms successfully */
   onConfirmed?: () => void;
-  /** ms tras confirmación antes de hacer fade-out (default 5 000) */
+  /** ms after confirmation before fading out (default 5 000) */
   dismissAfterMs?: number;
   className?: string;
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function TxStatus({
   hash,
@@ -30,13 +30,13 @@ export function TxStatus({
 }: TxStatusProps) {
   const { data: receipt, isLoading } = useWaitForTransactionReceipt({ hash });
 
-  // Solo observar el bloque mientras la tx está pendiente de confirmaciones
+  // Only watch the block number while the tx is pending confirmations
   const { data: currentBlock } = useBlockNumber({ watch: isLoading });
 
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
 
-  // Mostrar el widget en cuanto hay hash
+  // Show the widget as soon as there is a hash
   useEffect(() => {
     if (hash) {
       setVisible(true);
@@ -44,7 +44,7 @@ export function TxStatus({
     }
   }, [hash]);
 
-  // Fade-out 5 s after successful confirmation. Dismiss when receipt status or dismissAfterMs changes;
+  // Fade out 5 s after successful confirmation. Dismiss when receipt status or dismissAfterMs changes;
   // omit receipt ref to avoid re-running on receipt object identity.
   useEffect(() => {
     if (receipt?.status !== "success") return;
@@ -86,7 +86,7 @@ export function TxStatus({
       aria-live="polite"
       aria-label="Transaction status"
     >
-      {/* Hash + link al explorer */}
+      {/* Hash + link to explorer */}
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[11px] text-text-muted">TX</span>
         <a
@@ -101,7 +101,7 @@ export function TxStatus({
         </a>
       </div>
 
-      {/* Barra de progreso (solo mientras confirma) */}
+      {/* Progress bar (only while confirming) */}
       {isPending && (
         <div
           className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface"
@@ -110,7 +110,7 @@ export function TxStatus({
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          {/* Track animado de fondo mientras esperamos el bloque */}
+          {/* Animated background track while waiting for the block */}
           {confirmations === 0 && (
             <div
               className="absolute inset-0 rounded-full origin-left animate-pulse"
@@ -118,7 +118,7 @@ export function TxStatus({
               aria-hidden
             />
           )}
-          {/* Barra de confirmaciones */}
+          {/* Confirmations bar */}
           <div
             className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out"
             style={{
@@ -130,7 +130,7 @@ export function TxStatus({
         </div>
       )}
 
-      {/* Etiqueta de estado */}
+      {/* Status label */}
       <div className="flex items-center justify-between gap-2">
         {isPending && (
           <span className="font-mono text-[11px] text-gold">
@@ -148,7 +148,7 @@ export function TxStatus({
           </span>
         )}
 
-        {/* Contador de confirmaciones */}
+        {/* Confirmation counter */}
         {(isPending || isSuccess) && (
           <span className="font-mono text-[11px] text-text-muted tabular-nums">
             {cappedConf}/{requiredConfirmations} conf.

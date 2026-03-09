@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { DollarSign, Cloud, Trophy, Brain } from "lucide-react";
+import { DollarSign, Cloud, Trophy, Brain, Newspaper } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { WeatherChart } from "@/components/weather-chart";
 import { resolveMapsLocation } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type ResolutionSourceType = "price_above" | "weather_rained" | "sports_winner" | "ai_sentiment";
+type ResolutionSourceType = "price_above" | "weather_rained" | "sports_winner" | "ai_sentiment" | "crypto_news_sentiment";
 
 export interface ResolutionSourceParams {
   type: ResolutionSourceType;
@@ -27,6 +27,9 @@ export interface ResolutionSourceParams {
   // ai_sentiment
   sentimentText?: string;
   sentimentThreshold?: string;
+  // crypto_news_sentiment
+  newsSymbol?: string;
+  newsSentimentThreshold?: string;
 }
 
 interface ResolutionSourcePickerProps {
@@ -37,6 +40,8 @@ interface ResolutionSourcePickerProps {
   compactMode?: boolean;
   /** When true, show only asset price resolution options. */
   onlyAssetPrice?: boolean;
+  /** When set, resolution symbol is read-only and derived from the chosen crypto (e.g. crypto create flow). */
+  lockedResolutionSymbol?: string;
 }
 
 const SOURCES = [
@@ -80,27 +85,52 @@ const SOURCES = [
     borderColor: "border-violet/40",
     bgColor: "bg-violet-dim",
   },
+  {
+    type: "crypto_news_sentiment" as const,
+    label: "Crypto news / real-time",
+    endpoint: "/api/crypto/news-sentiment",
+    icon: Newspaper,
+    description: "Resolves by crypto news and real-time data sentiment",
+    color: "text-cyan",
+    borderColor: "border-cyan/40",
+    bgColor: "bg-cyan/10",
+  },
 ] as const;
 
 function PriceParams({
   params,
   onChange,
+  lockedSymbol,
 }: {
   params: ResolutionSourceParams;
   onChange: (p: Partial<ResolutionSourceParams>) => void;
+  /** When set, symbol is read-only and shows this value (e.g. from chosen bet token). */
+  lockedSymbol?: string;
 }) {
+  const symbolValue = lockedSymbol ?? (params.symbol ?? "");
+  const isSymbolLocked = lockedSymbol != null;
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="space-y-1.5">
         <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
           Symbol ({params.priceSource === "chainlink" ? "ETH_USD or BTC_USD" : "e.g. BTCUSDT"})
         </label>
-        <Input
-          placeholder={params.priceSource === "chainlink" ? "BTC_USD" : "BTCUSDT"}
-          value={params.symbol ?? ""}
-          onChange={(e) => onChange({ symbol: e.target.value })}
-          className="font-mono text-sm"
-        />
+        {isSymbolLocked ? (
+          <div
+            className="flex min-h-9 w-full items-center rounded-md border border-border bg-elevated/50 px-3 py-2 font-mono text-sm text-foreground"
+            aria-readonly
+          >
+            {symbolValue || "—"}
+          </div>
+        ) : (
+          <Input
+            placeholder={params.priceSource === "chainlink" ? "BTC_USD" : "BTCUSDT"}
+            value={params.symbol ?? ""}
+            onChange={(e) => onChange({ symbol: e.target.value })}
+            className="font-mono text-sm"
+          />
+        )}
       </div>
       <div className="space-y-1.5">
         <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
@@ -128,9 +158,10 @@ function PriceParams({
               key={id}
               type="button"
               onClick={() => {
+                const baseSymbol = lockedSymbol ?? params.symbol ?? "BTCUSDT";
                 onChange({
                   priceSource: id,
-                  symbol: id === "chainlink" ? "BTC_USD" : (params.symbol ?? "BTCUSDT"),
+                  symbol: id === "chainlink" ? baseSymbol.replace(/USDT$/i, "_USD") : baseSymbol,
                 });
               }}
               className={cn(
@@ -323,12 +354,52 @@ function SentimentParams({
   );
 }
 
+function CryptoNewsParams({
+  params,
+  onChange,
+}: {
+  params: ResolutionSourceParams;
+  onChange: (p: Partial<ResolutionSourceParams>) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="space-y-1.5">
+        <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+          Symbol (e.g. BTC, ETH)
+        </label>
+        <Input
+          placeholder="BTC"
+          value={params.newsSymbol ?? ""}
+          onChange={(e) => onChange({ newsSymbol: e.target.value })}
+          className="font-mono text-sm"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+          Probability threshold (0–1)
+        </label>
+        <Input
+          type="number"
+          step="0.05"
+          min="0"
+          max="1"
+          placeholder="0.6"
+          value={params.newsSentimentThreshold ?? ""}
+          onChange={(e) => onChange({ newsSentimentThreshold: e.target.value })}
+          className="font-mono text-sm"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ResolutionSourcePicker({
   value,
   onChange,
   className,
   compactMode: _compactMode,
-  onlyAssetPrice: _onlyAssetPrice,
+  onlyAssetPrice,
+  lockedResolutionSymbol,
 }: ResolutionSourcePickerProps) {
   const handleTypeChange = (type: ResolutionSourceType) => {
     onChange({ type });
@@ -339,6 +410,7 @@ export function ResolutionSourcePicker({
   };
 
   const selectedSource = SOURCES.find((s) => s.type === value.type);
+  const sourcesToShow = onlyAssetPrice ? SOURCES.filter((s) => s.type === "price_above") : SOURCES;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -347,7 +419,7 @@ export function ResolutionSourcePicker({
           How will this market be resolved?
         </p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {SOURCES.map((source) => {
+          {sourcesToShow.map((source) => {
             const Icon = source.icon;
             const isSelected = value.type === source.type;
             return (
@@ -393,7 +465,11 @@ export function ResolutionSourcePicker({
           Resolution parameters
         </p>
           {value.type === "price_above" && (
-            <PriceParams params={value} onChange={handleParamChange} />
+            <PriceParams
+              params={value}
+              onChange={handleParamChange}
+              lockedSymbol={lockedResolutionSymbol}
+            />
           )}
           {value.type === "weather_rained" && (
             <>
@@ -415,6 +491,9 @@ export function ResolutionSourcePicker({
           )}
           {value.type === "ai_sentiment" && (
             <SentimentParams params={value} onChange={handleParamChange} />
+          )}
+          {value.type === "crypto_news_sentiment" && (
+            <CryptoNewsParams params={value} onChange={handleParamChange} />
           )}
         </div>
       )}

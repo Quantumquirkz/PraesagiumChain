@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAccount, useBalance, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import { formatEther } from "viem";
 import { toast } from "sonner";
 import {
@@ -21,10 +21,11 @@ import {
   Trophy,
   Clock,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import type { MarketView, PredictionView } from "@/types/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
-import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL, getMarketCategoryFromMetadata } from "@/lib/constants";
+import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL, getMarketCategoryFromMetadata, getBetTokenFromMetadata, BET_TOKENS } from "@/lib/constants";
 import type { IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
@@ -40,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { deleteMarket } from "@/lib/api";
+import { deleteMarket, updateMarket } from "@/lib/api";
 import { usePHPEPrediction } from "@/hooks/use-phpe-prediction";
 import { useAIAnalysis } from "@/hooks/use-ai-analysis";
 import type { Timeframe } from "@/lib/ohlcv-utils";
@@ -51,6 +52,14 @@ import { SignalFusionPanel } from "@/components/signal-fusion-panel";
 import { ConditionalTree } from "@/components/conditional-tree";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
 import { WeatherDetailChart } from "@/components/weather-detail-chart";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const PHPEHistoryChart = dynamic(
   () =>
@@ -223,9 +232,19 @@ export function MarketDetail({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editQuestion, setEditQuestion] = useState(market.question);
+  const [editBetTokenSymbol, setEditBetTokenSymbol] = useState<string>(() => {
+    try {
+      const m = market.metadata ? JSON.parse(market.metadata) : {};
+      return (m.betToken ?? "ETH").toUpperCase();
+    } catch {
+      return "ETH";
+    }
+  });
+  const [editSaving, setEditSaving] = useState(false);
 
   const { address, isConnected } = useAccount();
-  const { data: balance } = useBalance({ address });
   const { writeContractAsync, isPending: writePending } = useWriteContract();
 
   let totalYes = marketOnChain
@@ -252,6 +271,33 @@ export function MarketDetail({
   const outcomeNo = market.outcome === "No" || marketOnChain?.outcome === OUTCOME.NO;
   const userWon = isResolved && userStake && ((outcomeYes && userStake.yesStake > BigInt(0)) || (outcomeNo && userStake.noStake > BigInt(0)));
   const claimable = userWon && userStake ? (outcomeYes ? userStake.yesStake : userStake.noStake) : BigInt(0);
+
+  const isCreator =
+    Boolean(address && market.creator) &&
+    address.toLowerCase() === market.creator!.toLowerCase();
+
+  const betToken = getBetTokenFromMetadata(market.metadata);
+  const formatAmount = (wei: bigint): string =>
+    formatEth(wei).replace(/\s*ETH$/i, "");
+
+  let stakeSummary: string | null = null;
+  if (userStake) {
+    const hasYes = userStake.yesStake > BigInt(0);
+    const hasNo = userStake.noStake > BigInt(0);
+    if (hasYes && !hasNo) {
+      stakeSummary = `You are currently staked on YES with ${formatAmount(
+        userStake.yesStake,
+      )} ${betToken.symbol}.`;
+    } else if (!hasYes && hasNo) {
+      stakeSummary = `You are currently staked on NO with ${formatAmount(
+        userStake.noStake,
+      )} ${betToken.symbol}.`;
+    } else if (hasYes && hasNo) {
+      stakeSummary = `You are currently staked on YES with ${formatAmount(
+        userStake.yesStake,
+      )} and NO with ${formatAmount(userStake.noStake)} ${betToken.symbol}.`;
+    }
+  }
 
   const totalStakeEth = Number(formatEther(totalStake));
   const userTotalStake = userStake ? Number(formatEther(userStake.yesStake + userStake.noStake)) : 0;
@@ -345,13 +391,40 @@ export function MarketDetail({
                 {outcomeYes ? "YES" : "NO"}
               </span>
             )}
+            {isCreator && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-cyan/40 text-cyan hover:bg-cyan-dim font-mono text-xs"
+                onClick={() => {
+                  setEditQuestion(market.question);
+                  try {
+                    const m = market.metadata ? JSON.parse(market.metadata) : {};
+                    setEditBetTokenSymbol((m.betToken ?? "ETH").toUpperCase());
+                  } catch {
+                    setEditBetTokenSymbol("ETH");
+                  }
+                  setEditOpen(true);
+                }}
+                aria-label="Edit market"
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+                Edit
+              </Button>
+            )}
             <ShareMarketButton market={market} />
           </div>
         </div>
 
         {/* Stats row — 5 pills estilo CoinGecko */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          <StatPill icon={<BarChart2 className="h-3.5 w-3.5" />} label="Total Pool" value={`${totalStakeEth.toFixed(4)} ETH`} accent="cyan" />
+          <StatPill
+            icon={<BarChart2 className="h-3.5 w-3.5" />}
+            label="Total Pool"
+            value={`${totalStakeEth.toFixed(4)} ${betToken.symbol}`}
+            accent="cyan"
+          />
           <StatPill icon={<TrendingUp className="h-3.5 w-3.5" />} label="YES Odds" value={`${yesPct}%`} accent="green" />
           <StatPill icon={<TrendingDown className="h-3.5 w-3.5" />} label="NO Odds" value={`${noPct}%`} accent="red" />
           <StatPill icon={<Clock className="h-3.5 w-3.5" />} label="Closes" value={formatDate(closeUnix)} accent="violet" />
@@ -523,7 +596,9 @@ export function MarketDetail({
               <h2 className="font-display font-bold text-[12px] text-text-muted tracking-widest uppercase">
                 Market Stakes
               </h2>
-              <span className="font-mono text-xs text-text-muted">{totalStakeEth.toFixed(4)} ETH total</span>
+              <span className="font-mono text-xs text-text-muted">
+                {totalStakeEth.toFixed(4)} {betToken.symbol} total
+              </span>
             </div>
 
             {/* Barra combinada */}
@@ -541,10 +616,10 @@ export function MarketDetail({
               <div className="flex justify-between font-mono text-xs">
                 <span className="flex items-center gap-1.5 text-green">
                   <span className="h-2 w-2 rounded-full bg-green" />
-                  YES — {formatEth(totalYes)} ({yesPct}%)
+                  YES — {formatAmount(totalYes)} {betToken.symbol} ({yesPct}%)
                 </span>
                 <span className="flex items-center gap-1.5 text-red">
-                  NO — {formatEth(totalNo)} ({noPct}%)
+                  NO — {formatAmount(totalNo)} {betToken.symbol} ({noPct}%)
                   <span className="h-2 w-2 rounded-full bg-red" />
                 </span>
               </div>
@@ -558,7 +633,9 @@ export function MarketDetail({
               )}>
                 <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">YES Implied</p>
                 <p className={cn("font-display font-extrabold text-3xl", yesPct >= noPct ? "text-green" : "text-foreground")}>{yesPct}%</p>
-                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalYes)} staked</p>
+                <p className="font-mono text-xs text-text-muted mt-1">
+                  {formatAmount(totalYes)} {betToken.symbol} staked
+                </p>
               </div>
               <div className={cn(
                 "rounded-xl border p-4 text-center transition-all",
@@ -566,7 +643,9 @@ export function MarketDetail({
               )}>
                 <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mb-1">NO Implied</p>
                 <p className={cn("font-display font-extrabold text-3xl", noPct > yesPct ? "text-red" : "text-foreground")}>{noPct}%</p>
-                <p className="font-mono text-xs text-text-muted mt-1">{formatEth(totalNo)} staked</p>
+                <p className="font-mono text-xs text-text-muted mt-1">
+                  {formatAmount(totalNo)} {betToken.symbol} staked
+                </p>
               </div>
             </div>
           </div>
@@ -630,55 +709,11 @@ export function MarketDetail({
               <TimelineBar closeUnix={closeUnix} resolveUnix={resolveUnix} />
             </div>
 
-            {/* USER POSITION */}
-            {isConnected && userStake !== null && (
-              <div className="rounded-xl border border-cyan/20 bg-surface p-4" style={{ background: "linear-gradient(135deg, var(--bg-surface) 0%, var(--cyan-dim) 100%)" }}>
-                <h3 className="font-display font-bold text-[11px] text-text-muted tracking-widest uppercase mb-3">Your Position</h3>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="rounded-lg border border-green/20 bg-green-dim p-2.5 text-center">
-                    <p className="font-mono text-[10px] text-text-muted mb-0.5">YES</p>
-                    <p className="font-display font-bold text-green text-lg">{formatEth(userStake.yesStake)}</p>
-                    <p className="font-mono text-[10px] text-text-muted">ETH</p>
-                  </div>
-                  <div className="rounded-lg border border-red/20 bg-red-dim p-2.5 text-center">
-                    <p className="font-mono text-[10px] text-text-muted mb-0.5">NO</p>
-                    <p className="font-display font-bold text-red text-lg">{formatEth(userStake.noStake)}</p>
-                    <p className="font-mono text-[10px] text-text-muted">ETH</p>
-                  </div>
-                </div>
-                {userTotalStake > 0 && (
-                  <p className="font-mono text-xs text-text-muted text-center">Total: {userTotalStake.toFixed(4)} ETH</p>
-                )}
-                <Link
-                  href="/positions"
-                  className="mt-2 block text-center font-mono text-[11px] text-cyan hover:text-cyan/80 transition-colors"
-                  aria-label="View all my positions"
-                >
-                  View my positions →
-                </Link>
-                {userWon && claimable > BigInt(0) && (
-                  <div className="mt-3 rounded-lg border border-green/40 bg-green-dim p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Trophy className="h-4 w-4 text-green" />
-                      <p className="font-display font-bold text-green text-sm">WINNER!</p>
-                    </div>
-                    <p className="font-mono text-xs text-foreground mb-3">
-                      Claimable: <span className="text-green font-bold">{formatEth(claimable)}</span>
-                    </p>
-                    <Button
-                      onClick={onClaimPayout}
-                      disabled={writePending}
-                      className="w-full h-10 font-display font-bold text-sm bg-green text-black hover:brightness-110 transition-all"
-                      aria-label="Claim payout"
-                    >
-                      {writePending
-                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />Claiming...</>
-                        : "CLAIM PAYOUT"
-                      }
-                    </Button>
-                  </div>
-                )}
-              </div>
+            {/* SMALL USER STAKE SUMMARY */}
+            {isConnected && stakeSummary && (
+              <p className="font-mono text-[11px] text-text-muted px-1">
+                {stakeSummary}
+              </p>
             )}
 
             {/* BET FORM */}
@@ -705,7 +740,7 @@ export function MarketDetail({
                     </p>
                   </div>
                 )}
-                <BetForm marketId={marketId} marketStatus={market.status} question={market.question} metadata={market.metadata} onBetSuccess={onBetSuccess} />
+                <BetForm marketId={marketId} marketStatus={market.status} closeTime={market.close_time} question={market.question} metadata={market.metadata} onBetSuccess={onBetSuccess} />
               </div>
             )}
 
@@ -796,6 +831,97 @@ export function MarketDetail({
           </div>
         </aside>
       </div>
+
+      {/* Edit market dialog (creator only) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md border-border bg-surface" showClose>
+          <DialogHeader>
+            <DialogTitle className="font-display text-foreground">Edit market</DialogTitle>
+            <DialogDescription>
+              You can only change the displayed question and the bet currency. On-chain times and status are immutable.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block font-mono text-[11px] text-text-muted uppercase tracking-wider mb-2">
+                Question
+              </label>
+              <Textarea
+                value={editQuestion}
+                onChange={(e) => setEditQuestion(e.target.value)}
+                className="min-h-[100px] font-body text-foreground"
+                placeholder="Market question"
+                maxLength={500}
+              />
+              <p className="mt-1 font-mono text-[10px] text-text-muted">{editQuestion.length}/500</p>
+            </div>
+            <div>
+              <label className="block font-mono text-[11px] text-text-muted uppercase tracking-wider mb-2">
+                Bet currency
+              </label>
+              <Select
+                value={editBetTokenSymbol}
+                onValueChange={setEditBetTokenSymbol}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BET_TOKENS.map((t) => (
+                    <SelectItem key={t.symbol} value={t.symbol}>
+                      <span className="flex items-center gap-2">
+                        <span style={{ color: t.color }}>{t.icon}</span>
+                        {t.symbol} — {t.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-cyan text-black hover:bg-cyan/90"
+              disabled={editSaving || editQuestion.trim().length < 10}
+              onClick={async () => {
+                setEditSaving(true);
+                try {
+                  const currentMeta = market.metadata ? JSON.parse(market.metadata) : {};
+                  const newMetadata = JSON.stringify({
+                    ...currentMeta,
+                    betToken: editBetTokenSymbol,
+                  });
+                  await updateMarket(market.id, {
+                    question: editQuestion.trim(),
+                    metadata: newMetadata,
+                  });
+                  await queryClient.invalidateQueries({ queryKey: ["market", market.id] });
+                  await queryClient.invalidateQueries({ queryKey: ["market", marketId] });
+                  await queryClient.invalidateQueries({ queryKey: ["markets"] });
+                  await queryClient.invalidateQueries({ queryKey: ["markets-infinite"] });
+                  toast.success("Market updated");
+                  setEditOpen(false);
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Failed to save");
+                } finally {
+                  setEditSaving(false);
+                }
+              }}
+            >
+              {editSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden />
+              ) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

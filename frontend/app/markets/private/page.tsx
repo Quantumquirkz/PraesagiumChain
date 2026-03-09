@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -11,13 +11,18 @@ import {
   ExternalLink,
   PlusCircle,
   AlertTriangle,
+  Copy,
+  CheckCircle,
 } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
-import { JoinPrivateMarketCard, getStoredPrivateMarketIds } from "@/components/join-private-market-card";
+import { JoinPrivateMarketCard, getStoredPrivateMarketIds, addStoredPrivateMarketId } from "@/components/join-private-market-card";
 import { usePrivateMarket } from "@/hooks/use-private-markets";
+import { getPrivateMarketsByCreator } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { PrivateMarketByCreatorItem } from "@/types/api";
 
 const CHAINLINK_CRE_URL =
   "https://blog.chain.link/chainlink-confidential-compute/";
@@ -64,6 +69,79 @@ const ACCENT = {
   gold:   { icon: "text-gold bg-[rgba(245,166,35,0.12)] border-gold/30", number: "text-gold" },
 } as const;
 
+// ─── Creator's private market card (list item with copy token) ─────────────────
+
+function CreatorPrivateMarketCard({
+  item,
+  onEnsureInList,
+}: {
+  item: PrivateMarketByCreatorItem;
+  onEnsureInList: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const closeDate = new Date(item.close_time * 1000).toLocaleDateString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+  const copyToken = async () => {
+    await navigator.clipboard.writeText(item.access_key);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/markets/private?key=${encodeURIComponent(item.access_key)}`
+      : "";
+
+  return (
+    <div className="rounded-xl border border-violet/30 bg-violet-dim/30 p-4">
+      <h3 className="font-display font-bold text-[15px] text-foreground leading-tight mb-2 line-clamp-2">
+        {item.question}
+      </h3>
+      <p className="font-mono text-[11px] text-text-muted mb-3">Closes: {closeDate}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-violet/40 text-violet hover:bg-violet/20 font-mono text-xs"
+          onClick={copyToken}
+        >
+          {copied ? (
+            <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green" aria-hidden />
+          ) : (
+            <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          )}
+          {copied ? "Copied" : "Copy token"}
+        </Button>
+        {shareUrl && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="font-mono text-xs text-text-secondary hover:text-foreground"
+            onClick={async () => {
+              await navigator.clipboard.writeText(shareUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+          >
+            Copy link
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-cyan/40 text-cyan hover:bg-cyan/10 font-mono text-xs"
+          onClick={onEnsureInList}
+        >
+          View market
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Single private market card ───────────────────────────────────────────────
 
 function PrivateMarketCard({ marketId }: { marketId: number }) {
@@ -97,6 +175,7 @@ function PrivateMarketCard({ marketId }: { marketId: number }) {
       : "text-text-muted border-border bg-elevated";
 
   const closeDate = new Date(market.closeTime * 1000).toLocaleDateString();
+  const isBettingOpen = market.status === "Open" && market.closeTime * 1000 > Date.now();
 
   return (
     <div className="card-glow rounded-xl overflow-hidden">
@@ -149,7 +228,7 @@ function PrivateMarketCard({ marketId }: { marketId: number }) {
           </div>
         </div>
 
-        {market.status === "Open" && (
+        {isBettingOpen && (
           <Button
             variant="outline"
             className="w-full border-violet/40 text-violet hover:bg-violet-dim font-mono text-sm"
@@ -190,17 +269,34 @@ const KNOWN_MARKET_IDS: number[] = process.env.NEXT_PUBLIC_PRIVATE_MARKET_IDS
   : [];
 
 function PrivateMarketsPageInner() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const searchParams = useSearchParams();
   const keyFromUrl = searchParams.get("key") ?? "";
 
   const [joinedIds, setJoinedIds] = useState<number[]>(() => getStoredPrivateMarketIds());
-  const allMarketIds = [...new Set([...KNOWN_MARKET_IDS, ...joinedIds])];
+
+  const { data: creatorMarkets = [] } = useQuery({
+    queryKey: ["private-markets-by-creator", address ?? ""],
+    queryFn: () => getPrivateMarketsByCreator(address!),
+    enabled: Boolean(address),
+    staleTime: 60_000,
+  });
+
+  const creatorMarketIds = creatorMarkets.map((m) => m.market_id);
+  const allMarketIds = [...new Set([...KNOWN_MARKET_IDS, ...joinedIds, ...creatorMarketIds])];
 
   // Sync joinedIds from localStorage on mount (e.g. from another tab)
   useEffect(() => {
     setJoinedIds(getStoredPrivateMarketIds());
   }, []);
+
+  const joinSectionRef = useRef<HTMLDivElement>(null);
+  const joinParam = searchParams.get("join");
+  useEffect(() => {
+    if (joinParam === "1" && joinSectionRef.current) {
+      joinSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [joinParam]);
 
   return (
     <div className="space-y-10">
@@ -322,12 +418,42 @@ function PrivateMarketsPageInner() {
       )}
 
       {/* ── Join private market ── */}
-      <section>
+      <section ref={joinSectionRef}>
         <JoinPrivateMarketCard
           initialKey={keyFromUrl}
           onJoined={(marketId) => setJoinedIds((prev) => (prev.includes(marketId) ? prev : [...prev, marketId]))}
         />
       </section>
+
+      {/* ── My private markets (only the creator can see them) ── */}
+      {isConnected && address && creatorMarkets.length > 0 && (
+        <section>
+          <p className="font-mono text-xs text-violet uppercase tracking-widest mb-3">
+            Only you can see these markets
+          </p>
+          <h2
+            className="font-display font-extrabold text-foreground leading-none mb-2"
+            style={{ fontSize: "clamp(22px, 3vw, 28px)" }}
+          >
+            My private markets
+          </h2>
+          <p className="font-body text-sm text-text-secondary mb-5">
+            Markets you created. Share the access token so others can join. Nobody else can see them without the token.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {creatorMarkets.map((m) => (
+              <CreatorPrivateMarketCard
+                key={m.market_id}
+                item={m}
+                onEnsureInList={() => {
+                  addStoredPrivateMarketId(m.market_id);
+                  setJoinedIds(getStoredPrivateMarketIds());
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── How it works ── */}
       <section>

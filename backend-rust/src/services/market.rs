@@ -3,7 +3,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, Market,
     MarketRow, MarketStats, MarketView, PaginatedResponse, Prediction, PredictionView,
-    UpdateStatusRequest,
+    UpdateMarketRequest, UpdateStatusRequest,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -34,6 +34,16 @@ impl<T: Clone> TimedEntry<T> {
     }
     fn is_valid(&self) -> bool {
         (chrono::Utc::now().timestamp() as u64) < self.expires_at
+    }
+}
+
+/// Returns effective status: if DB says "Open" but close_time has passed, treat as "Locked".
+fn effective_status(status: &str, close_time: i64) -> String {
+    let now = chrono::Utc::now().timestamp();
+    if status == "Open" && close_time < now {
+        "Locked".to_string()
+    } else {
+        status.to_string()
     }
 }
 
@@ -217,6 +227,14 @@ impl MarketService {
 
         let mut items: Vec<MarketView> = rows.into_iter().map(MarketView::from).collect();
 
+        // Apply effective status: Open -> Locked when close_time has passed
+        let now = chrono::Utc::now().timestamp();
+        for item in &mut items {
+            if item.status == "Open" && item.close_time < now {
+                item.status = "Locked".to_string();
+            }
+        }
+
         // Bulk fetch latest predictions (avoids N+1). On failure, markets are shown without prediction.
         if !items.is_empty() {
             let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
@@ -275,6 +293,9 @@ impl MarketService {
             market_view.latest_prediction = Some(pred);
         }
 
+        // Effective status: Open -> Locked when close_time has passed
+        market_view.status = effective_status(&market_view.status, market_view.close_time);
+
         // Cache write
         {
             let mut cache = self.market_cache.write().await;
@@ -302,6 +323,9 @@ impl MarketService {
         if let Ok(Some(pred)) = self.get_latest_prediction(market_view.id).await {
             market_view.latest_prediction = Some(pred);
         }
+
+        // Effective status: Open -> Locked when close_time has passed
+        market_view.status = effective_status(&market_view.status, market_view.close_time);
 
         Ok(market_view)
     }
@@ -479,6 +503,46 @@ impl MarketService {
         .execute(self.db.pool())
         .await?;
 
+        self.get_by_id(id).await
+    }
+
+    /// Updates market display data (question, metadata). On-chain data is immutable.
+    pub async fn update(&self, id: i64, req: UpdateMarketRequest) -> Result<MarketView> {
+        if req.question.is_none() && req.metadata.is_none() {
+            return Err(AppError::Validation(
+                "at least one of question or metadata must be provided".into(),
+            ));
+        }
+        if let Some(ref q) = req.question {
+            let q = q.trim();
+            if q.is_empty() {
+                return Err(AppError::Validation("question cannot be empty".into()));
+            }
+            if q.len() > 500 {
+                return Err(AppError::Validation("question too long (max 500 chars)".into()));
+            }
+        }
+        if let Some(ref m) = req.metadata {
+            if m.len() > 10_000 {
+                return Err(AppError::Validation("metadata too long (max 10000 chars)".into()));
+            }
+        }
+
+        if let Some(ref q) = req.question {
+            sqlx::query("UPDATE markets SET question = $1 WHERE id = $2")
+                .bind(q.trim())
+                .bind(id)
+                .execute(self.db.pool())
+                .await?;
+        }
+        if let Some(ref m) = req.metadata {
+            sqlx::query("UPDATE markets SET metadata = $1 WHERE id = $2")
+                .bind(m)
+                .bind(id)
+                .execute(self.db.pool())
+                .await?;
+        }
+        self.invalidate_market_cache(id).await;
         self.get_by_id(id).await
     }
 

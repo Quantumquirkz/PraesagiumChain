@@ -43,9 +43,10 @@ pub async fn evaluate(
         "sports_winner" => resolve_sports_winner(&state, &req, resolved_at).await?,
         "ai_sentiment" => resolve_ai_sentiment(&state, &req, resolved_at).await?,
         "hybrid" => resolve_hybrid(&state, &req, resolved_at).await?,
+        "crypto_news_sentiment" => resolve_crypto_news_sentiment(&state, &req, resolved_at).await?,
         other => {
             return Err(AppError::Validation(format!(
-                "Unknown resolution_type '{}'. Valid: price_above, weather_rained, sports_winner, ai_sentiment, hybrid",
+                "Unknown resolution_type '{}'. Valid: price_above, weather_rained, sports_winner, ai_sentiment, hybrid, crypto_news_sentiment",
                 other
             )))
         }
@@ -372,6 +373,50 @@ async fn resolve_ai_sentiment(
         outcome,
         confidence,
         source: "ai-provider".to_string(),
+        raw_value: Some(prob as f64),
+        resolved_at,
+    })
+}
+
+#[derive(Deserialize)]
+struct CryptoNewsSentimentParams {
+    symbol: String,
+    threshold: Option<f32>,
+}
+
+async fn resolve_crypto_news_sentiment(
+    state: &AppState,
+    req: &ResolveRequest,
+    resolved_at: i64,
+) -> Result<ResolveResponse> {
+    let p: CryptoNewsSentimentParams = serde_json::from_value(req.params.clone())
+        .map_err(|e| AppError::Validation(format!("crypto_news_sentiment params: {e}")))?;
+
+    let symbol = p.symbol.trim();
+    if symbol.is_empty() {
+        return Err(AppError::Validation("crypto_news_sentiment requires symbol".into()));
+    }
+    let threshold = p.threshold.unwrap_or(0.5).clamp(0.0, 1.0);
+    let text = format!(
+        "Latest news and sentiment for {}: market context and real-time data.",
+        symbol.to_uppercase()
+    );
+    let (_score, prob) = state
+        .ai_service
+        .sentiment(&text)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("AI sentiment: {}", e)))?;
+
+    let prob = prob.clamp(0.0, 1.0);
+    let outcome = if prob >= threshold { 1 } else { 0 };
+    let confidence = ((prob - threshold).abs() / threshold.max(1.0 - threshold)).min(1.0);
+
+    Ok(ResolveResponse {
+        market_id: req.market_id,
+        resolution_type: "crypto_news_sentiment".to_string(),
+        outcome,
+        confidence,
+        source: "crypto_news".to_string(),
         raw_value: Some(prob as f64),
         resolved_at,
     })

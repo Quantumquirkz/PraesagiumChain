@@ -47,9 +47,8 @@ const MARKET_CATEGORIES = [
 ] as const;
 
 const MARKET_TYPES = [
-  { value: "base",        label: "Base",        description: "Standard binary outcome market (yes/no)"                          },
-  { value: "conditional", label: "Conditional", description: "Depends on another market outcome"                               },
-  { value: "private",     label: "Private",     description: "Positions hidden until reveal — commit-reveal cryptography"      },
+  { value: "base",    label: "Base",    description: "Standard binary outcome market (yes/no). Public and open to everyone." },
+  { value: "private", label: "Private", description: "Only people with your shareable token can see and join. You get a unique token when you create it." },
 ] as const;
 
 const QUESTION_TEMPLATES = [
@@ -70,7 +69,7 @@ const createMarketSchema = z
     question: z.string().min(10, "At least 10 characters").max(500, "Max 500 characters"),
     closeTime: z.string().min(1, "Close time is required"),
     resolveTime: z.string().min(1, "Resolve time is required"),
-    marketType: z.enum(["base", "conditional", "private"]),
+    marketType: z.enum(["base", "private"]),
   })
   .refine((data) => new Date(data.closeTime).getTime() > Date.now(), {
     message: "Close time must be in the future",
@@ -180,10 +179,13 @@ export default function CreateMarketPage() {
   /** When resolution symbol changes for crypto, sync chart to display if it matches a known symbol. */
   useEffect(() => {
     if (marketCategory !== "crypto") return;
-    const sym = resolutionParams.symbol?.toUpperCase?.()?.replace?.(/USDT$/, "")?.trim?.();
+    const sym =
+      resolutionParams.type === "crypto_news_sentiment"
+        ? resolutionParams.newsSymbol?.toUpperCase?.()?.trim?.()
+        : resolutionParams.symbol?.toUpperCase?.()?.replace?.(/USDT$/, "")?.trim?.();
     const binance = sym ? `${sym}USDT` : "BTCUSDT";
     if (CHART_CRYPTO_BINANCE_LIST.includes(binance)) setChartSymbolToDisplay(binance);
-  }, [marketCategory, resolutionParams.symbol]);
+  }, [marketCategory, resolutionParams.symbol, resolutionParams.type, resolutionParams.newsSymbol]);
 
   useEffect(() => {
     if (!question || !closeTimeStr || !resolveTimeStr) {
@@ -816,6 +818,7 @@ export default function CreateMarketPage() {
             onChange={setResolutionParams}
             compactMode
             onlyAssetPrice={marketCategory === "crypto"}
+            lockedResolutionSymbol={marketCategory === "crypto" ? betToken.symbol + "USDT" : undefined}
           />
             {marketCategory === "crypto" && (
             <section className="rounded-xl border border-border bg-elevated/30 p-4">
@@ -880,7 +883,10 @@ export default function CreateMarketPage() {
             </div>
             {marketCategory === "crypto" && (
               <p className="font-mono text-[10px] text-text-muted">
-                Resolution symbol: <span className="text-foreground">{resolutionParams.symbol ?? `${betToken.symbol}USDT`}</span>
+                {resolutionParams.type === "crypto_news_sentiment"
+                  ? <>Resolution: crypto news (<span className="text-foreground">{resolutionParams.newsSymbol || "—"}</span>)</>
+                  : <>Resolution symbol: <span className="text-foreground">{resolutionParams.symbol ?? `${betToken.symbol}USDT`}</span></>
+                }
                 {" · "}
                 Chart: <span className="text-foreground">{chartSymbolToDisplay}</span>
               </p>
@@ -897,7 +903,7 @@ export default function CreateMarketPage() {
             <label className="block font-display font-bold text-xs text-text-muted tracking-wider uppercase mb-3">
               Market type
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {MARKET_TYPES.map((t) => {
                 const isPrivateType = t.value === "private";
                 const isSelected = marketType === t.value;

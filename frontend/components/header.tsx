@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Radio } from "lucide-react";
+import { Menu, X, LogOut, Loader2, LayoutGrid, PlusCircle, Radio, Lock } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { isAllowedChain, DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -24,9 +24,10 @@ import { toast } from "sonner";
 const EXPECTED_CHAIN_ID = DEFAULT_CHAIN_ID;
 
 const NAV_LINKS = [
-  { href: "/",               label: "Markets",    icon: LayoutGrid,  accent: "cyan"   },
-  { href: "/markets/create", label: "Create",     icon: PlusCircle,  accent: "violet" },
-  { href: "/signals",        label: "Signals",    icon: Radio,       accent: "cyan"   },
+  { href: "/",                label: "Markets",         icon: LayoutGrid,  accent: "cyan"   },
+  { href: "/markets/private", label: "Private Markets", icon: Lock,        accent: "violet" },
+  { href: "/markets/create",  label: "Create",          icon: PlusCircle,  accent: "violet" },
+  { href: "/signals",         label: "Signals",         icon: Radio,       accent: "cyan"   },
 ] as const;
 
 function LiveIndicator() {

@@ -9,6 +9,7 @@
  *   node scripts/resolveFromBackend.js --market-id 1
  *   node scripts/resolveFromBackend.js --market-id 1 --text "Bitcoin will go up"
  *   node scripts/resolveFromBackend.js --market-id 1 --source price --symbol BTCUSDT --threshold 50000
+ *   node scripts/resolveFromBackend.js --market-id 1 --source crypto_news --symbol BTC --threshold 0.6
  *
  * Env: PRIVATE_KEY, RPC_URL (or default localhost:8545), ORACLE_CONSUMER_ADDRESS, API_BASE_URL (default http://localhost:4000)
  * Optional: PREDICTION_MARKET_ADDRESS — if set, skips tx when market is already resolved (idempotency).
@@ -42,6 +43,9 @@ async function fetchOutcomeFromApi(apiBase, opts) {
     pathname = `/api/price/above?symbol=${encodeURIComponent(opts.symbol)}`;
     if (opts.threshold != null) pathname += `&threshold=${opts.threshold}`;
     if (opts.priceSource) pathname += `&source=${encodeURIComponent(opts.priceSource)}`;
+  } else if (opts.source === "crypto_news" && opts.symbol != null) {
+    pathname = `/api/crypto/news-sentiment?symbol=${encodeURIComponent(opts.symbol)}`;
+    if (opts.threshold != null) pathname += `&threshold=${opts.threshold}`;
   } else {
     pathname = "/api/ai/sentiment";
     method = "POST";

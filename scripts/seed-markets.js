@@ -39,6 +39,9 @@ const meta = {
   sentiment: (text, threshold = "0.6") =>
     JSON.stringify({ resolution: { type: "ai_sentiment", sentimentText: text, sentimentThreshold: String(threshold) } }),
 
+  cryptoNewsSentiment: (symbol, threshold = "0.6") =>
+    JSON.stringify({ resolution: { type: "crypto_news_sentiment", newsSymbol: symbol, newsSentimentThreshold: String(threshold) } }),
+
   hybrid: (symbol, threshold) =>
     JSON.stringify({ resolution: { type: "price_above", symbol, threshold: String(threshold), priceSource: "chainlink" } }),
 };
@@ -55,6 +58,8 @@ const MARKETS = [
   { question: "Will BTC reach a new ATH above $108,000 in Q1 2026?",              ...timeline(32),  market_type: "base",  metadata: meta.priceAbove("BTCUSDT", 108000) },
   { question: "Will BTC dominance stay above 50% through March 2026?",            ...timeline(28),  market_type: "ai",    metadata: meta.sentiment("Bitcoin dominance market share crypto 2026", "0.6") },
   { question: "Will BTC ETF inflows exceed $5B in March 2026?",                   ...timeline(30),  market_type: "ai",    metadata: meta.sentiment("Bitcoin ETF institutional inflows March 2026", "0.65") },
+  { question: "Will Bitcoin sentiment from news and real-time data stay bullish in Q2 2026?", ...timeline(60),  market_type: "ai",    metadata: meta.cryptoNewsSentiment("BTC", "0.55") },
+  { question: "Will ETH news and market context favour a price rally by April 2026?",            ...timeline(45),  market_type: "ai",    metadata: meta.cryptoNewsSentiment("ETH", "0.6") },
 
   // ── ETH ──────────────────────────────────────────────────────────────────
   { question: "Will ETH exceed $4,000 before May 2026?",                          ...timeline(60),  market_type: "base",  metadata: meta.priceAbove("ETHUSDT", 4000) },

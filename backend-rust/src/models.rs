@@ -189,6 +189,13 @@ pub struct CreateMarketRequest {
     pub on_chain_market_id: Option<i64>,
 }
 
+/// PATCH body for updating market display data (question, metadata). On-chain question/closeTime/resolveTime are immutable.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateMarketRequest {
+    pub question: Option<String>,
+    pub metadata: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConditionalConditionInput {
     pub condition_contract: String,
@@ -275,7 +282,7 @@ pub struct MarketStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolveRequest {
     pub market_id: i64,
-    /// One of: price_above | weather_rained | sports_winner | ai_sentiment | hybrid
+    /// One of: price_above | weather_rained | sports_winner | ai_sentiment | hybrid | crypto_news_sentiment
     pub resolution_type: String,
     /// Type-specific parameters (threshold, symbol, city, team, text, …).
     pub params: serde_json::Value,
@@ -323,6 +330,16 @@ pub struct PrivateMarketAccessResponse {
     pub close_time: i64,
     pub resolve_time: i64,
     pub creator: String,
+}
+
+/// One private market created by the given creator (for GET /api/markets/private/by-creator).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrivateMarketByCreatorItem {
+    pub market_id: i64,
+    pub question: String,
+    pub close_time: i64,
+    pub resolve_time: i64,
+    pub access_key: String,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

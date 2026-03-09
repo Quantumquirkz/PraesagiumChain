@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback, useRef, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
@@ -279,9 +280,19 @@ function DashboardContent() {
 
             {/* Footer: todo cargado */}
             {!hasNextPage && filteredAndSorted.length > 0 && (
-              <p className="mt-8 text-center font-mono text-xs text-text-muted" role="status">
-                All markets loaded • {filteredAndSorted.length} total
-              </p>
+              <>
+                <p className="mt-8 text-center font-mono text-xs text-text-muted" role="status">
+                  All markets loaded • {filteredAndSorted.length} total
+                </p>
+                <div className="mt-6 flex justify-center">
+                  <Link
+                    href="/markets/private?join=1"
+                    className="inline-flex items-center gap-2 rounded-xl border border-violet/30 bg-violet-dim/50 px-4 py-2.5 font-body text-sm text-violet hover:bg-violet-dim transition-colors"
+                  >
+                    Have a private market token? Join from Private Markets
+                  </Link>
+                </div>
+              </>
             )}
           </>
         )}

@@ -28,6 +28,8 @@ type Outcome = 1 | 2; // 1 = Yes, 2 = No
 export interface BetFormProps {
   marketId: number;
   marketStatus: string; // "Open" | "Locked" | "Resolved" | "Cancelled"
+  /** Unix seconds; if in the past, betting is closed regardless of marketStatus */
+  closeTime?: number;
   question?: string;
   /** JSON string from market.metadata — used to extract betToken */
   metadata?: string;
@@ -135,7 +137,7 @@ function BetButton({ state, disabled }: BetButtonProps) {
 
 // Main component
 
-export function BetForm({ marketId, marketStatus, question, metadata, onBetSuccess }: BetFormProps) {
+export function BetForm({ marketId, marketStatus, closeTime, question, metadata, onBetSuccess }: BetFormProps) {
   const { address, isConnected } = useAccount();
   const { isWrongNetwork, switchToRequired, isSwitching } = useNetworkGuard();
   const { data: balance, isLoading: balanceLoading } = useBalance({ address });
@@ -156,7 +158,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
 
   const betToken = parseBetToken(metadata);
 
-  const { placeBet, hash, isPending, isConfirming, isSuccess, error, reset } =
+  const { placeBet, hash, isPending, isSuccess, error, reset } =
     usePlaceBet();
 
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome | null>(null);
@@ -174,18 +176,11 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
   }, [isPending]);
 
   useEffect(() => {
-    if (isConfirming && hash) {
-      setBtnState("confirming");
-      toast.loading(`Confirming on-chain… TX: ${hash.slice(0, 10)}…`, { id: "bet" });
-    }
-  }, [isConfirming, hash]);
-
-  useEffect(() => {
-    if (isSuccess && hash) {
+    if (hash && !isPending) {
       setBtnState("success");
       toast.success("Bet placed!", {
         id: "bet",
-        description: "Transaction confirmed on-chain.",
+        description: "Transaction submitted. It may take a moment to confirm on-chain.",
         action: {
           label: "View →",
           onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank"),
@@ -273,9 +268,9 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     [btnState, validate, placeBet, marketId, selectedOutcome, amount, reset]
   );
 
-  // Guard: market not open
-
-  if (marketStatus !== "Open") {
+  // Guard: market not open (or close_time already passed)
+  const closeTimePassed = closeTime != null && closeTime * 1000 < Date.now();
+  if (marketStatus !== "Open" || closeTimePassed) {
     return (
       <p className="font-mono text-sm text-text-muted text-center py-2">
         Betting is closed for this market.
@@ -326,13 +321,13 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
 
   // Main form
 
-  const isDisabled = isPending || isConfirming || btnState === "success";
+  const isDisabled = isPending || btnState === "success";
   const amountNum = Number.parseFloat(amount) || 0;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
-      {/* Yes / No selector */}
+      {/* Outcome: YES / NO with market token symbol */}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -340,7 +335,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           disabled={isDisabled}
           aria-pressed={selectedOutcome === 1}
           className={cn(
-            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden",
+            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden flex flex-col items-center justify-center gap-0.5",
             selectedOutcome === 1
               ? "bg-green-dim border-green text-green shadow-[0_0_12px_rgba(0,232,122,0.2)]"
               : "bg-elevated border-border text-text-muted hover:border-green/50 hover:text-green/80"
@@ -349,7 +344,8 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           {selectedOutcome === 1 && (
             <span className="absolute inset-0 bg-gradient-to-br from-green/10 to-transparent" />
           )}
-          YES
+          <span className="relative">YES</span>
+          <span className="relative font-mono text-[10px] font-medium opacity-80" style={{ color: selectedOutcome === 1 ? "inherit" : betToken.color }}>{betToken.symbol}</span>
         </button>
         <button
           type="button"
@@ -357,7 +353,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           disabled={isDisabled}
           aria-pressed={selectedOutcome === 2}
           className={cn(
-            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden",
+            "relative h-14 rounded-lg border font-display font-extrabold text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden flex flex-col items-center justify-center gap-0.5",
             selectedOutcome === 2
               ? "bg-red-dim border-red text-red shadow-[0_0_12px_rgba(255,61,90,0.2)]"
               : "bg-elevated border-border text-text-muted hover:border-red/50 hover:text-red/80"
@@ -366,25 +362,23 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           {selectedOutcome === 2 && (
             <span className="absolute inset-0 bg-gradient-to-br from-red/10 to-transparent" />
           )}
-          NO
+          <span className="relative">NO</span>
+          <span className="relative font-mono text-[10px] font-medium opacity-80" style={{ color: selectedOutcome === 2 ? "inherit" : betToken.color }}>{betToken.symbol}</span>
         </button>
       </div>
 
-      {/* Amount input — market symbol (defined when creating the market) */}
-      <div>
+      {/* Amount — minimal: single input + compact presets */}
+      <div className="space-y-2">
+        <label className="font-mono text-[11px] text-text-muted uppercase tracking-wider">
+          Amount
+        </label>
         <div className={cn(
-          "flex rounded-lg border bg-elevated overflow-hidden transition-all",
-          "focus-within:shadow-[0_0_0_2px_rgba(0,212,255,0.1)]",
-          fieldError ? "border-red/60" : "border-border",
-          !fieldError && "focus-within:border-[var(--token-color,#00D4FF)]"
+          "flex rounded-lg border bg-elevated overflow-hidden transition-colors",
+          fieldError ? "border-red/60" : "border-border focus-within:border-[var(--token-color)]"
         )}
         style={{ "--token-color": betToken.color } as React.CSSProperties}
         >
-          <span
-            className="flex items-center pl-3 font-mono text-lg select-none shrink-0"
-            style={{ color: betToken.color }}
-            aria-hidden
-          >
+          <span className="flex items-center pl-3 font-mono text-base shrink-0" style={{ color: betToken.color }} aria-hidden>
             {betToken.icon}
           </span>
           <Input
@@ -399,15 +393,13 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
             }}
             disabled={isDisabled}
             aria-label={`Amount in ${betToken.symbol}`}
-            className="border-0 bg-transparent font-mono text-xl focus-visible:ring-0 disabled:opacity-40"
+            className="border-0 bg-transparent font-mono text-lg focus-visible:ring-0 disabled:opacity-40 flex-1 min-w-0"
           />
-          <span className="flex items-center pr-3 font-mono text-sm font-medium shrink-0 select-none" style={{ color: betToken.color }}>
+          <span className="flex items-center pr-3 font-mono text-xs font-medium shrink-0" style={{ color: betToken.color }}>
             {betToken.symbol}
           </span>
         </div>
-
-        {/* Quick amounts + MAX on one line */}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {QUICK_AMOUNTS.map((v) => (
             <button
               key={v}
@@ -415,12 +407,10 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
               onClick={() => { setAmount(v); setFieldError(null); }}
               disabled={isDisabled}
               className={cn(
-                "rounded-md border px-2.5 py-1 font-mono text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-                amount === v
-                  ? "border-current font-semibold"
-                  : "border-border bg-elevated text-text-secondary hover:text-foreground"
+                "rounded border px-2 py-1 font-mono text-[11px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                amount === v ? "border-current font-semibold" : "border-border bg-elevated/80 text-text-secondary hover:text-foreground"
               )}
-              style={amount === v ? { borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` } : {}}
+              style={amount === v ? { borderColor: betToken.color, color: betToken.color, background: `${betToken.color}15` } : {}}
             >
               {v} {betToken.symbol}
             </button>
@@ -428,63 +418,39 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           {balance && (
             <button
               type="button"
-              onClick={() => {
-                const max = Number(formatEther(balance.value));
-                setAmount(max.toFixed(6));
-                setFieldError(null);
-              }}
+              onClick={() => { setAmount(Number(formatEther(balance.value)).toFixed(6)); setFieldError(null); }}
               disabled={isDisabled}
-              className="rounded-md border px-2.5 py-1 font-mono text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ borderColor: `${betToken.color}60`, color: betToken.color, background: `${betToken.color}14` }}
+              className="rounded border px-2 py-1 font-mono text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ borderColor: `${betToken.color}50`, color: betToken.color, background: `${betToken.color}12` }}
             >
               MAX
             </button>
           )}
         </div>
-
-        {/* Balance: single line */}
-        {balanceLoading && !balanceLoadTimedOut && (
-          <p className="mt-1.5 font-mono text-[11px] text-text-muted">Loading balance…</p>
-        )}
-        {balanceLoadTimedOut && balanceLoading && (
-          <p className="mt-1.5 font-mono text-[11px] text-amber-500/90">Balance is slow to load; you can try placing a bet.</p>
-        )}
         {balanceReady && balance != null && (
-          <p className="mt-1.5 font-mono text-[11px] text-text-muted">
+          <p className="font-mono text-[10px] text-text-muted">
             Balance: <span className="text-foreground">{formatEth(balance.value)}</span> ETH
           </p>
         )}
-
-        {/* Estimated payout */}
-        {amountNum > 0 && selectedOutcome && (
-          <div className={cn(
-            "mt-2 rounded-lg border p-2.5 flex items-center justify-between",
-            selectedOutcome === 1 ? "border-green/20 bg-green-dim" : "border-red/20 bg-red-dim"
-          )}>
-            <span className="font-mono text-[11px] text-text-muted">
-              Est. payout if {selectedOutcome === 1 ? "YES" : "NO"}
-            </span>
-            <span className={cn("font-display font-bold text-sm", selectedOutcome === 1 ? "text-green" : "text-red")}>
-              ~{(amountNum * 1.9).toFixed(4)} <span className="text-xs font-mono">{betToken.symbol}</span>
-            </span>
-          </div>
+        {balanceLoading && !balanceLoadTimedOut && (
+          <p className="font-mono text-[10px] text-text-muted">Loading balance…</p>
         )}
-
-        {/* Errors */}
+        {amountNum > 0 && selectedOutcome && (
+          <p className={cn("font-mono text-[11px]", selectedOutcome === 1 ? "text-green" : "text-red")}>
+            Est. payout if {selectedOutcome === 1 ? "YES" : "NO"}: ~{(amountNum * 1.9).toFixed(4)} {betToken.symbol}
+          </p>
+        )}
         {fieldError && (
-          <p className="mt-1.5 text-xs text-red flex items-center gap-1" role="alert">
+          <p className="text-[11px] text-red flex items-center gap-1" role="alert">
             <span>⚠</span> {fieldError}
           </p>
         )}
         {btnState === "error" && error && !fieldError && (
-          <p className="mt-1.5 text-xs text-red" role="alert">{parseContractError(error)}</p>
+          <p className="text-[11px] text-red" role="alert">{parseContractError(error)}</p>
         )}
       </div>
 
-      {/* Botón */}
       <BetButton state={btnState} disabled={isDisabled} />
-
-      {/* Tx progress */}
       <TxStatus hash={hash} requiredConfirmations={3} dismissAfterMs={5_000} />
     </form>
   );

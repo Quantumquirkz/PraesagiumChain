@@ -55,7 +55,7 @@ export const BET_TOKENS: BetToken[] = [
   { symbol: "AVAX",  label: "Avalanche", icon: "▲",  color: "#E84142" },
 ];
 
-/** Cryptos con gráfico de precio (Binance). Usado en create (chart to display), resolution picker y market detail. */
+/** Cryptos with price chart (Binance). Used in create (chart to display), resolution picker and market detail. */
 export interface ChartCryptoOption {
   symbol: string;
   binance: string;
@@ -97,6 +97,17 @@ export function getChartSymbolLabel(binanceSymbol: string): string {
   return opt?.label ?? (binanceSymbol.replace(/USDT$/i, "").trim() || "Crypto");
 }
 
+/** Returns the market's bet token from metadata (for display in position and bet form). */
+export function getBetTokenFromMetadata(metadata?: string | null): BetToken {
+  try {
+    const m = metadata ? (JSON.parse(metadata) as Record<string, unknown>) : {};
+    const sym = String(m.betToken ?? "ETH").toUpperCase().trim();
+    return BET_TOKENS.find((t) => t.symbol === sym) ?? BET_TOKENS[0]!;
+  } catch {
+    return BET_TOKENS[0]!;
+  }
+}
+
 export type MarketCategory = "crypto" | "general" | "sports" | "weather";
 
 export function getMarketCategoryFromMetadata(metadata?: string | null): MarketCategory {
@@ -107,6 +118,7 @@ export function getMarketCategoryFromMetadata(metadata?: string | null): MarketC
     const res = m.resolution as { type?: string } | undefined;
     const resType = (res?.type ?? "").toString();
     if (resType === "price_above") return "crypto";
+    if (resType === "crypto_news_sentiment") return "crypto";
     if (resType === "weather_rained") return "weather";
     if (resType === "sports_winner") return "sports";
     if (resType === "ai_sentiment") return "general";
@@ -119,7 +131,8 @@ export function getMarketCategoryFromMetadata(metadata?: string | null): MarketC
 export function getChartSymbolFromMetadata(metadata?: string | null, question?: string): string {
   try {
     const m = metadata ? JSON.parse(metadata) : {};
-    const raw: string = (m.chartSymbol ?? m.symbol ?? m.resolution?.symbol ?? m.asset ?? m.pair ?? m.betToken ?? "").toString().trim();
+    const res = m.resolution;
+    const raw: string = (m.chartSymbol ?? m.symbol ?? res?.symbol ?? res?.newsSymbol ?? m.asset ?? m.pair ?? m.betToken ?? "").toString().trim();
     if (raw) {
       const upper = raw.toUpperCase().replace(/USDT$/, "").replace(/_USD$/, "").replace(/-USD$/, "").trim();
       if (upper) {

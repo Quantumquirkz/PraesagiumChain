@@ -540,6 +540,7 @@ All POST/PATCH requests require `Content-Type: application/json`.
 | Method | Path | Query | Description |
 |--------|------|-------|-------------|
 | GET | `/api/price/above` | `symbol`, `threshold`, `source` | Returns `{ "outcome": 0 \| 1 }` — price ≥ threshold |
+| GET | `/api/crypto/news-sentiment` | `symbol`, `threshold?` | Returns `{ "outcome": 0 \| 1 }` — crypto news/sentiment (Binance/CoinGecko/Chainlink remain for price only) |
 | GET | `/api/weather/rained` | `lat`, `lon`, `date` | Returns `{ "outcome": 0 \| 1 }` — precipitation check |
 | GET | `/api/sports/winner` | `fixture_id`, `winner_team` | Returns `{ "outcome": 0 \| 1 }` — match winner |
 

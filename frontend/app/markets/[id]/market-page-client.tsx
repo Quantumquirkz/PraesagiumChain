@@ -55,11 +55,14 @@ export function MarketPageClient() {
     dataUpdatedAt: marketUpdatedAt,
   } = useMarket(id);
 
-  // Contract calls use on_chain_market_id when present (indexed from chain); otherwise URL id. API predictions use market.id.
-  const chainIdForContract =
-    market != null
-      ? (market.on_chain_market_id ?? id)
-      : id;
+  // Contract calls use on_chain_market_id when present (indexed from chain, > 0); otherwise URL id.
+  // The backend may return -1 as a sentinel when on_chain_market_id is NULL; treat that as "no on-chain id".
+  const normalizedOnChainId =
+    market && typeof market.on_chain_market_id === "number" && market.on_chain_market_id > 0
+      ? market.on_chain_market_id
+      : undefined;
+
+  const chainIdForContract = normalizedOnChainId ?? id;
 
   const { data: predictions } = useQuery({
     queryKey: ["market-predictions", market?.id ?? id],

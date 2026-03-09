@@ -114,5 +114,18 @@ export interface PrivateMarketAccessResponse {
   creator: string;
 }
 
+export interface PrivateMarketByCreatorItem {
+  market_id: number;
+  question: string;
+  close_time: number;
+  resolve_time: number;
+  access_key: string;
+}
+
+export interface UpdateMarketRequest {
+  question?: string;
+  metadata?: string;
+}
+
 export type OutcomeEnum = 0 | 1 | 2;
 export type MarketStatusEnum = 0 | 1 | 2 | 3;

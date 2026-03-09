@@ -19,7 +19,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/markets/conditional", post(api::markets::create_conditional))
         .route("/api/markets/stats", get(api::markets::stats))
         .route("/api/markets/chain/:on_chain_id", get(api::markets::get_by_chain_id)) // Admin/API
-        .route("/api/markets/:id", get(api::markets::get_by_id))
+        .route("/api/markets/:id", get(api::markets::get_by_id).patch(api::markets::update))
         .route("/api/markets/:id/status", patch(api::markets::update_status)) // Admin/API
         .route("/api/markets/:id/prediction", post(api::markets::set_prediction)) // Admin/API
         .route("/api/markets/:id/predictions", get(api::markets::get_predictions))
@@ -31,6 +31,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Private markets (access keys)
         .route("/api/markets/private/register", post(api::private_markets::register))
         .route("/api/markets/private/access", get(api::private_markets::access))
+        .route("/api/markets/private/by-creator", get(api::private_markets::by_creator))
         .route("/api/markets/:id/stream", get(api::stream::market_stream))
         .route("/api/markets/:id/ai/predict", post(api::ai::market_ai_predict)) // Admin/API
         .route("/api/markets/:id/ai/analysis", post(api::ai::market_ai_analysis)) // Frontend: AI analysis + description
@@ -48,6 +49,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/weather/history-forecast", get(api::report::weather_history_forecast))
         .route("/api/price/above", get(api::report::price_above))
         .route("/api/sports/winner", get(api::report::sports_winner))
+        .route("/api/crypto/news-sentiment", get(api::report::crypto_news_sentiment))
         // Reputation (Frontend)
         .route("/api/reputation", get(api::reputation::list_reputation))
         .route("/api/reputation/:address", get(api::reputation::get_reputation))

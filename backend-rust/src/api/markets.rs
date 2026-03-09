@@ -10,11 +10,12 @@ use std::sync::Arc;
 use crate::error::Result;
 use crate::models::{
     ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, MarketStats,
-    MarketView, PaginatedResponse, PredictionView, SetPredictionRequest, UpdateStatusRequest,
+    MarketView, PaginatedResponse, PredictionView, SetPredictionRequest, UpdateMarketRequest,
+    UpdateStatusRequest,
 };
 use crate::state::AppState;
 
-const ALLOWED_MARKET_TYPES: &[&str] = &["base", "conditional", "private", "tokenized", "ai"];
+const ALLOWED_MARKET_TYPES: &[&str] = &["base", "private"];
 
 #[derive(Deserialize)]
 pub struct ListQuery {
@@ -50,6 +51,17 @@ pub async fn get_by_id(
         }
         Err(e) => return Err(e),
     };
+    Ok(Json(market))
+}
+
+pub async fn update(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(req): Json<UpdateMarketRequest>,
+) -> Result<Json<MarketView>> {
+    let market = state.market_service.update(id, req).await?;
+    state.cache.invalidate_market(id).await;
+    state.market_service.invalidate_market_cache(id).await;
     Ok(Json(market))
 }
 

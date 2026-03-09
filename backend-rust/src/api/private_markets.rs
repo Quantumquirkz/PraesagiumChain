@@ -14,8 +14,8 @@ use std::sync::Arc;
 
 use crate::error::{AppError, Result};
 use crate::models::{
-    PrivateMarketAccessKeyRow, PrivateMarketAccessResponse, PrivateMarketRegisterRequest,
-    PrivateMarketRegisterResponse,
+    PrivateMarketAccessKeyRow, PrivateMarketAccessResponse, PrivateMarketByCreatorItem,
+    PrivateMarketRegisterRequest, PrivateMarketRegisterResponse,
 };
 use crate::state::AppState;
 
@@ -31,6 +31,11 @@ fn generate_access_key() -> String {
 #[derive(Debug, Deserialize)]
 pub struct AccessQuery {
     pub key: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ByCreatorQuery {
+    pub address: String,
 }
 
 /// POST /api/markets/private/register
@@ -137,4 +142,50 @@ pub async fn access(
             creator: row.creator_address,
         }),
     ))
+}
+
+/// GET /api/markets/private/by-creator?address=0x...
+pub async fn by_creator(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<ByCreatorQuery>,
+) -> Result<Json<Vec<PrivateMarketByCreatorItem>>> {
+    let address = q.address.trim();
+    if address.is_empty() {
+        return Err(AppError::Validation("address query param is required".into()));
+    }
+    if address.len() > 100 {
+        return Err(AppError::Validation("address too long".into()));
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        on_chain_market_id: i64,
+        question: String,
+        close_time: i64,
+        resolve_time: i64,
+        access_key: String,
+    }
+
+    let rows = sqlx::query_as::<_, Row>(
+        "SELECT on_chain_market_id, question, close_time, resolve_time, access_key \
+         FROM private_market_access_keys \
+         WHERE LOWER(creator_address) = LOWER($1) \
+         ORDER BY created_at DESC",
+    )
+    .bind(address)
+    .fetch_all(state.db.pool())
+    .await?;
+
+    let items: Vec<PrivateMarketByCreatorItem> = rows
+        .into_iter()
+        .map(|r| PrivateMarketByCreatorItem {
+            market_id: r.on_chain_market_id,
+            question: r.question,
+            close_time: r.close_time,
+            resolve_time: r.resolve_time,
+            access_key: r.access_key,
+        })
+        .collect();
+
+    Ok(Json(items))
 }

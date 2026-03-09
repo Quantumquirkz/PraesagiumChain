@@ -11,6 +11,7 @@ import type {
   PrivateMarketRegisterRequest,
   PrivateMarketRegisterResponse,
   PrivateMarketAccessResponse,
+  PrivateMarketByCreatorItem,
   ConditionalConditionView,
   FetchResponse,
 } from "@/types/api";
@@ -109,6 +110,16 @@ export async function getMarkets(
 
 export async function getMarket(id: number): Promise<MarketView> {
   return fetchApi<MarketView>(`/api/markets/${id}`);
+}
+
+export async function updateMarket(
+  id: number,
+  body: { question?: string; metadata?: string }
+): Promise<MarketView> {
+  return fetchApi<MarketView>(`/api/markets/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }
 
 /** DELETE /api/admin/markets/:id — dev only (backend returns 403 in production). */
@@ -270,4 +281,11 @@ export async function validatePrivateMarketKey(
 ): Promise<PrivateMarketAccessResponse> {
   const params = new URLSearchParams({ key: key.trim() });
   return fetchApi<PrivateMarketAccessResponse>(`/api/markets/private/access?${params}`);
+}
+
+export async function getPrivateMarketsByCreator(
+  address: string
+): Promise<PrivateMarketByCreatorItem[]> {
+  const params = new URLSearchParams({ address: address.trim() });
+  return fetchApi<PrivateMarketByCreatorItem[]>(`/api/markets/private/by-creator?${params}`);
 }
