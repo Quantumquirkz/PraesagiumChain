@@ -105,6 +105,10 @@ export function MarketPageClient() {
 
   if (marketError) {
     const message = marketErr instanceof Error ? marketErr.message : "Failed to load market";
+    const is404 = typeof message === "string" && (/404|not found/i.test(message) || message.includes("404"));
+    if (is404) {
+      notFound();
+    }
     return (
       <div className="container py-6">
         <div className="flex flex-col items-center justify-center rounded-xl border border-border border-red/30 bg-red-dim/10 py-12 px-4 text-center">

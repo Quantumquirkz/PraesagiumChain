@@ -9,9 +9,10 @@ import { z } from "zod";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseEventLogs } from "viem";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock, Copy, CheckCircle } from "lucide-react";
-import { createMarketBackend, registerPrivateMarket } from "@/lib/api";
-import { predictionMarketContract, EXPLORER_URL, BET_TOKENS, type BetToken } from "@/lib/constants";
+import { ArrowLeft, Check, Loader2, Link2, AlertTriangle, Wifi, Lock, Copy, CheckCircle, Sparkles, Coins, Globe, Trophy, Cloud, BarChart2 } from "lucide-react";
+import { createMarketBackend, registerPrivateMarket, getAISentimentPreview } from "@/lib/api";
+import { predictionMarketContract, EXPLORER_URL, BET_TOKENS, CHART_CRYPTO_SYMBOLS, CHART_CRYPTO_BINANCE_LIST, type BetToken } from "@/lib/constants";
+import { predictionMarketAbi } from "@/lib/abis/prediction-market";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
 
 const PRIVATE_MARKET_ADDRESS = (process.env
@@ -27,6 +28,7 @@ import {
   ResolutionSourcePicker,
   type ResolutionSourceParams,
 } from "@/components/resolution-source-picker";
+import { LiveContextPreview } from "@/components/live-context-preview";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import {
@@ -38,17 +40,31 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+const MARKET_CATEGORIES = [
+  { value: "crypto",  label: "Crypto",  description: "Price, volatility, or market predictions", icon: Coins,   color: "text-amber-400", border: "border-amber-400/40", bg: "bg-amber-400/10" },
+  { value: "general", label: "General", description: "Events, politics, or any yes/no outcome",   icon: Globe,  color: "text-cyan",      border: "border-cyan/40",     bg: "bg-cyan/10" },
+  { value: "sports",  label: "Sports",  description: "Match results, tournaments, or outcomes",   icon: Trophy, color: "text-green-400",  border: "border-green-400/40", bg: "bg-green-400/10" },
+  { value: "weather", label: "Weather", description: "Rain, temperature, or climate events",      icon: Cloud,  color: "text-blue-400",  border: "border-blue-400/40", bg: "bg-blue-400/10" },
+] as const;
+
 const MARKET_TYPES = [
-  { value: "base",        label: "Base",        description: "Standard binary outcome market"                                    },
-  { value: "conditional", label: "Conditional", description: "Depends on another market outcome"                                 },
-  { value: "private",     label: "Private",     description: "Positions hidden until reveal — powered by commit-reveal cryptography" },
+  { value: "base",        label: "Base",        description: "Standard binary outcome market (yes/no)"                          },
+  { value: "conditional", label: "Conditional", description: "Depends on another market outcome"                               },
+  { value: "private",     label: "Private",     description: "Positions hidden until reveal — commit-reveal cryptography"      },
 ] as const;
 
 const QUESTION_TEMPLATES = [
-  { label: "₿ BTC > $X", value: "Will BTC exceed $100,000 by December 31, 2025?" },
-  { label: "Ξ ETH > $X", value: "Will ETH exceed $4,000 before March 2026?" },
-  { label: "📊 Custom", value: "" },
+  { label: "BTC > $X", value: "Will BTC exceed $100,000 by December 31, 2025?", icon: BarChart2 },
+  { label: "ETH > $X", value: "Will ETH exceed $4,000 before March 2026?", icon: BarChart2 },
+  { label: "Custom", value: "", icon: BarChart2 },
 ] as const;
+
+const RESOLUTION_TYPE_BY_CATEGORY = {
+  crypto: "price_above" as const,
+  general: "ai_sentiment" as const,
+  sports: "sports_winner" as const,
+  weather: "weather_rained" as const,
+} as const;
 
 const createMarketSchema = z
   .object({
@@ -84,7 +100,9 @@ function formatRelativeFromNow(date: Date): string {
 export default function CreateMarketPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [marketCategory, setMarketCategory] = useState<"crypto" | "general" | "sports" | "weather">("crypto");
   const [deploySuccess, setDeploySuccess] = useState(false);
+
   const [accessKeyModal, setAccessKeyModal] = useState<{ open: boolean; accessKey?: string }>({ open: false });
   const [copiedKey, setCopiedKey] = useState(false);
   const [betToken, setBetToken] = useState<BetToken>(BET_TOKENS[0]!);
@@ -93,6 +111,8 @@ export default function CreateMarketPage() {
     symbol: "BTCUSDT",
     priceSource: "binance",
   });
+  /** Which crypto chart to show on the market page (crypto category only). Persisted in metadata.chartSymbol. */
+  const [chartSymbolToDisplay, setChartSymbolToDisplay] = useState<string>("BTCUSDT");
 
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -119,10 +139,52 @@ export default function CreateMarketPage() {
   const resolveTime = resolveTimeStr ? new Date(resolveTimeStr) : null;
   const [now, setNow] = useState<number>(0);
   const [gasEstimate, setGasEstimate] = useState<string | null>(null);
+  const [aiPreviewLoading, setAiPreviewLoading] = useState(false);
+  const [aiPreviewResult, setAiPreviewResult] = useState<{ probability: number; sentiment_score?: number; provider?: string } | null>(null);
+  const [aiPreviewError, setAiPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     setNow(Date.now());
   }, [closeTimeStr, resolveTimeStr]);
+
+  useEffect(() => {
+    if (question.length < 10) {
+      setAiPreviewResult(null);
+      setAiPreviewError(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      setAiPreviewLoading(true);
+      setAiPreviewError(null);
+      getAISentimentPreview(question)
+        .then((res) => {
+          setAiPreviewResult({ probability: res.probability, sentiment_score: res.sentiment_score, provider: res.provider });
+        })
+        .catch((err) => {
+          setAiPreviewResult(null);
+          setAiPreviewError(err instanceof Error ? err.message : "Backend error");
+        })
+        .finally(() => setAiPreviewLoading(false));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [question]);
+
+  useEffect(() => {
+    const type = RESOLUTION_TYPE_BY_CATEGORY[marketCategory];
+    setResolutionParams((prev) => {
+      const next = { ...prev, type };
+      if (marketCategory === "crypto") next.symbol = betToken.symbol + "USDT";
+      return next;
+    });
+  }, [marketCategory, betToken.symbol]);
+
+  /** When resolution symbol changes for crypto, sync chart to display if it matches a known symbol. */
+  useEffect(() => {
+    if (marketCategory !== "crypto") return;
+    const sym = resolutionParams.symbol?.toUpperCase?.()?.replace?.(/USDT$/, "")?.trim?.();
+    const binance = sym ? `${sym}USDT` : "BTCUSDT";
+    if (CHART_CRYPTO_BINANCE_LIST.includes(binance)) setChartSymbolToDisplay(binance);
+  }, [marketCategory, resolutionParams.symbol]);
 
   useEffect(() => {
     if (!question || !closeTimeStr || !resolveTimeStr) {
@@ -144,7 +206,8 @@ export default function CreateMarketPage() {
     (async () => {
       try {
         const gas = await publicClient.estimateContractGas({
-          ...predictionMarketContract,
+          address: predictionMarketContract.address,
+          abi: predictionMarketAbi,
           functionName: "createMarket",
           args: [question, BigInt(Math.floor(close.getTime() / 1000)), BigInt(Math.floor(resolve.getTime() / 1000))],
           account: address,
@@ -163,26 +226,37 @@ export default function CreateMarketPage() {
     if (value) form.setValue("question", value, { shouldValidate: true });
   };
 
+  const questionStep = marketCategory === "crypto" ? 3 : 2;
+  const timelineStep = marketCategory === "crypto" ? 4 : 3;
+  const resolutionStep = marketCategory === "crypto" ? 5 : 4;
+  const deployStep = marketCategory === "crypto" ? 6 : 5;
+
   const validateStep = async (s: number): Promise<boolean> => {
-    if (s === 1) {
+    if (s === questionStep) {
       const ok = await form.trigger("question");
       return ok;
     }
-    if (s === 2) {
+    if (s === timelineStep) {
       const ok = await form.trigger(["closeTime", "resolveTime"]);
       return ok;
     }
     return true;
   };
 
+  const totalSteps = marketCategory === "crypto" ? 6 : 5;
+
   const goNext = async () => {
     const ok = await validateStep(step);
     if (!ok) return;
-    if (step < 4) setStep(step + 1);
+    if (step < totalSteps) setStep(step + 1);
   };
 
   const goBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step === 2 && marketCategory !== "crypto") {
+      setStep(1);
+    } else if (step > 1) {
+      setStep(step - 1);
+    }
   };
 
   const onSubmit = form.handleSubmit(async (data) => {
@@ -216,7 +290,8 @@ export default function CreateMarketPage() {
             gas: 2_000_000n,
           })
         : await writeContractAsync({
-            ...predictionMarketContract,
+            address: predictionMarketContract.address,
+            abi: [...predictionMarketAbi],
             functionName: "createMarket",
             args: [data.question, BigInt(closeUnix), BigInt(resolveUnix)],
             gas: 2_000_000n,
@@ -281,7 +356,7 @@ export default function CreateMarketPage() {
         setDeploySuccess(true);
         setTimeout(() => router.push("/markets/private"), 1500);
       } else {
-        const logs = parseEventLogs({ abi: predictionMarketContract.abi, logs: receipt.logs });
+        const logs = parseEventLogs({ abi: predictionMarketAbi, logs: receipt.logs });
         const created = logs.find((e) => e.eventName === "MarketCreated");
         newId = created?.args?.marketId != null ? Number(created.args.marketId) : null;
 
@@ -297,13 +372,15 @@ export default function CreateMarketPage() {
           creator: address,
           market_type: data.marketType,
           metadata: JSON.stringify({
+            category: marketCategory,
             resolution: resolutionParams,
             betToken: betToken.symbol,
             symbol: resolutionParams.symbol ?? betToken.symbol,
+            ...(marketCategory === "crypto" && { chartSymbol: chartSymbolToDisplay }),
           }),
           on_chain_market_id: newId ?? undefined,
         };
-        // Solo registrar en backend si tenemos on_chain_market_id; si no, el indexer lo hará más tarde.
+        // Only register in backend if we have on_chain_market_id; otherwise the indexer will do it later.
         if (newId != null) {
           const maxRetries = 3;
           let lastErr: unknown;
@@ -344,22 +421,22 @@ export default function CreateMarketPage() {
     }
   });
 
-  // isWrongNetwork viene de useNetworkGuard (ya incluye el check de isConnected)
+  // isWrongNetwork comes from useNetworkGuard (already includes isConnected check)
 
   return (
     <div className="mx-auto w-full max-w-[720px] py-10 px-6" style={{ padding: "40px 24px" }}>
-      <header className="mb-8">
-        <h1 className="font-display font-extrabold text-[40px] text-foreground leading-tight">
-          CREATE MARKET
+      <header className="mb-10">
+        <h1 className="font-display font-extrabold text-[32px] sm:text-[40px] text-foreground leading-tight tracking-tight">
+          Create Market
         </h1>
-        <p className="mt-2 font-body text-sm text-text-secondary" style={{ fontSize: 14 }}>
-          Deploy a new prediction market on-chain
+        <p className="mt-2 font-body text-[15px] text-text-secondary max-w-md leading-relaxed">
+          Deploy a prediction market on-chain. Choose a category, set your question, timeline, and resolution.
         </p>
       </header>
 
-      {/* Network guard — visible en todos los pasos (solo tras mount para evitar hydration mismatch) */}
+      {/* Network guard — visible on all steps (only after mount to avoid hydration mismatch) */}
       {mounted && !isConnected && (
-        <div className="mb-6 flex items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
           <Wifi className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
           <p className="font-body text-sm text-amber-400">
             Connect your wallet to deploy on Sepolia.
@@ -367,7 +444,7 @@ export default function CreateMarketPage() {
         </div>
       )}
       {mounted && isConnected && isWrongNetwork && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-red/40 bg-red-dim px-4 py-3">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-red/40 bg-red-dim px-4 py-3">
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="h-4 w-4 shrink-0 text-red" aria-hidden />
             <p className="font-body text-sm text-red">
@@ -400,7 +477,7 @@ export default function CreateMarketPage() {
         </div>
       )}
       {mounted && isConnected && walletChainId !== null && !isWrongNetwork && (
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-green/20 bg-green-dim px-4 py-2.5">
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-green/20 bg-green-dim px-4 py-2.5">
           <span className="h-2 w-2 rounded-full bg-green shrink-0" style={{ boxShadow: "0 0 6px var(--green)" }} aria-hidden />
           <p className="font-mono text-xs text-green font-medium">
             Connected to Sepolia — ready to deploy
@@ -409,101 +486,116 @@ export default function CreateMarketPage() {
       )}
 
       {/* Stepper */}
-      <div className="flex items-center justify-between mb-10">
-        {[
-          { num: 1, label: "Question" },
-          { num: 2, label: "Timeline" },
-          { num: 3, label: "Resolution" },
-          { num: 4, label: "Deploy" },
-        ].map((s, i) => (
-          <div key={s.num} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 font-display font-bold text-sm transition-colors",
-                  step > s.num && "border-green bg-green text-black",
-                  step === s.num && "border-cyan bg-cyan/20 text-cyan",
-                  step < s.num && "border-border bg-transparent text-text-muted"
-                )}
-              >
-                {step > s.num ? <Check className="h-4 w-4" aria-hidden /> : s.num}
+      <nav aria-label="Form progress" className="mb-12">
+        <div className="flex items-center justify-between">
+          {(marketCategory === "crypto"
+            ? [
+                { num: 1, label: "Category" },
+                { num: 2, label: "Token" },
+                { num: 3, label: "Question" },
+                { num: 4, label: "Timeline" },
+                { num: 5, label: "Resolution" },
+                { num: 6, label: "Deploy" },
+              ]
+            : [
+                { num: 1, label: "Category" },
+                { num: 2, label: "Question" },
+                { num: 3, label: "Timeline" },
+                { num: 4, label: "Resolution" },
+                { num: 5, label: "Deploy" },
+              ]
+          ).map((s, i, arr) => (
+            <div key={s.num} className="flex flex-1 items-center">
+              <div className="flex flex-col items-center min-w-0">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-display font-bold text-sm transition-all duration-300",
+                    step > s.num && "border-green bg-green text-black scale-100",
+                    step === s.num && "border-cyan bg-cyan/15 text-cyan ring-4 ring-cyan/20 scale-105",
+                    step < s.num && "border-border bg-elevated text-text-muted"
+                  )}
+                >
+                  {step > s.num ? <Check className="h-5 w-5" aria-hidden /> : s.num}
+                </div>
+                <span
+                  className={cn(
+                    "mt-2 font-body text-xs font-medium truncate max-w-[72px] sm:max-w-none text-center transition-colors",
+                    step > s.num && "text-green",
+                    step === s.num && "text-cyan",
+                    step < s.num && "text-text-muted"
+                  )}
+                >
+                  {s.label}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "mt-1.5 font-body text-xs font-medium",
-                  step > s.num && "text-green",
-                  step === s.num && "text-cyan",
-                  step < s.num && "text-text-muted"
-                )}
-              >
-                {s.label}
-              </span>
+              {i < arr.length - 1 && (
+                <div
+                  className={cn(
+                    "mx-1 sm:mx-2 h-0.5 flex-1 min-w-[12px] rounded-full transition-colors duration-300",
+                    step > s.num ? "bg-green/80" : "bg-border"
+                  )}
+                />
+              )}
             </div>
-            {i < 3 && (
-              <div
-                className={cn(
-                  "mx-2 h-0.5 flex-1 min-w-[16px] rounded transition-colors",
-                  step > s.num ? "bg-green" : "bg-border"
-                )}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </nav>
 
-      {/* Step 1 — Question */}
+      {/* Step 1 — Category */}
       {step === 1 && (
-        <div className="space-y-4">
-          <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase">
-            YOUR QUESTION
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {QUESTION_TEMPLATES.map((t) => (
-              <button
-                key={t.label}
-                type="button"
-                onClick={() => handleTemplate(t.value)}
-                className={cn(
-                  "rounded-full border px-4 py-2 font-body text-sm transition-colors",
-                  question === t.value || (t.value && question.startsWith(t.value.slice(0, 20)))
-                    ? "border-cyan bg-cyan-dim text-cyan"
-                    : "border-border bg-elevated text-text-secondary hover:text-foreground"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative">
-            <textarea
-              placeholder="Will ETH exceed $4,000 before March 2026?"
-              className={cn(
-                "w-full min-h-[120px] rounded border bg-elevated px-4 py-3 font-body text-[15px] leading-relaxed text-foreground placeholder:text-text-muted resize-y",
-                "focus:outline-none focus:border-cyan focus:ring-[3px] focus:ring-cyan-dim",
-                form.formState.errors.question && "border-red focus:border-red focus:ring-red-dim"
-              )}
-              style={{ borderRadius: 4, lineHeight: 1.6 }}
-              maxLength={500}
-              {...form.register("question")}
-            />
-            <span
-              className={cn(
-                "absolute bottom-2 right-3 font-mono text-xs",
-                question.length > 450 ? "text-red" : "text-text-muted"
-              )}
-            >
-              {question.length}/500
-            </span>
-          </div>
-          {form.formState.errors.question && (
-            <p className="text-sm text-red">{form.formState.errors.question.message}</p>
-          )}
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <section className="rounded-xl border border-border bg-elevated/30 p-6 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display font-bold text-base text-foreground">Market category</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan/10 px-2 py-0.5 font-mono text-[10px] text-cyan">Step 1</span>
+            </div>
+            <p className="text-sm text-text-secondary mb-6 leading-relaxed">
+              Choose the type of market you want to create. This will guide resolution and display.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {MARKET_CATEGORIES.map((c) => {
+                const Icon = c.icon;
+                const isSelected = marketCategory === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setMarketCategory(c.value)}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-all duration-200",
+                      isSelected ? `${c.border} ${c.bg}` : "border-border bg-elevated/50 hover:border-border-bright hover:bg-elevated"
+                    )}
+                  >
+                    <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", isSelected ? c.color : "text-text-muted")} aria-hidden />
+                    <div>
+                      <p className={cn("font-display font-bold text-sm", isSelected ? c.color : "text-foreground")}>{c.label}</p>
+                      <p className="font-body text-xs text-text-secondary mt-0.5">{c.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <LiveContextPreview
+            category={marketCategory}
+            chartSymbol={marketCategory === "crypto" ? "BTCUSDT" : undefined}
+            question={question}
+            className="mt-4"
+          />
+        </div>
+      )}
 
-          {/* Bet token selector */}
-          <div className="pt-2">
-            <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase mb-3">
-              BET TOKEN — participants will stake with
-            </label>
+      {/* Step 2 — Token (crypto only) */}
+      {step === 2 && marketCategory === "crypto" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <section className="rounded-xl border border-border bg-elevated/30 p-6 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display font-bold text-base text-foreground">Bet token</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan/10 px-2 py-0.5 font-mono text-[10px] text-cyan">Step 2</span>
+            </div>
+            <p className="text-sm text-text-secondary mb-6 leading-relaxed">
+              Choose the crypto asset for this market. Bets settle in SepoliaETH on-chain.
+            </p>
             <div className="grid grid-cols-4 gap-2">
               {BET_TOKENS.map((t) => {
                 const isSelected = betToken.symbol === t.symbol;
@@ -513,34 +605,149 @@ export default function CreateMarketPage() {
                     type="button"
                     onClick={() => setBetToken(t)}
                     className={cn(
-                      "rounded-lg border p-3 flex flex-col items-center gap-1.5 transition-all",
-                      isSelected
-                        ? "border-current bg-elevated shadow-sm"
-                        : "border-border bg-elevated/50 text-text-muted hover:border-border-bright hover:text-foreground"
+                      "rounded-xl border-2 p-3 flex flex-col items-center gap-1.5 transition-all duration-200",
+                      isSelected ? "shadow-md" : "border-border bg-elevated/50 text-text-muted hover:border-border-bright hover:text-foreground hover:bg-elevated"
                     )}
                     style={isSelected ? { borderColor: t.color, background: `${t.color}14`, color: t.color } : {}}
                   >
                     <span className="text-xl leading-none font-mono" aria-hidden>{t.icon}</span>
-                    <span className="font-display font-bold text-[11px] tracking-wide">{t.symbol}</span>
-                    <span className="font-body text-[9px] text-text-muted truncate w-full text-center">{t.label}</span>
+                    <span className="font-display font-bold text-xs tracking-wide">{t.symbol}</span>
+                    <span className="font-body text-[10px] truncate w-full text-center opacity-80">{t.label}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 font-mono text-[10px] text-text-muted">
-              Note: bets are settled in <span className="text-cyan">SepoliaETH</span> on-chain. This token defines the market&apos;s reference asset.
-            </p>
-          </div>
+          </section>
         </div>
       )}
 
-      {/* Step 2 — Timeline */}
-      {step === 2 && (
-        <div className="space-y-6">
+      {/* Step 2/3 — Question */}
+      {((marketCategory === "crypto" && step === 3) || (marketCategory !== "crypto" && step === 2)) && (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          {/* Question section */}
+          <section className="rounded-xl border border-border bg-elevated/30 p-6 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display font-bold text-base text-foreground">Your question</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan/10 px-2 py-0.5 font-mono text-[10px] text-cyan">{marketCategory === "crypto" ? "Step 3" : "Step 2"}</span>
+            </div>
+            <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+              Write a clear binary outcome question (yes/no). Participants will bet on the result.
+            </p>
+
+            <div className="mb-4">
+              <p className="font-body text-xs font-medium text-text-muted mb-2">Quick templates</p>
+              <div className="flex flex-wrap gap-2">
+                {QUESTION_TEMPLATES.map((t) => {
+                  const Icon = t.icon;
+                  const isActive = question === t.value || (t.value && question.startsWith(t.value.slice(0, 20)));
+                  return (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() => handleTemplate(t.value)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border px-4 py-2.5 font-body text-sm transition-all duration-200",
+                        isActive
+                          ? "border-cyan bg-cyan/10 text-cyan shadow-[0_0_0_1px_var(--cyan)]"
+                          : "border-border bg-elevated text-text-secondary hover:border-border-bright hover:text-foreground hover:bg-elevated"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="relative">
+              <textarea
+                placeholder="e.g. Will ETH exceed $4,000 before March 2026?"
+                className={cn(
+                  "w-full min-h-[120px] rounded-xl border bg-elevated px-4 py-3.5 font-body text-[15px] leading-relaxed text-foreground placeholder:text-text-muted resize-y transition-colors",
+                  "focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20",
+                  form.formState.errors.question && "border-red focus:border-red focus:ring-red/20"
+                )}
+                maxLength={500}
+                {...form.register("question")}
+              />
+              <span
+                className={cn(
+                  "absolute bottom-3 right-3 font-mono text-xs tabular-nums",
+                  question.length > 450 ? "text-red" : "text-text-muted"
+                )}
+              >
+                {question.length}/500
+              </span>
+            </div>
+            {form.formState.errors.question && (
+              <p className="mt-1.5 text-sm text-red flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {form.formState.errors.question.message}
+              </p>
+            )}
+            {/* AI prediction preview — only when question has enough text */}
+            {question.length >= 10 && (
+              <div className="mt-4 rounded-xl border border-border bg-elevated/50 p-3 space-y-1.5">
+                <p className="font-mono text-[11px] text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-violet" aria-hidden />
+                  AI resolution preview
+                </p>
+                {aiPreviewLoading && (
+                  <p className="font-body text-sm text-text-secondary flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    Loading…
+                  </p>
+                )}
+                {!aiPreviewLoading && aiPreviewResult && (
+                  <>
+                    <p className="font-body text-sm text-foreground">
+                      Probability ~{Math.round(aiPreviewResult.probability * 100)}%
+                      {aiPreviewResult.sentiment_score != null && (
+                        <span className="text-text-muted font-mono text-xs ml-2">
+                          (sentiment {aiPreviewResult.sentiment_score.toFixed(2)})
+                        </span>
+                      )}
+                    </p>
+                    <p className="font-mono text-[10px] text-text-muted">
+                      Resolution will use Chainlink CRE with this type of signal.
+                    </p>
+                  </>
+                )}
+                {!aiPreviewLoading && aiPreviewError && (
+                  <p className="font-body text-xs text-text-muted">
+                    {aiPreviewError.includes("unreachable") || aiPreviewError.includes("fetch")
+                      ? "Preview unavailable. Backend may be offline. Start the backend (e.g. npm run backend)."
+                      : aiPreviewError}
+                  </p>
+                )}
+              </div>
+            )}
+            {marketCategory !== "crypto" && (
+              <p className="mt-4 font-mono text-[11px] text-text-muted flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-cyan/70" aria-hidden />
+                Bets are settled in SepoliaETH on-chain.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* Step 4/3 — Timeline */}
+      {((marketCategory === "crypto" && step === 4) || (marketCategory !== "crypto" && step === 3)) && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <section className="rounded-xl border border-border bg-elevated/30 p-6 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display font-bold text-base text-foreground">Timeline</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan/10 px-2 py-0.5 font-mono text-[10px] text-cyan">{marketCategory === "crypto" ? "Step 4" : "Step 3"}</span>
+            </div>
+            <p className="text-sm text-text-secondary mb-6">
+              Set when betting closes and when the market resolves.
+            </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase mb-2">
-                CLOSE TIME
+              <label className="block font-display font-bold text-xs text-text-muted tracking-wider uppercase mb-2">
+                Close time
               </label>
               <input
                 type="datetime-local"
@@ -561,8 +768,8 @@ export default function CreateMarketPage() {
               )}
             </div>
             <div>
-              <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase mb-2">
-                RESOLVE TIME
+              <label className="block font-display font-bold text-xs text-text-muted tracking-wider uppercase mb-2">
+                Resolve time
               </label>
               <input
                 type="datetime-local"
@@ -589,31 +796,71 @@ export default function CreateMarketPage() {
               <span className="h-2 w-2 rounded-full bg-cyan shrink-0" aria-hidden />
               <div className="flex-1 flex items-center gap-1 mx-1">
                 <div className="flex-1 h-1 rounded-l-full bg-cyan/50" />
-                <span className="text-[10px] font-mono text-cyan bg-elevated px-2 py-1 rounded shrink-0">CLOSE</span>
+                <span className="text-[10px] font-mono text-cyan bg-elevated px-2 py-1 rounded shrink-0">Close</span>
                 <div className="w-4 h-1 shrink-0 bg-transparent" aria-hidden />
-                <span className="text-[10px] font-mono text-cyan bg-elevated px-2 py-1 rounded shrink-0">RESOLVE</span>
+                <span className="text-[10px] font-mono text-cyan bg-elevated px-2 py-1 rounded shrink-0">Resolve</span>
                 <div className="flex-1 h-1 rounded-r-full bg-cyan/50" />
               </div>
               <span className="h-2 w-2 rounded-full bg-cyan shrink-0" aria-hidden />
             </div>
           )}
+          </section>
         </div>
       )}
 
-      {/* Step 3 — Resolution Source */}
-      {step === 3 && (
-        <div className="space-y-4">
+      {/* Step 5/4 — Resolution Source */}
+      {((marketCategory === "crypto" && step === 5) || (marketCategory !== "crypto" && step === 4)) && (
+        <div className="space-y-4 animate-in fade-in duration-300">
           <ResolutionSourcePicker
             value={resolutionParams}
             onChange={setResolutionParams}
+            compactMode
+            onlyAssetPrice={marketCategory === "crypto"}
           />
+            {marketCategory === "crypto" && (
+            <section className="rounded-xl border border-border bg-elevated/30 p-4">
+              <h3 className="font-display font-bold text-sm text-foreground mb-2">Chart to display on market page</h3>
+              <p className="text-xs text-text-secondary mb-3">
+                Choose which crypto price chart will be shown on this market&apos;s page. This can match the resolution symbol or a related asset.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CHART_CRYPTO_SYMBOLS.map((opt) => {
+                  const isSelected = chartSymbolToDisplay === opt.binance;
+                  return (
+                    <button
+                      key={opt.binance}
+                      type="button"
+                      onClick={() => setChartSymbolToDisplay(opt.binance)}
+                      className={cn(
+                        "rounded-xl border-2 px-3 py-2 font-mono text-xs font-semibold transition-all duration-200",
+                        isSelected ? "border-cyan bg-cyan/15 text-cyan" : "border-border bg-elevated text-text-muted hover:border-border-bright hover:text-foreground"
+                      )}
+                    >
+                      {opt.symbol}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          {marketCategory === "crypto" && (
+            <LiveContextPreview
+              category="crypto"
+              chartSymbol={chartSymbolToDisplay}
+              question={question}
+              className="mt-4"
+            />
+          )}
+          <p className="font-body text-xs text-text-muted">
+            The outcome is submitted on-chain by a Chainlink CRE workflow (Compute-Report-Evaluate), using the source you configure above.
+          </p>
         </div>
       )}
 
-      {/* Step 4 — Deploy */}
-      {step === 4 && (
-        <form onSubmit={onSubmit} className="space-y-6">
-          <div className="card-gradient-border rounded-md p-4 space-y-3">
+      {/* Step 6/5 — Deploy */}
+      {((marketCategory === "crypto" && step === 6) || (marketCategory !== "crypto" && step === 5)) && (
+        <form onSubmit={onSubmit} className="space-y-6 animate-in fade-in duration-300">
+          <div className="card-gradient-border rounded-2xl p-4 space-y-3">
             <p className="font-body text-sm text-foreground line-clamp-2">{question || "—"}</p>
             <div className="flex flex-wrap gap-4 font-mono text-xs text-text-secondary">
               <span>Close: {closeTime ? closeTime.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
@@ -621,7 +868,7 @@ export default function CreateMarketPage() {
             </div>
             {/* Bet token summary */}
             <div className="flex items-center gap-2 pt-1">
-              <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Bet token:</span>
+              <span className="font-mono text-[10px] text-text-muted uppercase tracking-wider">Bet token:</span>
               <span
                 className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-display font-bold text-xs"
                 style={{ borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` }}
@@ -631,14 +878,24 @@ export default function CreateMarketPage() {
               </span>
               <span className="font-mono text-[10px] text-text-muted">· settled in SepoliaETH</span>
             </div>
+            {marketCategory === "crypto" && (
+              <p className="font-mono text-[10px] text-text-muted">
+                Resolution symbol: <span className="text-foreground">{resolutionParams.symbol ?? `${betToken.symbol}USDT`}</span>
+                {" · "}
+                Chart: <span className="text-foreground">{chartSymbolToDisplay}</span>
+              </p>
+            )}
+            <p className="font-mono text-[10px] text-text-muted">
+              Bets are in Sepolia ETH; no platform maximum per bet.
+            </p>
             {gasEstimate && (
-              <p className="font-mono text-xs text-text-muted">Est. gas cost: {gasEstimate}</p>
+              <p className="font-mono text-xs text-text-muted">Est. gas: {gasEstimate}</p>
             )}
           </div>
 
           <div>
-            <label className="block font-display font-bold text-xs text-text-muted tracking-widest uppercase mb-3">
-              MARKET TYPE
+            <label className="block font-display font-bold text-xs text-text-muted tracking-wider uppercase mb-3">
+              Market type
             </label>
             <div className="grid grid-cols-3 gap-3">
               {MARKET_TYPES.map((t) => {
@@ -651,7 +908,7 @@ export default function CreateMarketPage() {
                     onClick={() => form.setValue("marketType", t.value)}
                     disabled={isPrivateType && !IS_PRIVATE_DEPLOYED}
                     className={cn(
-                      "rounded-md border p-4 text-left transition-colors",
+                      "rounded-2xl border p-4 text-left transition-colors",
                       isSelected && !isPrivateType && "border-cyan bg-cyan-dim",
                       isSelected && isPrivateType && "border-violet bg-violet-dim",
                       !isSelected && "border-border bg-elevated hover:border-border-bright",
@@ -676,18 +933,17 @@ export default function CreateMarketPage() {
             </div>
 
             {marketType === "private" && IS_PRIVATE_DEPLOYED && (
-              <div className="rounded-lg border border-violet/30 bg-violet-dim px-4 py-3 flex items-start gap-2">
+              <div className="rounded-xl border border-violet/30 bg-violet-dim px-4 py-3 flex items-start gap-2">
                 <Lock className="h-4 w-4 text-violet shrink-0 mt-0.5" aria-hidden />
                 <p className="font-mono text-[11px] text-violet leading-relaxed">
                   This market will deploy to <code>PrivatePredictionMarket</code>. Bettors submit
-                  cryptographic commitments — positions are hidden until reveal. Powered by
-                  commit-reveal architecture (Chainlink Confidential Compute).
+                  cryptographic commitments — positions are hidden until reveal (Chainlink Confidential Compute).
                 </p>
               </div>
             )}
 
             {marketType === "private" && !IS_PRIVATE_DEPLOYED && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-2">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" aria-hidden />
                 <p className="font-mono text-[11px] text-amber-400">
                   PrivatePredictionMarket contract is not deployed. Deploy it first and set{" "}
@@ -714,21 +970,21 @@ export default function CreateMarketPage() {
                 Deploying...
               </>
             ) : (
-              "DEPLOY MARKET ON-CHAIN"
+              "Deploy market on-chain"
             )}
           </Button>
         </form>
       )}
 
       {/* Navigation */}
-      {step < 4 && (
-        <div className="mt-10 flex items-center justify-between gap-4">
+      {step < totalSteps && (
+        <div className="mt-12 flex items-center justify-between gap-4">
           <Button
             type="button"
             variant="outline"
             onClick={goBack}
             disabled={step === 1}
-            className="font-body border-border"
+            className="font-body border-border hover:bg-elevated"
             aria-label="Previous step"
           >
             <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
@@ -737,7 +993,7 @@ export default function CreateMarketPage() {
           <Button
             type="button"
             onClick={goNext}
-            className="font-body bg-cyan text-black hover:bg-cyan/90 border-0"
+            className="font-body bg-cyan text-black hover:bg-cyan/90 border-0 px-6"
             aria-label="Next step"
           >
             Continue
@@ -749,7 +1005,7 @@ export default function CreateMarketPage() {
       )}
 
       <div className="mt-8">
-        <Button asChild variant="ghost" size="sm" className="font-body text-text-muted" aria-label="Back to markets">
+        <Button asChild variant="ghost" size="sm" className="font-body text-text-muted hover:text-foreground" aria-label="Back to markets">
           <Link href="/">
             <Link2 className="mr-2 h-4 w-4" aria-hidden />
             Back to markets
@@ -771,7 +1027,7 @@ export default function CreateMarketPage() {
           </DialogHeader>
           {accessKeyModal.accessKey && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 rounded-lg border border-violet/30 bg-violet-dim/50 p-3 font-mono text-sm">
+              <div className="flex items-center gap-2 rounded-xl border border-violet/30 bg-violet-dim/50 p-3 font-mono text-sm">
                 <code className="flex-1 break-all text-foreground">{accessKeyModal.accessKey}</code>
                 <Button
                   variant="ghost"

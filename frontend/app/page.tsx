@@ -61,7 +61,7 @@ function DashboardContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Estado inicial desde URL — recalculado cuando searchParams cambia
+  // Initial state from URL — recomputed when searchParams change
   const initialFilters = useMemo(() => filterStateFromParams(searchParams), [searchParams]);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
 
@@ -70,7 +70,7 @@ function DashboardContent() {
     setFilters(filterStateFromParams(searchParams));
   }, [searchParams]);
 
-  // Sincronizar filtros → URL sin reload
+  // Sync filters → URL without reload
   useEffect(() => {
     const params = filterStateToParams(filters);
     const qs = params.toString();
@@ -98,7 +98,7 @@ function DashboardContent() {
     dataUpdatedAt: marketsUpdatedAt,
   } = useInfiniteMarkets(statusParam);
 
-  // Aplanar todas las páginas y aplicar filtros client-side
+  // Flatten all pages and apply filters client-side
   const allItems = useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],
     [data?.pages]
@@ -115,7 +115,7 @@ function DashboardContent() {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Rastrear cuántos items había antes de la última carga para animar solo los nuevos
+  // Track how many items there were before last load to animate only new ones
   const prevCountRef = useRef(0);
   const newBatchStart = prevCountRef.current;
   useEffect(() => {
@@ -223,7 +223,7 @@ function DashboardContent() {
               aria-label="Market list"
             >
               {filteredAndSorted.map((market: MarketView, i: number) => {
-                // Animar solo las cards nuevas de la última página cargada
+                // Animate only the new cards from the last loaded page
                 const isNew = i >= newBatchStart;
                 const delay = isNew ? (i - newBatchStart) * 0.05 : 0;
                 return (

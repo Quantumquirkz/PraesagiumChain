@@ -38,7 +38,7 @@ export async function generateMetadata({
       },
     };
   } catch {
-    // Fallback si el mercado no existe o la API falla
+    // Fallback when market does not exist or API fails
     return {
       title: "Market — PraesagiumChain",
       description: "Decentralized prediction market",

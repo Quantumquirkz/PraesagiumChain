@@ -210,7 +210,7 @@ export default function PositionsPage() {
   const { address, isConnected } = useAccount();
   const mounted = useIsMounted();
 
-  // 1. Cargar lista de mercados desde la API
+  // 1. Load market list from API
   const { data: marketsData, isLoading: marketsLoading, isError: marketsError, error: marketsErrorDetail, refetch: refetchMarkets } = useQuery({
     queryKey: ["markets-positions", 1, LIMIT],
     queryFn: () => getMarkets(1, LIMIT),
@@ -219,7 +219,7 @@ export default function PositionsPage() {
 
   const markets = useMemo(() => marketsData?.items ?? [], [marketsData?.items]);
 
-  // 2. Leer getUserStake para todos los mercados (usar on_chain_market_id cuando exista para coincidir con el contrato)
+  // 2. Read getUserStake for all markets (use on_chain_market_id when present to match contract)
   const stakeContracts = useMemo(
     () =>
       address
@@ -237,7 +237,7 @@ export default function PositionsPage() {
     query: { enabled: stakeContracts.length > 0 },
   });
 
-  // 3. Pre-filtrar mercados resueltos con stake > 0 para leer on-chain
+  // 3. Pre-filter resolved markets with stake > 0 to read on-chain
   const resolvedWithStake = useMemo(() => {
     if (!stakesResult) return [];
     return markets
@@ -251,7 +251,7 @@ export default function PositionsPage() {
       .filter((x: { market: MarketView; idx: number } | null): x is { market: MarketView; idx: number } => x !== null);
   }, [markets, stakesResult]);
 
-  // 4. Leer getMarket on-chain solo para mercados resueltos con stake (usar on_chain_market_id cuando exista)
+  // 4. Read getMarket on-chain only for resolved markets with stake (use on_chain_market_id when present)
   const marketOnChainContracts = useMemo(
     () =>
       resolvedWithStake.map(({ market }: { market: MarketView; idx: number }) => ({
@@ -267,7 +267,7 @@ export default function PositionsPage() {
     query: { enabled: marketOnChainContracts.length > 0 },
   });
 
-  // Mapa marketId → datos on-chain
+  // Map marketId → on-chain data
   const marketOnChainMap = useMemo(() => {
     const map = new Map<
       number,
@@ -280,7 +280,7 @@ export default function PositionsPage() {
     return map;
   }, [resolvedWithStake, marketsOnChainResult]);
 
-  // 5. Construir lista de posiciones
+  // 5. Build positions list
   const positions = useMemo<PositionItem[]>(() => {
     const stakeResults =
       stakesResult?.map((r: { result?: readonly unknown[]; status?: string }) => parseStake(r)) ?? [];
@@ -293,10 +293,10 @@ export default function PositionsPage() {
         const { yesStake, noStake } = stake;
         const isResolved = market.status === "Resolved";
 
-        // Sin stake en absoluto → ignorar
+        // No stake at all → skip
         if (yesStake === 0n && noStake === 0n) return null;
 
-        // Determinar lado dominante para mostrar
+        // Determine dominant side to display
         const side: "yes" | "no" | "both" =
           yesStake > 0n && noStake > 0n
             ? "both"
@@ -316,9 +316,9 @@ export default function PositionsPage() {
           };
         }
 
-        // Mercado resuelto — determinar outcome
+        // Resolved market — determine outcome
         const onChain = marketOnChainMap.get(market.id);
-        // Preferir outcome on-chain; fallback a API
+        // Prefer on-chain outcome; fallback to API
         const outcomeNum =
           onChain?.outcome ??
           (market.outcome === "Yes"
@@ -363,7 +363,7 @@ export default function PositionsPage() {
             totalPool
           );
         } else if (won) {
-          // Sin datos on-chain: usar stake como estimación mínima
+          // No on-chain data: use stake as minimum estimate
           estimatedPayout = userWinningSide;
         }
 
@@ -413,7 +413,7 @@ export default function PositionsPage() {
     );
   }
 
-  // ── Guard: error al cargar mercados ─────────────────────────────────────────
+  // Guard: error loading markets
 
   if (marketsError) {
     const errMsg = marketsErrorDetail instanceof Error ? marketsErrorDetail.message : "Failed to load positions.";

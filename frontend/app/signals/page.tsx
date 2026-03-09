@@ -74,7 +74,7 @@ function CryptoSearchMenu({
             aria-hidden
           />
           <span className="font-mono text-xs text-text-muted uppercase tracking-widest">
-            Buscar cripto
+            Search crypto
           </span>
         </div>
       </div>
@@ -84,13 +84,13 @@ function CryptoSearchMenu({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
           <Input
             type="search"
-            placeholder="Buscar por nombre o símbolo (ej. Bitcoin, ETH, SOLUSDT)..."
+            placeholder="Search by name or symbol (e.g. Bitcoin, ETH, SOLUSDT)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             className="pl-9 font-mono text-sm"
-            aria-label="Buscar criptomonedas"
+            aria-label="Search cryptocurrencies"
           />
         </div>
 
@@ -237,7 +237,7 @@ export default function SignalsPage() {
             </span>
           </h1>
           <p className="mt-2 font-body text-sm text-text-secondary max-w-xl">
-            Monitoreo en tiempo real de 6 fuentes PHPE. Busca una cripto y revisa señales e predicción.
+            Real-time monitoring of 6 PHPE sources. Search for a crypto and review signals and prediction.
           </p>
         </div>
 
