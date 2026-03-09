@@ -13,11 +13,10 @@ import type {
   PrivateMarketAccessResponse,
   ConditionalConditionView,
   FetchResponse,
-  SentimentResponse,
 } from "@/types/api";
 
-// En el navegador: si NEXT_PUBLIC_API_BASE_URL está definida, usarla (peticiones directas al backend);
-// si no, usar "" para que las peticiones vayan al mismo origen y el proxy de Next (rewrites) las envíe al backend.
+// In the browser: if NEXT_PUBLIC_API_BASE_URL is set, use it (direct requests to backend);
+// otherwise use "" so requests go to same origin and Next's proxy (rewrites) forwards them to the backend.
 // En SSR usamos siempre la URL del backend.
 export const getBaseUrl = (): string => {
   if (typeof window === "undefined") {
@@ -72,6 +71,22 @@ export async function getStats(): Promise<MarketStats> {
   return fetchApi<MarketStats>("/api/markets/stats");
 }
 
+/** Backend may return either a direct paginated payload or { data: paginated }. */
+type MarketsListResponse =
+  | PaginatedResponse<MarketView>
+  | { data: PaginatedResponse<MarketView> };
+
+function isPaginatedResponse(
+  raw: MarketsListResponse
+): raw is PaginatedResponse<MarketView> {
+  return (
+    raw != null &&
+    typeof raw === "object" &&
+    "items" in raw &&
+    Array.isArray((raw as PaginatedResponse<MarketView>).items)
+  );
+}
+
 export async function getMarkets(
   page: number,
   limit: number,
@@ -79,12 +94,9 @@ export async function getMarkets(
 ): Promise<PaginatedResponse<MarketView>> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
-  const raw = await fetchApi<PaginatedResponse<MarketView> | { data: PaginatedResponse<MarketView> }>(
-    `/api/markets?${params}`
-  );
-  // Accept both { items, total, page, limit } and { data: { items, total, page, limit } }
-  if (raw && typeof raw === "object" && "items" in raw && Array.isArray((raw as PaginatedResponse<MarketView>).items)) {
-    return raw as PaginatedResponse<MarketView>;
+  const raw = await fetchApi<MarketsListResponse>(`/api/markets?${params}`);
+  if (isPaginatedResponse(raw)) {
+    return raw;
   }
   if (raw && typeof raw === "object" && "data" in raw) {
     const data = (raw as { data: PaginatedResponse<MarketView> }).data;
@@ -222,6 +234,8 @@ export interface WeatherHistoryForecastResponse {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
     precipitation_sum: number[];
+    relative_humidity_2m_max: number[];
+    wind_speed_10m_max: number[];
   };
 }
 

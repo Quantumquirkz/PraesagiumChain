@@ -1,6 +1,6 @@
 import { ContractFunctionRevertedError, BaseError } from "viem";
 
-// ─── Mapeo de errores del contrato PredictionMarket ───────────────────────────
+// ─── PredictionMarket contract error mapping ───────────────────────────
 
 const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   MarketNotOpen:          "This market is not accepting bets right now.",
@@ -20,7 +20,7 @@ const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
   "insufficient funds":   "Insufficient ETH balance to complete this transaction.",
 };
 
-// ─── Función principal ────────────────────────────────────────────────────────
+// ─── Main function ────────────────────────────────────────────────────────
 
 export function parseContractError(error: unknown): string {
   if (!error) return "An unknown error occurred.";
@@ -28,12 +28,12 @@ export function parseContractError(error: unknown): string {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
 
-    // Rechazo del usuario en la wallet
+    // User rejection in wallet
     if (msg.includes("user rejected") || msg.includes("user denied")) {
       return CONTRACT_ERROR_MESSAGES["user rejected"];
     }
 
-    // Fondos insuficientes
+    // Insufficient funds
     if (msg.includes("insufficient funds")) {
       return CONTRACT_ERROR_MESSAGES["insufficient funds"];
     }
