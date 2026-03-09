@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Start PostgreSQL, Redis, and ClickHouse via Docker Compose, then apply ClickHouse DDL.
-# Usage: ./scripts/docker-up.sh
+#
+# Usage:
+#   ./scripts/docker-up.sh
+#
+# If you get "permission denied" connecting to the Docker daemon socket (e.g. on
+# Linux/WSL when your user is not in the docker group), run with sudo:
+#   sudo ./scripts/docker-up.sh
+#
 # Requires: docker compose (or docker-compose)
 
 set -euo pipefail
@@ -34,6 +41,6 @@ else
 fi
 
 echo "Done. Set in .env:"
-echo "  DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium"
+echo "  DATABASE_URL=postgresql://praesagium:praesagium@localhost:5433/praesagium"
 echo "  REDIS_URL=redis://localhost:6380"
 echo "  CLICKHOUSE_URL=http://localhost:8123"

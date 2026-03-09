@@ -143,27 +143,27 @@ pub async fn market_ai_analysis(
 
     let news_context = sentiment_text
         .filter(|s| !s.trim().is_empty())
-        .map(|s| format!("Contexto de noticias/redes: {}", s))
-        .unwrap_or_else(|| "Sin contexto de noticias proporcionado.".to_string());
+        .map(|s| format!("News/social context: {}", s))
+        .unwrap_or_else(|| "No news context provided.".to_string());
 
     let prompt = format!(
-        r#"Eres un analista de mercados predictivos. Genera un análisis y una descripción basados en estos datos.
+        r#"You are a prediction market analyst. Generate an analysis and a description based on this data.
 
-MERCADO: {}
-Estado: {}
+MARKET: {}
+Status: {}
 Stakes: YES {:.4} ETH ({:.0}%), NO {:.4} ETH. Total: {:.4} ETH.
 {}
-Predicción híbrida PHPE: {}% (fusión: series temporales 35%, sentimiento IA 40%, precio 25%).
+PHPE hybrid prediction: {}% (fusion: time series 35%, AI sentiment 40%, price 25%).
 
 {}
 
-Responde EXACTAMENTE con este formato, sin más texto:
+Reply EXACTLY in this format, no extra text:
 
 ANALYSIS:
-[2-3 oraciones sintetizando el mercado, los datos, el contexto de noticias y la predicción híbrida. Explica si el mercado favorece YES o NO y por qué.]
+[2-3 sentences synthesizing the market, data, news context and hybrid prediction. Explain whether the market favours YES or NO and why.]
 
 DESCRIPTION:
-[1 párrafo describiendo de dónde se recopila la información: fuentes de datos (Binance, Chainlink), series temporales PHPE, noticias/redes sociales. Explica cómo estas fuentes informan la predicción.]"#,
+[1 paragraph describing where the information is gathered from: data sources (Binance, Chainlink), PHPE time series, news/social. Explain how these sources inform the prediction.]"#,
         market.question,
         market.status,
         yes_stake,

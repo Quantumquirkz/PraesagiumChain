@@ -87,6 +87,34 @@ impl MarketService {
         Ok(n)
     }
 
+    /// Deletes a single market and its related data (predictions, conditions, resolutions).
+    /// Returns the number of rows deleted (0 if market did not exist). For admin/dev use.
+    pub async fn delete_by_id(&self, id: i64) -> Result<u64> {
+        let pool = self.db.pool();
+        sqlx::query("DELETE FROM predictions WHERE market_id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM conditional_conditions WHERE market_id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM market_resolutions WHERE market_id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        let result = sqlx::query("DELETE FROM markets WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        let n = result.rows_affected();
+        if n > 0 {
+            self.invalidate_market_cache(id).await;
+            info!("Deleted market id={}", id);
+        }
+        Ok(n)
+    }
+
     /// Updates total_yes_stake or total_no_stake when BetPlaced is indexed.
     /// `outcome` must be "Yes" or "No"; `amount` is in wei.
     /// Returns Ok even if no row was updated (market may not exist yet if BetPlaced precedes MarketCreated in the same block).
@@ -189,7 +217,7 @@ impl MarketService {
 
         let mut items: Vec<MarketView> = rows.into_iter().map(MarketView::from).collect();
 
-        // Bulk fetch latest predictions (avoids N+1). Si falla, mostramos mercados sin predicción.
+        // Bulk fetch latest predictions (avoids N+1). On failure, markets are shown without prediction.
         if !items.is_empty() {
             let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
             match self.get_latest_predictions_bulk(&ids).await {
@@ -296,8 +324,8 @@ impl MarketService {
         if req.resolve_time <= req.close_time {
             return Err(AppError::Validation("resolveTime must be after closeTime".to_string()));
         }
-        // Cuando on_chain_market_id está presente, estamos sincronizando un mercado ya confirmado on-chain.
-        // No exigir close_time > now: la tx pudo tardar en confirmar (Sepolia).
+        // When on_chain_market_id is present, we are syncing a market already confirmed on-chain.
+        // Do not require close_time > now: the tx may have taken time to confirm (Sepolia).
         if req.on_chain_market_id.is_none() && req.close_time <= now {
             return Err(AppError::Validation("closeTime must be in the future".to_string()));
         }

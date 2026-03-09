@@ -20,17 +20,19 @@ For the full template, see [config/env.example](../config/env.example).
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL URL. Example: `postgresql://praesagium:praesagium@localhost:5432/praesagium` |
+| `DATABASE_URL` | Yes | PostgreSQL URL. Example: `postgresql://praesagium:praesagium@localhost:5433/praesagium` (Docker maps host 5433) |
 | `RPC_URL` / `SEPOLIA_RPC_URL` | Yes (indexer) | Sepolia or local RPC. Prefer `https://ethereum-sepolia-rpc.publicnode.com` to avoid Cloudflare 522. |
 | `PREDICTION_MARKET_ADDRESS` | Yes (indexer) | Deployed PredictionMarket address. Same as `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. |
 | `PORT` | No | Backend HTTP port (default `4000`). |
 | `REDIS_URL` | No | When backend runs on host and Docker maps Redis to 6380: `redis://localhost:6380`. |
 | `CLICKHOUSE_URL` | No | Optional analytics (e.g. `http://localhost:8123`). |
-| `AI_PROVIDER` | No | `gemini`, `huggingface`, or `mock` (default). |
-| `GEMINI_API_KEY` | No* | Required if `AI_PROVIDER=gemini`. Get from [Google AI Studio](https://aistudio.google.com/api-keys). |
-| `HF_API_KEY` | No | Alternative to Gemini for sentiment. Get from [Hugging Face](https://huggingface.co/settings/tokens). |
+| `AI_PROVIDER` | No | `groq` (default), `gemini`, `huggingface`, or `mock`. |
+| `GROQ_API_KEY` | No* | Required if `AI_PROVIDER=groq`. Get from [Groq Console](https://console.groq.com/keys). |
+| `GROQ_MODEL` | No | Groq model (default `llama-3.3-70b-versatile`). |
+| `HF_API_KEY` | No | Hugging Face sentiment (alternative). Get from [Hugging Face](https://huggingface.co/settings/tokens). |
 | `PRIVATE_KEY` | Yes (deploy) | Wallet private key (no `0x` prefix) for deploying contracts. **Never commit.** |
 | `API_BASE_URL` | No | Backend URL for scripts (default `http://localhost:4000`). |
+| `ORACLE_CONSUMER_ADDRESS` | Yes (resolveFromBackend) | OracleConsumer contract address. Required for `scripts/resolveFromBackend.js` to call `oracleCallback`. Set after deploy. |
 | `ETHERSCAN_API_KEY` | No | For contract verification. Get from [Etherscan](https://etherscan.io/myapikey). |
 | `FUNCTIONS_ROUTER` | No | Chainlink Functions Router. Only if using `deployWithFunctions.js`. |
 
@@ -67,8 +69,8 @@ For Chainlink CRE workflow simulation:
 ## 4. API Keys and External Services
 
 | Key | Purpose | Where to Get | Required? |
-|-----|---------|--------------|-----------|
-| `GEMINI_API_KEY` | AI sentiment (PHPE / predictions) | [Google AI Studio](https://aistudio.google.com/api-keys) | No; use `AI_PROVIDER=mock` to skip |
+|-----|---------|--------------|------------|
+| `GROQ_API_KEY` | AI sentiment (PHPE / predictions) | [Groq Console](https://console.groq.com/keys) | No; use `AI_PROVIDER=mock` to skip |
 | `HF_API_KEY` | Hugging Face sentiment (alternative) | [Hugging Face](https://huggingface.co/settings/tokens) | No |
 | `API_FOOTBALL_KEY` | Sports market resolution | [API-Football](https://www.api-football.com/) | No; only for sports markets |
 | `FINNHUB_API_KEY` | Finnhub source (Signals page) | [Finnhub](https://finnhub.io/register) | No |
@@ -83,15 +85,19 @@ For Chainlink CRE workflow simulation:
 ### Local development (Hardhat)
 
 ```env
-DATABASE_URL=postgresql://praesagium:praesagium@localhost:5432/praesagium
+DATABASE_URL=postgresql://praesagium:praesagium@localhost:5433/praesagium
 RPC_URL=http://127.0.0.1:8545
-AI_PROVIDER=mock
+AI_PROVIDER=groq
+GROQ_API_KEY=<your_key>
 PRIVATE_KEY=<your_key>
 API_BASE_URL=http://localhost:4000
 
 NEXT_PUBLIC_CHAIN_ID=31337
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=<from_deploy>
+
+# For resolveFromBackend.js (on-chain resolution)
+ORACLE_CONSUMER_ADDRESS=<from_deploy>
 ```
 
 ### Sepolia (create market + bet)
@@ -111,7 +117,7 @@ NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 
 ### Checklist (Sepolia)
 
-1. `docker compose up -d` (Postgres 5432, Redis 6380 on host).
+1. `docker compose up -d` (Postgres 5433 on host, Redis 6380 on host).
 2. Set `DATABASE_URL`, `RPC_URL`, `PREDICTION_MARKET_ADDRESS`, `NEXT_PUBLIC_*` in `.env`.
 3. Set `REDIS_URL=redis://localhost:6380` if using Redis.
 4. Run `npm run backend` and `cd frontend && npm run dev`.
@@ -123,7 +129,7 @@ NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 
 - [Sepolia Faucet](https://sepoliafaucet.com/)
 - [Sepolia Etherscan](https://sepolia.etherscan.io)
-- [Google AI Studio (Gemini)](https://aistudio.google.com/api-keys)
+- [Groq Console](https://console.groq.com/keys)
 - [Alchemy](https://dashboard.alchemy.com/)
 - [Infura](https://infura.io/)
 - [Etherscan API](https://etherscan.io/myapikey)

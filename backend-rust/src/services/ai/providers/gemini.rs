@@ -25,16 +25,16 @@ struct GeminiCandidate { content: GeminiContent }
 #[derive(Debug, Deserialize)]
 struct GeminiResponse { candidates: Option<Vec<GeminiCandidate>> }
 
-/// Devuelve un mensaje corto y legible para el usuario (evita pegar el JSON crudo de Gemini).
+/// Returns a short, user-friendly message (avoids showing raw Gemini JSON).
 fn format_gemini_error(status: reqwest::StatusCode, body: &str) -> String {
     if status.as_u16() == 429 {
-        return "Límite de uso de la API de Gemini alcanzado. Prueba de nuevo en 1–2 minutos o revisa tu cuota en Google AI Studio.".to_string();
+        return "Gemini API rate limit reached. Try again in 1–2 minutes or check your quota in Google AI Studio.".to_string();
     }
     let preview = body.lines().next().unwrap_or(body).chars().take(120).collect::<String>();
     if preview.is_empty() {
-        format!("Error de la API de Gemini ({})", status)
+        format!("Gemini API error ({})", status)
     } else {
-        format!("Error de la API de Gemini ({}): {}", status, preview)
+        format!("Gemini API error ({}): {}", status, preview)
     }
 }
 

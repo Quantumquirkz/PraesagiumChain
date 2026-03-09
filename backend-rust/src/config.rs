@@ -29,16 +29,20 @@ pub struct Config {
     pub ai_provider: String,
     pub hf_api_key: Option<String>,
     pub hf_model: Option<String>,
+    pub groq_api_key: Option<String>,
+    pub groq_model: Option<String>,
+    #[serde(default)]
     pub gemini_api_key: Option<String>,
+    #[serde(default)]
     pub gemini_model: Option<String>,
     pub finnhub_api_key: Option<String>,
     pub api_football_key: Option<String>,
     /// Comma-separated origins for CORS (e.g. "https://app.example.com,http://localhost:3000"). If unset, allows all.
     pub cors_origins: Option<Vec<String>>,
-    /// Rate limit: requests per second per IP (default 60).
+    /// Rate limit: requests per second per IP (default 600).
     #[serde(default = "default_rate_limit_per_second")]
     pub rate_limit_per_second: u64,
-    /// Rate limit: burst size per IP (default 30).
+    /// Rate limit: burst size per IP (default 400).
     #[serde(default = "default_rate_limit_burst")]
     pub rate_limit_burst: u32,
     /// Secret key for JWT signing. If unset, a default insecure key is used (dev only).
@@ -86,7 +90,7 @@ impl Config {
 
         let database_url = std::env::var("DATABASE_URL").map_err(|_| {
             anyhow::anyhow!(
-                "DATABASE_URL is required. Set it to a PostgreSQL URL (e.g. postgresql://user:pass@localhost:5432/praesagium)"
+                "DATABASE_URL is required. Set it to a PostgreSQL URL (e.g. postgresql://user:pass@localhost:5432/praesagium or port 5433 when using Docker)"
             )
         })?;
 
@@ -121,9 +125,11 @@ impl Config {
             start_block: std::env::var("START_BLOCK")
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "mock".to_string()),
+            ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "groq".to_string()),
             hf_api_key: std::env::var("HF_API_KEY").ok(),
             hf_model: std::env::var("HF_MODEL").ok(),
+            groq_api_key: std::env::var("GROQ_API_KEY").ok(),
+            groq_model: std::env::var("GROQ_MODEL").ok(),
             gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
             finnhub_api_key: std::env::var("FINNHUB_API_KEY").ok(),

@@ -1,6 +1,20 @@
 # PraesagiumChain — Step-by-Step Setup Guide
 
-This document provides a detailed, step-by-step guide for anyone to set up and run PraesagiumChain from scratch. All instructions are in English.
+This document provides a detailed, step-by-step guide for **anyone** (including new team members or external contributors) to set up and run PraesagiumChain from scratch. All instructions are in English.
+
+---
+
+## For another person / new developer
+
+If you are joining the project or need to run it on a new machine:
+
+1. **Prerequisites** — Install Node.js 18+, Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands.
+2. **Single `.env`** — The whole stack (backend, frontend, scripts) uses one `.env` file at the repo root. Copy from `config/env.example`.
+3. **Four terminals** — You need: (1) Hardhat node, (2) backend, (3) one-time deploy, (4) frontend. See [Summary: Minimal Commands](#summary-minimal-commands-to-run-the-project) at the bottom.
+4. **Docker permission denied** — On Linux/WSL, if `./scripts/docker-up.sh` fails with permission denied, run `sudo ./scripts/docker-up.sh`.
+5. **Frontend chunk errors** — If you see `Cannot find module './xxxx.js'` or chunk load failures, delete the build cache and restart: `cd frontend && rm -rf .next && npm run dev`.
+
+For full architecture and configuration details, see [configuration.md](configuration.md), [deploy.md](deploy.md), and [architecture.md](architecture.md).
 
 ---
 
@@ -41,7 +55,7 @@ Before you begin, install the following tools on your system:
 
 **Accounts you may need:**
 
-- [Google AI Studio](https://aistudio.google.com/api-keys) — for `GEMINI_API_KEY` (optional; mock provider available)
+- [Groq Console](https://console.groq.com/keys) — for `GROQ_API_KEY` (optional; mock provider available)
 - Ethereum wallet with [Sepolia ETH](https://sepoliafaucet.com) — for testnet deployment and betting
 
 **Windows users:** Use WSL2 (Ubuntu) for all commands. Do not use CMD or PowerShell; the project expects a Unix-like environment.
@@ -86,10 +100,10 @@ nano .env   # or: code .env, vim .env, etc.
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `DATABASE_URL` | `postgresql://praesagium:praesagium@localhost:5432/praesagium` | PostgreSQL connection string (matches Docker Compose) |
+| `DATABASE_URL` | `postgresql://praesagium:praesagium@localhost:5433/praesagium` | PostgreSQL connection string (Docker maps host port 5433) |
 | `RPC_URL` | `http://127.0.0.1:8545` | Hardhat local node (or Sepolia RPC for testnet) |
-| `AI_PROVIDER` | `mock` or `gemini` | Use `mock` to skip AI; use `gemini` if you have `GEMINI_API_KEY` |
-| `GEMINI_API_KEY` | Your API key | Required only if `AI_PROVIDER=gemini` |
+| `AI_PROVIDER` | `groq` or `mock` | Use `mock` to skip AI; use `groq` if you have `GROQ_API_KEY` |
+| `GROQ_API_KEY` | Your API key | Required only if `AI_PROVIDER=groq` |
 | `PRIVATE_KEY` | Your wallet private key (without `0x`) | For deploying contracts and running the demo |
 | `API_BASE_URL` | `http://localhost:4000` | Backend URL for scripts |
 
@@ -121,9 +135,11 @@ Use Docker Compose to run the database stack:
 # Or manually: docker compose up -d
 ```
 
+If you see "permission denied" connecting to the Docker daemon (e.g. on Linux/WSL), run with sudo: `sudo ./scripts/docker-up.sh`.
+
 This starts:
 
-- **PostgreSQL** on port `5432` (user: `praesagium`, password: `praesagium`, db: `praesagium`)
+- **PostgreSQL** on host port `5433` (user: `praesagium`, password: `praesagium`, db: `praesagium`)
 - **Redis** on host port `6380` (mapped from container port 6379)
 - **ClickHouse** on ports `8123` (HTTP) and `9000` (native)
 
@@ -334,6 +350,18 @@ Ensure PostgreSQL is running (`docker compose up -d`) and `DATABASE_URL` in `.en
 
 Ensure `.env` exists at the repo root and contains `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_RPC_URL`, and `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`.
 
+### "Cannot find module './xxxx.js'" or ChunkLoadError (Next.js)
+
+The Next.js build cache (`.next`) can get out of sync after pull/merge or interrupted builds. Fix:
+
+```bash
+cd frontend
+rm -rf .next
+npm run dev
+```
+
+Do not commit the `.next` folder; it is gitignored.
+
 ### Redis connection refused
 
 Docker maps Redis to port **6380** on the host. Use `REDIS_URL=redis://localhost:6380` (not 6379).
@@ -385,7 +413,12 @@ cd frontend && npm run dev
 
 For more details, see:
 
-- [README.md](../README.md) — Overview and architecture
+- [README.md](../README.md) — Overview, architecture, and **Acknowledgments**
 - [configuration.md](configuration.md) — Environment variables and API keys
 - [deploy.md](deploy.md) — Sepolia deployment
-- [architecture.md](architecture.md) — Contracts, database, PHPE, frontend
+- [architecture.md](architecture.md) — Contracts, database, PHPE, frontend, CRE workflow
+- [cre/README.md](../cre/README.md) — CRE workflow simulation and `resolveFromBackend.js` (on-chain resolution)
+
+### Frontend design (for contributors)
+
+The UI uses a **single design token** for softer corners: `--radius: 0.75rem` in `frontend/app/globals.css`. Cards and panels use the utility class `.card-modern` (or Tailwind `rounded-xl` / `rounded-2xl`) for consistency. When adding new cards or panels, prefer `card-modern` or `rounded-xl` so the app does not look boxy. See `frontend/app/globals.css` for `.card-modern` and `.card-glow`.
