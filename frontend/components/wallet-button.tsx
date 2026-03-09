@@ -86,7 +86,7 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showClose className="card-bg border-border max-w-sm">
+      <DialogContent showClose className="card-bg border-border max-w-sm rounded-2xl">
         <DialogHeader>
           <DialogTitle
             className="font-display text-xl"
@@ -107,7 +107,7 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
                   onClick={() => handleConnect(connector.id)}
                   disabled={anyPending}
                   aria-label={`Connect with ${connector.name}`}
-                  className="flex items-center gap-3 w-full rounded-lg border border-border bg-transparent px-4 py-3 text-left transition-colors hover:bg-elevated disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                  className="flex items-center gap-3 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-left transition-colors hover:bg-elevated disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
                 >
                   <span className="text-xl leading-none" aria-hidden>
                     {getConnectorIcon(connector.id)}
@@ -191,11 +191,11 @@ function ConnectedDropdown({
         onClick={() => setDropdownOpen((v: boolean) => !v)}
         aria-label="Wallet options"
         aria-expanded={dropdownOpen}
-        className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-elevated px-3 py-2 font-mono text-sm hover:border-primary/50 transition-colors"
+        className="hidden sm:flex items-center gap-2 rounded-xl border border-border bg-elevated px-3 py-2 font-mono text-sm hover:border-primary/50 transition-colors"
       >
         {/* Hex avatar */}
         <span
-          className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-[10px] font-bold text-primary-foreground"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-lg text-[10px] font-bold text-primary-foreground"
           style={{
             background: `#${address.slice(2, 8)}`,
           }}
@@ -233,7 +233,7 @@ function ConnectedDropdown({
           />
           <div
             role="menu"
-            className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-border bg-elevated shadow-lg overflow-hidden"
+            className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-xl border border-border bg-elevated shadow-lg overflow-hidden"
           >
             <button
               role="menuitem"

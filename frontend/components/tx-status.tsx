@@ -76,7 +76,7 @@ export function TxStatus({
   return (
     <div
       className={cn(
-        "rounded-md border bg-elevated p-3 space-y-2 transition-opacity duration-500",
+        "rounded-xl border bg-elevated p-3 space-y-2 transition-opacity duration-500",
         isReverted ? "border-red/40" : isSuccess ? "border-green/40" : "border-border",
         fading ? "opacity-0" : "opacity-100",
         className

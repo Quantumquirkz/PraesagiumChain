@@ -7,7 +7,7 @@ export function MarketCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "skeleton-shimmer block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
+        "skeleton-shimmer block w-full min-h-[200px] rounded-xl border border-border bg-surface p-5",
         className
       )}
       style={{ padding: 20 }}

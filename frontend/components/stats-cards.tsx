@@ -143,7 +143,7 @@ function StatCard({ label, value, subtext, icon, accentClass, iconBgClass, numbe
   return (
     <div
       className={cn(
-        "card-glow rounded-md",
+        "card-glow rounded-xl",
         highlight && "card-gradient-border",
         staggerClass
       )}

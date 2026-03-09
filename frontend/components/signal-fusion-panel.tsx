@@ -67,7 +67,7 @@ export function SignalFusionPanel({ defaultParams, className }: SignalFusionPane
       : null;
 
   return (
-    <div className={cn("rounded-md border border-border bg-surface", className)}>
+    <div className={cn("rounded-xl border border-border bg-surface", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-violet" />

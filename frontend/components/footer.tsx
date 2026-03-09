@@ -44,7 +44,7 @@ export function Footer() {
   });
 
   return (
-    <footer className="border-t border-border bg-surface mt-auto">
+    <footer className="border-t border-border bg-surface mt-auto rounded-t-2xl">
       {/* Main columns */}
       <div className="container px-4 py-10">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_1fr_1fr_1fr]">

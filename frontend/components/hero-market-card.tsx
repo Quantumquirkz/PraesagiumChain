@@ -44,7 +44,7 @@ export function HeroMarketCard({ market, animate = true }: HeroMarketCardProps) 
       aria-label={`Market: ${market.question}`}
     >
       <div className="mb-3 flex items-center justify-between">
-        <span className="rounded-md border border-border bg-elevated/50 px-2 py-0.5 font-body text-[10px] text-text-secondary">
+        <span className="rounded-lg border border-border bg-elevated/50 px-2 py-0.5 font-body text-[10px] text-text-secondary">
           {market.category}
         </span>
         <span className="font-mono text-[10px] text-text-muted">

@@ -9,12 +9,12 @@ export function WrongNetworkBanner() {
   const { isWrongNetwork, switchToRequired, isSwitching } = useNetworkGuard();
   const mounted = useIsMounted();
 
-  // No renderizar nada hasta el montaje para evitar hydration mismatch
+  // Do not render until mount to avoid hydration mismatch
   if (!mounted || !isWrongNetwork) return null;
 
   return (
     <div
-      className="flex items-center justify-between gap-3 border-b border-red/30 bg-red/10 px-4 py-2"
+      className="flex items-center justify-between gap-3 border-b border-red/30 bg-red/10 px-4 py-2 rounded-b-xl"
       role="alert"
       aria-live="assertive"
     >
@@ -33,7 +33,7 @@ export function WrongNetworkBanner() {
           }
         }}
         disabled={isSwitching}
-        className="shrink-0 rounded-md border border-red/40 bg-red/10 px-3 py-1 font-mono text-xs text-red transition-colors hover:bg-red/20 disabled:cursor-not-allowed disabled:opacity-60"
+        className="shrink-0 rounded-lg border border-red/40 bg-red/10 px-3 py-1 font-mono text-xs text-red transition-colors hover:bg-red/20 disabled:cursor-not-allowed disabled:opacity-60"
         aria-label="Switch to Sepolia network"
       >
         {isSwitching ? (

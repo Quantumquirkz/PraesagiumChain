@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export function StatsSkeleton({ className }: { className?: string }) {
   return (
     <section
-      className={cn("grid grid-cols-2 gap-px lg:grid-cols-4 bg-border rounded-md overflow-hidden", className)}
+      className={cn("grid grid-cols-2 gap-px lg:grid-cols-4 bg-border rounded-xl overflow-hidden", className)}
       aria-hidden
     >
       {[1, 2, 3, 4].map((i) => (

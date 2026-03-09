@@ -7,7 +7,7 @@ export function TableRowSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "skeleton-shimmer flex items-center gap-3 rounded-md border border-border bg-surface px-4 py-3",
+        "skeleton-shimmer flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3",
         className
       )}
       aria-hidden
@@ -24,7 +24,7 @@ export function TableRowSkeleton({ className }: { className?: string }) {
       {/* Outcome */}
       <div className="hidden md:block h-5 w-10 shrink-0 rounded-full bg-elevated" />
       {/* Action */}
-      <div className="h-8 w-20 shrink-0 rounded-md bg-elevated" />
+      <div className="h-8 w-20 shrink-0 rounded-lg bg-elevated" />
     </div>
   );
 }
@@ -36,7 +36,7 @@ export function PositionsSummarySkeleton({ className }: { className?: string }) 
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="skeleton-shimmer rounded-md border border-border bg-surface px-4 py-3 space-y-2"
+          className="skeleton-shimmer rounded-xl border border-border bg-surface px-4 py-3 space-y-2"
         >
           <div className="h-3 w-20 rounded bg-elevated" />
           <div className="h-7 w-16 rounded bg-elevated" />

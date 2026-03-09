@@ -190,7 +190,7 @@ export function MarketFilters({
           onValueChange={(v: string) => onStatusChange(v === "all" ? "" : v)}
         >
           <TabsList
-            className="flex h-auto gap-0 rounded-md border border-border bg-elevated p-1 rounded-[6px]"
+            className="flex h-auto gap-0 rounded-xl border border-border bg-elevated p-1"
             style={{ padding: 4 }}
           >
             {STATUS_TABS.map(({ value, label }) => (
@@ -223,7 +223,7 @@ export function MarketFilters({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             className={cn(
-              "w-full h-10 pl-9 pr-3 rounded-md border border-border bg-elevated font-body text-sm text-foreground placeholder:text-text-muted",
+              "w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-elevated font-body text-sm text-foreground placeholder:text-text-muted",
               "focus:outline-none focus:border-cyan focus:ring-[3px] focus:ring-cyan-dim"
             )}
             style={{ fontSize: 14 }}
@@ -235,7 +235,7 @@ export function MarketFilters({
         <Select value={sort} onValueChange={(v: string) => onSortChange(v as SortOption)}>
           <SelectTrigger
             className={cn(
-              "h-10 w-[200px] rounded-md border border-border bg-elevated font-body text-sm",
+              "h-10 w-[200px] rounded-lg border border-border bg-elevated font-body text-sm",
               "focus:ring-[3px] focus:ring-cyan-dim focus:border-cyan"
             )}
             style={{ fontSize: 14 }}

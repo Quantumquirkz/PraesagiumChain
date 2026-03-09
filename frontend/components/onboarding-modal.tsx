@@ -77,8 +77,8 @@ function IllustrationClaim() {
 
 function PreviewWallet() {
   return (
-    <div className="rounded-lg border border-border bg-elevated p-3 text-center">
-      <div className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan-dim px-3 py-1.5">
+    <div className="rounded-xl border border-border bg-elevated p-3 text-center">
+      <div className="inline-flex items-center gap-2 rounded-xl border border-cyan/30 bg-cyan-dim px-3 py-1.5">
         <span className="font-body text-xs font-medium text-foreground">Connect Wallet</span>
       </div>
       <p className="mt-2 font-mono text-[10px] text-text-muted">MetaMask · WalletConnect · Coinbase</p>
@@ -88,7 +88,7 @@ function PreviewWallet() {
 
 function PreviewMarket() {
   return (
-    <div className="rounded-lg border border-border bg-elevated p-3 space-y-2">
+    <div className="rounded-xl border border-border bg-elevated p-3 space-y-2">
       {[
         { q: "Will BTC hit $150k?",  yes: 68, status: "open"     },
         { q: "ETH merge v2 in 2025?", yes: 45, status: "open"    },
@@ -108,14 +108,14 @@ function PreviewMarket() {
 
 function PreviewBet() {
   return (
-    <div className="rounded-lg border border-border bg-elevated p-3">
+    <div className="rounded-xl border border-border bg-elevated p-3">
       <p className="font-mono text-[10px] text-text-muted mb-2">Will BTC hit $150k?</p>
       <div className="flex gap-2">
-        <div className="flex-1 rounded-md border border-green/40 bg-green-dim py-1.5 text-center">
+        <div className="flex-1 rounded-lg border border-green/40 bg-green-dim py-1.5 text-center">
           <span className="font-mono text-xs font-bold text-green">YES</span>
           <p className="font-mono text-[10px] text-green/70">68%</p>
         </div>
-        <div className="flex-1 rounded-md border border-red/40 bg-red-dim py-1.5 text-center">
+        <div className="flex-1 rounded-lg border border-red/40 bg-red-dim py-1.5 text-center">
           <span className="font-mono text-xs font-bold text-red">NO</span>
           <p className="font-mono text-[10px] text-red/70">32%</p>
         </div>
@@ -126,7 +126,7 @@ function PreviewBet() {
 
 function PreviewClaim() {
   return (
-    <div className="rounded-lg border border-green/20 bg-green-dim p-3 text-center">
+    <div className="rounded-xl border border-green/20 bg-green-dim p-3 text-center">
       <p className="font-mono text-[10px] text-green uppercase tracking-widest mb-1">Market Resolved</p>
       <p className="font-display font-bold text-[18px] text-green">+0.42 ETH</p>
       <p className="font-mono text-[10px] text-text-muted mt-1">Claimable winnings</p>

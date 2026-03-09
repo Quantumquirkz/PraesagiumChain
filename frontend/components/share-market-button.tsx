@@ -51,7 +51,7 @@ export function ShareMarketButton({ market, className }: ShareMarketButtonProps)
       <button
         type="button"
         onClick={() => setOpen((o: boolean) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-border bg-elevated px-2.5 py-1.5 font-mono text-xs text-text-secondary transition-colors hover:border-border-bright hover:text-foreground"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1.5 font-mono text-xs text-text-secondary transition-colors hover:border-border-bright hover:text-foreground"
         aria-label="Share market"
         aria-expanded={open}
         aria-haspopup="true"
@@ -70,7 +70,7 @@ export function ShareMarketButton({ market, className }: ShareMarketButtonProps)
             aria-hidden
           />
           <div
-            className="absolute right-0 top-full z-50 mt-1.5 min-w-[160px] rounded-md border border-border bg-elevated py-1 shadow-lg"
+            className="absolute right-0 top-full z-50 mt-1.5 min-w-[160px] rounded-xl border border-border bg-elevated py-1 shadow-lg"
             role="menu"
           >
             <button

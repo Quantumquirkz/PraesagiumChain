@@ -13,7 +13,7 @@ export function PHPESignal({
 }: PHPESignalProps) {
   return (
     <div
-      className="relative mb-4 rounded-lg border border-green/30 bg-green-dim/50 px-3 py-2"
+      className="relative mb-4 rounded-xl border border-green/30 bg-green-dim/50 px-3 py-2"
       title={tooltip}
     >
       <div className="flex items-center gap-2">

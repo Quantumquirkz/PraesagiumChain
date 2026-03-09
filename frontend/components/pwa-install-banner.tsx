@@ -71,7 +71,7 @@ export function PWAInstallBanner() {
                  px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
       {/* Icono */}
-      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[var(--cyan)]/10 flex items-center justify-center">
+      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--cyan)]/10 flex items-center justify-center">
         <Download className="w-5 h-5 text-[var(--cyan)]" />
       </div>
 
@@ -89,7 +89,7 @@ export function PWAInstallBanner() {
       <div className="flex items-center gap-2 flex-shrink-0">
         <button
           onClick={handleInstall}
-          className="rounded-md bg-[var(--cyan)] px-3 py-1.5 text-[12px] font-bold text-black
+          className="rounded-lg bg-[var(--cyan)] px-3 py-1.5 text-[12px] font-bold text-black
                      hover:bg-[var(--cyan)]/80 transition-colors"
         >
           Install
@@ -97,7 +97,7 @@ export function PWAInstallBanner() {
         <button
           onClick={handleDismiss}
           aria-label="Dismiss install banner"
-          className="rounded-md p-1.5 text-text-muted hover:text-text hover:bg-white/5 transition-colors"
+          className="rounded-lg p-1.5 text-text-muted hover:text-text hover:bg-white/5 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>

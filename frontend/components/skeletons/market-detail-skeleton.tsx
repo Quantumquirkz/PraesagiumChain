@@ -15,24 +15,24 @@ export function MarketDetailSkeleton({ className }: { className?: string }) {
             <div className="h-6 w-20 rounded bg-elevated" />
             <div className="h-6 w-20 rounded bg-elevated" />
           </div>
-          <div className="rounded-md border border-border bg-surface p-4">
+          <div className="rounded-xl border border-border bg-surface p-4">
             <div className="h-8 w-32 rounded bg-elevated mb-4" />
             <div className="h-[320px] w-full rounded bg-elevated" />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="h-24 rounded-md bg-elevated" />
-            <div className="h-24 rounded-md bg-elevated" />
+            <div className="h-24 rounded-xl bg-elevated" />
+            <div className="h-24 rounded-xl bg-elevated" />
           </div>
         </div>
         {/* Right column */}
         <div className="space-y-4">
-          <div className="h-10 w-full rounded-md bg-elevated" />
-          <div className="rounded-md border border-border bg-surface p-4 space-y-3">
+          <div className="h-10 w-full rounded-lg bg-elevated" />
+          <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
             <div className="h-4 w-24 rounded bg-elevated" />
             <div className="h-10 w-full rounded bg-elevated" />
             <div className="h-10 w-full rounded bg-elevated" />
           </div>
-          <div className="rounded-md border border-border bg-surface p-4 space-y-2">
+          <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
             <div className="h-4 w-32 rounded bg-elevated" />
             <div className="h-12 rounded bg-elevated" />
             <div className="h-12 rounded bg-elevated" />

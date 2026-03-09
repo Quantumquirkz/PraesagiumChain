@@ -98,7 +98,7 @@ function WalletButtonInner() {
         <button
           type="button"
           onClick={() => setDropdownOpen((o: boolean) => !o)}
-          className="flex items-center gap-2 rounded-lg border border-border-bright bg-elevated px-2.5 py-1.5 transition-colors hover:border-cyan/50"
+          className="flex items-center gap-2 rounded-xl border border-border-bright bg-elevated px-2.5 py-1.5 transition-colors hover:border-cyan/50"
           aria-label="Wallet menu"
           aria-expanded={dropdownOpen}
           aria-haspopup="true"
@@ -119,7 +119,7 @@ function WalletButtonInner() {
         </button>
         {dropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-elevated py-1 shadow-lg z-50"
+            className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-border bg-elevated py-1 shadow-lg z-50"
             role="menu"
           >
             <button
@@ -145,7 +145,7 @@ function WalletButtonInner() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-lg p-[1px] bg-gradient-to-r from-cyan to-violet hover:shadow-[0_0_12px_rgba(0,212,255,0.25)] transition-shadow text-left"
+          className="rounded-xl p-[1px] bg-gradient-to-r from-cyan to-violet hover:shadow-[0_0_12px_rgba(0,212,255,0.25)] transition-shadow text-left"
           aria-label="Connect wallet"
         >
           <span className="flex items-center justify-center rounded-[calc(0.5rem-1px)] bg-surface hover:bg-cyan-dim transition-colors px-3 py-2 w-full">
@@ -255,7 +255,7 @@ function WalletButtonMobile() {
       <button
         type="button"
         onClick={() => setDropdownOpen((o: boolean) => !o)}
-        className="flex items-center gap-2 rounded-lg border border-border-bright bg-elevated px-2 py-1.5"
+        className="flex items-center gap-2 rounded-xl border border-border-bright bg-elevated px-2 py-1.5"
         aria-label="Wallet"
         aria-expanded={dropdownOpen}
       >
@@ -268,7 +268,7 @@ function WalletButtonMobile() {
         </span>
       </button>
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border bg-elevated py-1 z-50">
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-border bg-elevated py-1 z-50">
           <span className="block px-3 py-1 font-mono text-xs text-text-secondary">
             {truncateAddress(address)}
           </span>
@@ -364,7 +364,7 @@ export function Header() {
                   href={href}
                   title={label}
                   className={cn(
-                    "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+                    "group relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150",
                     isActive
                       ? cn(
                           "text-foreground",
@@ -439,7 +439,7 @@ export function Header() {
               aria-hidden
             />
             <div
-              className="absolute right-0 top-0 bottom-0 w-64 border-l bg-surface drawer-slide-in"
+              className="absolute right-0 top-0 bottom-0 w-64 border-l bg-surface drawer-slide-in rounded-l-2xl"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border)",
@@ -454,7 +454,7 @@ export function Header() {
                       href={href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 font-body font-medium text-sm py-3 px-3 rounded-lg transition-colors",
+                        "flex items-center gap-3 font-body font-medium text-sm py-3 px-3 rounded-xl transition-colors",
                         isActive
                           ? cn(
                               accent === "cyan"   && "text-cyan bg-cyan-dim",

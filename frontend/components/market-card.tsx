@@ -96,7 +96,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
     <Link
       href={`/markets/${market.on_chain_market_id ?? market.id}`}
       className={cn(
-        "group block w-full min-h-[200px] rounded-md border border-border bg-surface p-5",
+        "group block w-full min-h-[200px] rounded-xl border border-border bg-surface p-5",
         "transition-all duration-200 ease-out",
         "hover:border-border-bright hover:shadow-[0_0_0_1px_var(--border-bright),0_0_24px_var(--cyan-dim),0_8px_32px_var(--shadow-card)] hover:-translate-y-0.5"
       )}
@@ -107,7 +107,7 @@ export function MarketCard({ market, creatorReputation, searchQuery = "" }: Mark
         <div className="flex items-center gap-1.5 min-w-0">
           <span
             className={cn(
-              "rounded-md px-2 py-0.5 font-mono text-[11px] uppercase shrink-0",
+              "rounded-lg px-2 py-0.5 font-mono text-[11px] uppercase shrink-0",
               statusClass
             )}
             aria-label={`Status: ${market.status}`}
