@@ -33,6 +33,10 @@ interface ResolutionSourcePickerProps {
   value: ResolutionSourceParams;
   onChange: (params: ResolutionSourceParams) => void;
   className?: string;
+  /** When true, render a more compact layout (e.g. on create market step). */
+  compactMode?: boolean;
+  /** When true, show only asset price resolution options. */
+  onlyAssetPrice?: boolean;
 }
 
 const SOURCES = [
@@ -323,6 +327,8 @@ export function ResolutionSourcePicker({
   value,
   onChange,
   className,
+  compactMode: _compactMode,
+  onlyAssetPrice: _onlyAssetPrice,
 }: ResolutionSourcePickerProps) {
   const handleTypeChange = (type: ResolutionSourceType) => {
     onChange({ type });

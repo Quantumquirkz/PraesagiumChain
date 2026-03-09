@@ -63,7 +63,7 @@ export function MarketPageClient() {
 
   const { data: predictions } = useQuery({
     queryKey: ["market-predictions", market?.id ?? id],
-    queryFn: () => getMarketPredictions(market!.id),
+    queryFn: () => getMarketPredictions(market?.id ?? id),
     enabled: !isInvalidId && !!market,
     staleTime: 30_000,
     refetchInterval: 30_000,

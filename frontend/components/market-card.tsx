@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { MarketView } from "@/types/api";
 import { useCountdown, formatCountdownDisplay } from "@/components/countdown";
-import { truncateAddress, formatEth } from "@/lib/utils";
+import { truncateAddress, formatEth, addressToGradient } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { BET_TOKENS } from "@/lib/constants";
 
@@ -28,16 +28,6 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
 };
 
 const URGENT_THRESHOLD_SEC = 3600;
-
-function addressToGradient(address: string): string {
-  let hash = 0;
-  for (let i = 0; i < address.length; i++) {
-    hash = address.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash % 360);
-  const h2 = (h + 120) % 360;
-  return `linear-gradient(135deg, hsl(${h}, 70%, 55%), hsl(${h2}, 70%, 45%))`;
-}
 
 export interface MarketCardProps {
   market: MarketView;

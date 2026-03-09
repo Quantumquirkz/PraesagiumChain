@@ -14,16 +14,8 @@ import { createMarketBackend, registerPrivateMarket, getAISentimentPreview } fro
 import { predictionMarketContract, EXPLORER_URL, BET_TOKENS, CHART_CRYPTO_SYMBOLS, CHART_CRYPTO_BINANCE_LIST, type BetToken } from "@/lib/constants";
 import { predictionMarketAbi } from "@/lib/abis/prediction-market";
 import { privatePredictionMarketAbi } from "@/lib/abis/private-prediction-market";
-
-const PRIVATE_MARKET_ADDRESS = (process.env
-  .NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS ??
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
-
-const IS_PRIVATE_DEPLOYED =
-  PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000";
-import { formatEth } from "@/lib/utils";
+import { formatEth, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   ResolutionSourcePicker,
   type ResolutionSourceParams,
@@ -39,6 +31,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+const PRIVATE_MARKET_ADDRESS = (process.env
+  .NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS ??
+  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+const IS_PRIVATE_DEPLOYED =
+  PRIVATE_MARKET_ADDRESS !== "0x0000000000000000000000000000000000000000";
 
 const MARKET_CATEGORIES = [
   { value: "crypto",  label: "Crypto",  description: "Price, volatility, or market predictions", icon: Coins,   color: "text-amber-400", border: "border-amber-400/40", bg: "bg-amber-400/10" },
@@ -410,6 +409,7 @@ export default function CreateMarketPage() {
         );
       }
     } catch (e) {
+      // Do not set deploySuccess on error so the user can retry the deploy.
       const msg = e instanceof Error ? e.message : String(e);
       const isUserRejected =
         /user rejected|user denied|not been authorized|rejected the request|User denied/i.test(msg);
@@ -1039,6 +1039,7 @@ export default function CreateMarketPage() {
                     toast.success("Key copied to clipboard");
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
+                  aria-label="Copy access key"
                 >
                   {copiedKey ? (
                     <CheckCircle className="h-4 w-4 text-green" aria-hidden />

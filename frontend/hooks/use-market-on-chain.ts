@@ -14,15 +14,13 @@ export function useMarketOnChain(marketId: number) {
     query: { enabled },
   })
 
-  // wagmi v2 no expone refetchInterval nativo en useReadContract;
-  // We use a manual interval to revalidate on-chain data every 10s.
+  // Refetch on interval; omit refetch fn to avoid restarting timer every render.
   useEffect(() => {
     if (!enabled) return
     const id = setInterval(() => {
       result.refetch()
     }, REFETCH_INTERVAL_MS)
     return () => clearInterval(id)
-  // result.refetch es estable entre renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, marketId])
 
@@ -48,6 +46,7 @@ export function useUserStakeOnChain(marketId: number, address: `0x${string}` | u
       result.refetch()
     }, REFETCH_INTERVAL_MS)
     return () => clearInterval(id)
+  // Refetch on interval; omit refetch fn to avoid restarting timer every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, marketId, address])
 

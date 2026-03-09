@@ -167,7 +167,8 @@ export function TVChart({
   const usingLive = !!symbol && !isError && !!liveData;
 
   // useMemo: rawBars only changes when real data or timeframe changes,
-  // NOT when hover state changes (avoids "crazy chart" bug)
+  // NOT when hover state changes (avoids "crazy chart" bug).
+  // Stable bar derivation; liveData refs intentionally omitted.
   const rawBars = useMemo<OHLCVBar[]>(() => {
     const source = usingLive ? liveData! : generateMockOHLCV(timeframe, 300);
     return source
@@ -294,6 +295,7 @@ export function TVChart({
       rsiRef.current = rsiOBRef.current = rsiOSRef.current = null;
       macdRef.current = macdSigRef.current = macdHistRef.current = null;
     };
+  // Chart init/teardown keyed by height only; refs/symbol/timeframe intentionally omitted.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height]);
 
@@ -301,7 +303,9 @@ export function TVChart({
   useEffect(() => {
     if (!candleRef.current || !rawBars.length) return;
 
-    const newLastTime = rawBars[rawBars.length - 1]!.time;
+    const lastBar = rawBars[rawBars.length - 1];
+    if (!lastBar) return;
+    const newLastTime = lastBar.time;
     const isNewData   = newLastTime !== lastBarTimeRef.current;
     lastBarTimeRef.current = newLastTime;
 

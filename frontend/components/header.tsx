@@ -17,9 +17,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { truncateAddress, formatEth } from "@/lib/utils";
+import { truncateAddress, formatEth, addressToGradient, cn } from "@/lib/utils";
 import { config } from "@/lib/wagmi";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const EXPECTED_CHAIN_ID = DEFAULT_CHAIN_ID;
@@ -63,20 +62,80 @@ function NetworkBadge() {
   );
 }
 
-function addressToGradient(address: string): string {
-  let hash = 0;
-  for (let i = 0; i < address.length; i++) {
-    hash = address.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash % 360);
-  const h2 = (h + 120) % 360;
-  return `linear-gradient(135deg, hsl(${h}, 70%, 55%), hsl(${h2}, 70%, 45%))`;
+function handleConnectError(err: unknown): void {
+  const e = err as { message?: string; shortMessage?: string; details?: string };
+  const msg =
+    e?.shortMessage ??
+    e?.details ??
+    (err instanceof Error ? err.message : "Connection failed.");
+  const isTabInactive = /resource not available|pestaña no está activa|Requested resource|ResourceUnavailable/i.test(
+    String(msg)
+  );
+  toast.error(
+    isTabInactive
+      ? "Keep this tab active: click the page, then try connecting again."
+      : msg
+  );
+}
+
+interface ConnectWalletDialogContentProps {
+  onSuccess?: () => void;
+  showClose?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  /** When true, show loading spinner inside connector buttons (e.g. for mobile). */
+  showLoaderInButtons?: boolean;
+}
+
+function ConnectWalletDialogContent({
+  onSuccess,
+  showClose = true,
+  className,
+  style,
+  showLoaderInButtons = false,
+}: ConnectWalletDialogContentProps) {
+  const { connectAsync, isPending } = useConnect();
+  return (
+    <DialogContent
+      showClose={showClose}
+      className={className}
+      style={style}
+    >
+      <DialogHeader>
+        <DialogTitle className="font-display font-extrabold text-foreground">
+          Connect Wallet
+        </DialogTitle>
+      </DialogHeader>
+      <div className="flex flex-col gap-2">
+        {config.connectors.map((connector) => (
+          <Button
+            key={connector.uid}
+            variant="outline"
+            className="w-full justify-start font-mono border-border hover:bg-cyan-dim"
+            onClick={async () => {
+              if (typeof window !== "undefined") window.focus();
+              await new Promise((r) => setTimeout(r, 180));
+              connectAsync({ connector })
+                .then(() => onSuccess?.())
+                .catch(handleConnectError);
+            }}
+            disabled={isPending}
+            aria-label={"Connect with " + connector.name}
+          >
+            {showLoaderInButtons && isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin shrink-0" aria-hidden />
+            ) : null}
+            {connector.name}
+          </Button>
+        ))}
+      </div>
+    </DialogContent>
+  );
 }
 
 function WalletButtonInner() {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
-  const { connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const [connectOpen, setConnectOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -153,42 +212,12 @@ function WalletButtonInner() {
           </span>
         </button>
       </DialogTrigger>
-      <DialogContent
+      <ConnectWalletDialogContent
+        onSuccess={() => setConnectOpen(false)}
         showClose={true}
         className="bg-surface border-border"
         style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
-      >
-        <DialogHeader>
-          <DialogTitle className="font-display font-extrabold text-foreground">
-            Connect Wallet
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          {config.connectors.map((connector) => (
-            <Button
-              key={connector.uid}
-              variant="outline"
-              className="w-full justify-start font-mono border-border hover:bg-cyan-dim"
-              onClick={async () => {
-                if (typeof window !== "undefined") window.focus();
-                await new Promise((r) => setTimeout(r, 180));
-                connectAsync({ connector })
-                  .then(() => setConnectOpen(false))
-                  .catch((err: unknown) => {
-                    const e = err as { message?: string; shortMessage?: string; details?: string };
-                    const msg = e?.shortMessage ?? e?.details ?? (err instanceof Error ? err.message : "Connection failed.");
-                    const isTabInactive = /resource not available|pestaña no está activa|Requested resource|ResourceUnavailable/i.test(String(msg));
-                    toast.error(isTabInactive ? "Keep this tab active: click the page, then try connecting again." : msg);
-                  });
-              }}
-              disabled={isPending}
-              aria-label={"Connect with " + connector.name}
-            >
-              {connector.name}
-            </Button>
-          ))}
-        </div>
-      </DialogContent>
+      />
     </Dialog>
   );
 }
@@ -197,7 +226,6 @@ function WalletButtonInner() {
 function WalletButtonMobile() {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
-  const { connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const [connectOpen, setConnectOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -215,37 +243,12 @@ function WalletButtonMobile() {
             Connect Wallet
           </Button>
         </DialogTrigger>
-        <DialogContent showClose={true} className="bg-surface border-border">
-          <DialogHeader>
-            <DialogTitle className="font-display font-extrabold">Connect Wallet</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            {config.connectors.map((connector) => (
-              <Button
-                key={connector.uid}
-                variant="outline"
-                className="w-full justify-start font-mono"
-                onClick={async () => {
-                  if (typeof window !== "undefined") window.focus();
-                  await new Promise((r) => setTimeout(r, 180));
-                  connectAsync({ connector })
-                    .then(() => setConnectOpen(false))
-                    .catch((err: unknown) => {
-                      const e = err as { message?: string; shortMessage?: string; details?: string };
-                      const msg = e?.shortMessage ?? e?.details ?? (err instanceof Error ? err.message : "Connection failed.");
-                      const isTabInactive = /resource not available|pestaña no está activa|Requested resource|ResourceUnavailable/i.test(String(msg));
-                      toast.error(isTabInactive ? "Keep this tab active: click the page, then try connecting again." : msg);
-                    });
-                }}
-                disabled={isPending}
-                aria-label={"Connect with " + connector.name}
-              >
-                {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin shrink-0" aria-hidden /> : null}
-                {connector.name}
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
+        <ConnectWalletDialogContent
+          onSuccess={() => setConnectOpen(false)}
+          showClose={true}
+          className="bg-surface border-border"
+          showLoaderInButtons
+        />
       </Dialog>
     );
   }
@@ -357,7 +360,10 @@ export function Header() {
             aria-label="Main navigation"
           >
             {NAV_LINKS.map(({ href, label, icon: Icon, accent }) => {
-              const isActive = pathname === href;
+              const isActive =
+                href === "/"
+                  ? pathname === "/" || pathname.startsWith("/markets")
+                  : pathname === href;
               return (
                 <Link
                   key={href}
@@ -447,7 +453,10 @@ export function Header() {
             >
               <div className="flex flex-col gap-1 p-4 pt-14">
                 {NAV_LINKS.map(({ href, label, icon: Icon, accent }) => {
-                  const isActive = pathname === href;
+                  const isActive =
+                    href === "/"
+                      ? pathname === "/" || pathname.startsWith("/markets")
+                      : pathname === href;
                   return (
                     <Link
                       key={href}

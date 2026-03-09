@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -35,12 +34,14 @@ export const CATEGORY_TABS: { value: MarketCategory | ""; label: string }[] = [
 
 export type SortOption = "newest" | "closes_soon" | "most_volume" | "ai_confidence";
 
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "newest", label: "Newest First" },
   { value: "closes_soon", label: "Closes Soon" },
   { value: "most_volume", label: "Most Volume" },
   { value: "ai_confidence", label: "Highest AI Confidence" },
 ];
+
+const SORT_VALUES: SortOption[] = SORT_OPTIONS.map((o) => o.value);
 
 // ─── URL param helpers ────────────────────────────────────────────────────────
 
@@ -58,9 +59,7 @@ export function filterStateFromParams(params: URLSearchParams): FilterState {
     ? rawCat
     : "") as MarketCategory | "";
   const rawSort = params.get("sort") ?? "newest";
-  const sort = (["newest", "closes_soon", "most_volume", "ai_confidence"].includes(rawSort)
-    ? rawSort
-    : "newest") as SortOption;
+  const sort = (SORT_VALUES.includes(rawSort as SortOption) ? rawSort : "newest") as SortOption;
   const q = params.get("q") ?? "";
   return { status, category, sort, q };
 }
@@ -116,7 +115,7 @@ export function MarketFilters({
 
   const debouncedSearch = useDebounce(inputValue, 300);
 
-  // Propagar el valor debounced al padre
+  // Propagate debounced value only; parent callbacks intentionally omitted to avoid feedback loop.
   useEffect(() => {
     if (debouncedSearch !== searchQuery) {
       onSearchChange(debouncedSearch);
@@ -124,7 +123,7 @@ export function MarketFilters({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  // Sincronizar si el padre cambia searchQuery externamente (ej. clear all)
+  // Sync local input when parent clears search; omit onSearchChange to avoid loop.
   useEffect(() => {
     if (searchQuery !== inputValue && searchQuery === "") {
       setInputValue("");

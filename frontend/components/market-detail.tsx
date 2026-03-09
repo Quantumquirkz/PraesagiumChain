@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -214,6 +215,7 @@ export function MarketDetail({
     lat: number;
     lon: number;
     googleMapsUrl?: string;
+    resolutionDate?: string;
   } | null>(null);
   const [localMapsInputValue, setLocalMapsInputValue] = useState("");
   const effectiveWeatherParams = weatherChartParams ?? localWeatherParams;
@@ -455,7 +457,7 @@ export function MarketDetail({
             </>
           )}
 
-          {/* CHART — weather (history + forecast) or price (TVChart) */}
+          {/* CHART — weather (single resolution chart from Google Maps location) or price (TVChart) */}
           {isWeatherMarket && effectiveWeatherParams ? (
             <WeatherDetailChart
               lat={effectiveWeatherParams.lat}
@@ -647,6 +649,13 @@ export function MarketDetail({
                 {userTotalStake > 0 && (
                   <p className="font-mono text-xs text-text-muted text-center">Total: {userTotalStake.toFixed(4)} ETH</p>
                 )}
+                <Link
+                  href="/positions"
+                  className="mt-2 block text-center font-mono text-[11px] text-cyan hover:text-cyan/80 transition-colors"
+                  aria-label="View all my positions"
+                >
+                  View my positions →
+                </Link>
                 {userWon && claimable > BigInt(0) && (
                   <div className="mt-3 rounded-lg border border-green/40 bg-green-dim p-3">
                     <div className="flex items-center gap-2 mb-2">
@@ -772,7 +781,7 @@ export function MarketDetail({
                       setIsDeleting(false);
                     }
                   }}
-                  aria-label="Delete market"
+                  aria-label="Delete market (development only)"
                 >
                   {isDeleting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" aria-hidden />
@@ -876,7 +885,7 @@ function AIAnalysisBlock({
         <Textarea
           placeholder="Optional: paste news, tweets or social context to enrich the analysis..."
           value={sentimentText}
-          onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSentimentText(e.target.value)}
           className="font-mono text-xs min-h-[60px] bg-elevated border-border resize-none flex-1"
           disabled={isPending}
         />
@@ -995,7 +1004,7 @@ function PHPEWidget({ marketId }: { marketId: number }) {
         <Textarea
           placeholder="Paste news, tweet, or any text context..."
           value={sentimentText}
-          onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSentimentText(e.target.value)}
           className="font-mono text-sm min-h-[64px] bg-elevated border-border resize-none"
           disabled={isPending}
         />

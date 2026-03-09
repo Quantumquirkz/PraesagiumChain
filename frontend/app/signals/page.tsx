@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { PhpeConfidenceGauge } from "@/components/phpe-confidence-gauge";
 import { SignalsDashboard } from "@/components/signals-dashboard";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +102,7 @@ function CryptoSearchMenu({
           <ul className="divide-y divide-border" role="listbox" aria-label="Lista de criptomonedas">
             {filtered.length === 0 ? (
               <li className="px-4 py-6 text-center font-mono text-sm text-text-muted">
-                No hay resultados para &quot;{query}&quot;
+                No results for &quot;{query}&quot;
               </li>
             ) : (
               filtered.map((c) => (
@@ -136,7 +135,7 @@ function CryptoSearchMenu({
         </div>
 
         <p className="font-mono text-[10px] text-text-muted">
-          Seleccionado: <span className="text-foreground font-semibold">{selected.symbol}</span> ({selected.name})
+          Selected: <span className="text-foreground font-semibold">{selected.symbol}</span> ({selected.name})
         </p>
       </div>
     </div>
@@ -167,6 +166,12 @@ function PhpeOverviewPanel() {
           <span className="font-mono text-xs text-text-muted uppercase tracking-widest">
             PHPE Engine Status
           </span>
+          <span
+            className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] text-amber-400 uppercase"
+            title="Gauge shows sample confidence; real PHPE runs on Predict."
+          >
+            Demo
+          </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-full border border-green/30 bg-green-dim px-3 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" aria-hidden />
@@ -180,7 +185,7 @@ function PhpeOverviewPanel() {
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" aria-hidden />
             <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">
-              Live estimate
+              Demo · sample confidence
             </span>
           </div>
         </div>
@@ -255,7 +260,6 @@ export default function SignalsPage() {
               <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{label}</span>
             </div>
           ))}
-          <ThemeToggle className="ml-1" />
         </div>
       </header>
 

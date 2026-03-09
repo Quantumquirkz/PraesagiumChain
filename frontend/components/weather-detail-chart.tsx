@@ -31,10 +31,13 @@ export function WeatherDetailChart({
     temperature_2m_max: number[];
     temperature_2m_min: number[];
     precipitation_sum: number[];
+    relative_humidity_2m_max: number[];
+    wind_speed_10m_max: number[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
@@ -70,7 +73,7 @@ export function WeatherDetailChart({
     const h = H / dpr;
     if (w <= 0 || h <= 0) return;
 
-    const padding = { top: 12, right: 40, bottom: 24, left: 44 };
+    const padding = { top: 20, right: 48, bottom: 32, left: 52 };
     const chartW = w - padding.left - padding.right;
     const chartH = h - padding.top - padding.bottom;
 
@@ -79,6 +82,8 @@ export function WeatherDetailChart({
     const tempMax = allTemps.length ? Math.max(...allTemps) + 2 : 40;
     const tempRange = tempMax - tempMin || 1;
     const precMax = Math.max(0.1, ...data.precipitation_sum.filter(Number.isFinite));
+    const humMax = 100;
+    const windMax = Math.max(1, ...(data.wind_speed_10m_max ?? []).filter(Number.isFinite));
     const n = data.time.length;
     const stepX = n > 1 ? chartW / (n - 1) : 0;
 
@@ -89,8 +94,73 @@ export function WeatherDetailChart({
     const toYTemp = (v: number) =>
       padding.top + chartH - ((v - tempMin) / tempRange) * chartH;
     const toYPrec = (v: number) =>
-      padding.top + chartH - (v / precMax) * chartH * 0.35;
+      padding.top + chartH * 0.75 + (1 - v / precMax) * (chartH * 0.25);
+    const toYHum = (v: number) =>
+      padding.top + chartH * 0.5 + (1 - v / humMax) * (chartH * 0.25);
+    const toYWind = (v: number) =>
+      padding.top + chartH * 0.25 + (1 - v / windMax) * (chartH * 0.25);
 
+    // —— Grid (cuadrícula) ——
+    const gridColor = "rgba(148, 163, 184, 0.2)";
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    // Horizontal grid lines (temperature scale, ~5 steps)
+    const tempStep = tempRange <= 10 ? 2 : tempRange <= 20 ? 5 : 10;
+    const tempFirst = Math.ceil(tempMin / tempStep) * tempStep;
+    for (let t = tempFirst; t <= tempMax; t += tempStep) {
+      const y = toYTemp(t);
+      if (y >= padding.top && y <= padding.top + chartH) {
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + chartW, y);
+        ctx.stroke();
+      }
+    }
+    // Vertical grid lines (time, every 2–3 points depending on n)
+    const verticalStep = Math.max(1, Math.floor(n / 8));
+    for (let i = 0; i < n; i += verticalStep) {
+      const x = padding.left + i * stepX;
+      ctx.beginPath();
+      ctx.moveTo(x, padding.top);
+      ctx.lineTo(x, padding.top + chartH);
+      ctx.stroke();
+    }
+    // Chart border (eje del área de datos)
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+    ctx.strokeRect(padding.left, padding.top, chartW, chartH);
+
+    // —— Y axis labels (eje Y – temperatura principal) ——
+    ctx.fillStyle = "var(--text-muted)";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let t = tempFirst; t <= tempMax; t += tempStep) {
+      const y = toYTemp(t);
+      if (y >= padding.top && y <= padding.top + chartH) {
+        ctx.fillText(`${t} °C`, padding.left - 6, y);
+      }
+    }
+    // Y axis title
+    ctx.save();
+    ctx.translate(14, padding.top + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Temp. (°C)", 0, 0);
+    ctx.restore();
+
+    // —— X axis labels (fechas) ——
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const labelStep = Math.max(1, Math.floor(n / 8));
+    for (let i = 0; i < n; i += labelStep) {
+      const label = data.time[i].slice(5);
+      ctx.fillText(label, padding.left + i * stepX, padding.top + chartH + 8);
+    }
+    // X axis title
+    ctx.textAlign = "center";
+    ctx.fillText("Fecha (MM-DD)", padding.left + chartW / 2, h - 8);
+
+    // —— Data lines (series) ——
     for (let i = 0; i < n; i++) {
       const x = padding.left + i * stepX;
       const maxT = data.temperature_2m_max[i];
@@ -124,33 +194,59 @@ export function WeatherDetailChart({
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = "var(--text-muted)";
-    ctx.font = "10px monospace";
-    ctx.textAlign = "center";
-    const labelStep = Math.max(1, Math.floor(n / 8));
-    for (let i = 0; i < n; i += labelStep) {
-      const label = data.time[i].slice(5);
-      ctx.fillText(label, padding.left + i * stepX, h - 6);
+    const humidity = data.relative_humidity_2m_max ?? [];
+    const wind = data.wind_speed_10m_max ?? [];
+    if (humidity.length === n) {
+      for (let i = 0; i < n; i++) {
+        const x = padding.left + i * stepX;
+        const v = humidity[i];
+        if (i === 0) ctx.beginPath();
+        if (i === 0) ctx.moveTo(x, toYHum(v));
+        else ctx.lineTo(x, toYHum(v));
+      }
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    if (wind.length === n) {
+      for (let i = 0; i < n; i++) {
+        const x = padding.left + i * stepX;
+        const v = wind[i];
+        if (i === 0) ctx.beginPath();
+        if (i === 0) ctx.moveTo(x, toYWind(v));
+        else ctx.lineTo(x, toYWind(v));
+      }
+      ctx.strokeStyle = "rgba(249, 115, 22, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
 
     ctx.restore();
   }, [data]);
 
+  // Single effect: resize canvas from container then draw. Drawing runs after resize to avoid a zero-size canvas frame.
   useEffect(() => {
-    draw();
-  }, [draw]);
-
-  useEffect(() => {
-    if (!data) return;
+    if (!data || data.time.length === 0) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
     const dpr = window.devicePixelRatio ?? 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    draw();
+    const setSizeAndDraw = () => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      draw();
+    };
+
+    setSizeAndDraw();
+    const ro = new ResizeObserver(setSizeAndDraw);
+    ro.observe(container);
+    return () => ro.disconnect();
   }, [data, draw]);
 
   const resolutionLabel = resolutionDate
@@ -209,8 +305,16 @@ export function WeatherDetailChart({
                 <span className="inline-block w-2 h-0.5 rounded bg-violet-500" />
                 Precip (mm)
               </span>
+              <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                <span className="inline-block w-2 h-0.5 rounded bg-green-500" />
+                Humidity (%)
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                <span className="inline-block w-2 h-0.5 rounded bg-orange-500" />
+                Wind (km/h)
+              </span>
             </div>
-            <div className="relative h-[280px] w-full rounded-lg bg-surface">
+            <div ref={containerRef} className="relative h-[280px] w-full rounded-lg bg-surface">
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0 h-full w-full rounded-lg"

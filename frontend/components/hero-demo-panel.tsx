@@ -102,6 +102,12 @@ export function HeroDemoPanel() {
             <span className="font-mono text-[11px] font-medium text-cyan uppercase tracking-widest">
               Live Markets
             </span>
+            <span
+              className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] text-amber-400 uppercase"
+              title="Sample data for illustration"
+            >
+              Demo
+            </span>
           </div>
           <span
             className="rounded-full border border-violet/40 bg-violet-dim px-2.5 py-1 font-mono text-[10px] font-medium text-violet"

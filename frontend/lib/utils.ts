@@ -21,6 +21,17 @@ export function truncateAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+/** Deterministic gradient from address for avatar/identicon styling. */
+export function addressToGradient(address: string): string {
+  let hash = 0;
+  for (let i = 0; i < address.length; i++) {
+    hash = address.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  const h2 = (h + 120) % 360;
+  return `linear-gradient(135deg, hsl(${h}, 70%, 55%), hsl(${h2}, 70%, 45%))`;
+}
+
 const RELATIVE_FORMAT = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 export function formatRelativeTime(unix: number): string {

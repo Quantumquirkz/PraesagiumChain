@@ -13,9 +13,9 @@ const FOOTER_COLUMNS = [
   {
     heading: "Product",
     links: [
-      { label: "Markets",    href: "/"               },
-      { label: "Create",     href: "/markets/create" },
-      { label: "Signals",    href: "/signals"        },
+      { label: "Markets", href: "/" },
+      { label: "Create",  href: "/markets/create" },
+      { label: "Signals", href: "/signals" },
     ],
   },
   {

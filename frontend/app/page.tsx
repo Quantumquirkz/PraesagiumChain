@@ -21,7 +21,25 @@ import { Button } from "@/components/ui/button";
 import { HeroSection } from "@/components/hero-section";
 import type { MarketView } from "@/types/api";
 import { detectCategory, type MarketCategory } from "@/lib/utils";
+import { getMarketCategoryFromMetadata } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+// ─── Category for filter (metadata when present, else question-based) ─────────
+
+/** Returns filter tab category: use metadata when present, else detect from question. Maps general → Other. */
+function getMarketCategoryForFilter(market: MarketView): MarketCategory {
+  if (market.metadata?.trim()) {
+    const metaCat = getMarketCategoryFromMetadata(market.metadata);
+    switch (metaCat) {
+      case "crypto":  return "Crypto";
+      case "sports":  return "Sports";
+      case "weather": return "Weather";
+      case "general": return "Other";
+      default: return "Other";
+    }
+  }
+  return detectCategory(market.question);
+}
 
 // ─── Helpers de filtrado/ordenamiento (client-side) ───────────────────────────
 
@@ -30,7 +48,7 @@ function filterAndSort(items: MarketView[], filters: FilterState): MarketView[] 
   let list = [...items];
 
   if (q) list = list.filter((m) => m.question.toLowerCase().includes(q));
-  if (filters.category) list = list.filter((m) => detectCategory(m.question) === filters.category);
+  if (filters.category) list = list.filter((m) => getMarketCategoryForFilter(m) === filters.category);
 
   switch (filters.sort) {
     case "newest":
@@ -49,6 +67,10 @@ function filterAndSort(items: MarketView[], filters: FilterState): MarketView[] 
     case "ai_confidence":
       list.sort((a, b) => (b.latest_prediction?.probability ?? -1) - (a.latest_prediction?.probability ?? -1));
       break;
+    default: {
+      const _: never = filters.sort;
+      return list;
+    }
   }
 
   return list;
@@ -75,7 +97,7 @@ function DashboardContent() {
     const params = filterStateToParams(filters);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters, pathname, router]);
 
   const setFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((prev: FilterState) => ({ ...prev, [key]: value }));
