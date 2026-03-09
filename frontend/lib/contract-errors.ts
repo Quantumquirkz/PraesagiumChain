@@ -48,7 +48,7 @@ export function parseContractError(error: unknown): string {
     }
   }
 
-  // Error de revert del contrato (viem BaseError)
+  // Contract revert error (viem BaseError)
   if (error instanceof BaseError) {
     const revertError = error.walk(
       (e): e is ContractFunctionRevertedError =>
@@ -63,7 +63,7 @@ export function parseContractError(error: unknown): string {
     }
   }
 
-  // Fallback: mensaje limpio sin hashes hex crudos
+  // Fallback: clean message without raw hex hashes
   const raw = error instanceof Error ? error.message : String(error);
   const clean = raw.replace(/0x[0-9a-fA-F]+/g, "[tx]").split("\n")[0].slice(0, 120);
   return clean || "Transaction failed. Please try again.";

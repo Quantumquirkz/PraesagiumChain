@@ -54,3 +54,87 @@ export const BET_TOKENS: BetToken[] = [
   { symbol: "OP",    label: "Optimism",  icon: "⬡",  color: "#FF0420" },
   { symbol: "AVAX",  label: "Avalanche", icon: "▲",  color: "#E84142" },
 ];
+
+/** Cryptos con gráfico de precio (Binance). Usado en create (chart to display), resolution picker y market detail. */
+export interface ChartCryptoOption {
+  symbol: string;
+  binance: string;
+  label: string;
+}
+
+export const CHART_CRYPTO_SYMBOLS: ChartCryptoOption[] = [
+  { symbol: "BTC",  binance: "BTCUSDT",  label: "Bitcoin" },
+  { symbol: "ETH",  binance: "ETHUSDT",  label: "Ethereum" },
+  { symbol: "SOL",  binance: "SOLUSDT",  label: "Solana" },
+  { symbol: "BNB",  binance: "BNBUSDT",  label: "BNB" },
+  { symbol: "XRP",  binance: "XRPUSDT",  label: "XRP" },
+  { symbol: "ADA",  binance: "ADAUSDT",  label: "Cardano" },
+  { symbol: "DOGE", binance: "DOGEUSDT", label: "Dogecoin" },
+  { symbol: "AVAX", binance: "AVAXUSDT", label: "Avalanche" },
+  { symbol: "DOT",  binance: "DOTUSDT",  label: "Polkadot" },
+  { symbol: "MATIC", binance: "MATICUSDT", label: "Polygon" },
+  { symbol: "LINK", binance: "LINKUSDT", label: "Chainlink" },
+  { symbol: "UNI",  binance: "UNIUSDT",  label: "Uniswap" },
+  { symbol: "ATOM", binance: "ATOMUSDT", label: "Cosmos" },
+  { symbol: "LTC",  binance: "LTCUSDT",  label: "Litecoin" },
+  { symbol: "ARB",  binance: "ARBUSDT",  label: "Arbitrum" },
+  { symbol: "OP",   binance: "OPUSDT",   label: "Optimism" },
+  { symbol: "SUI",  binance: "SUIUSDT",  label: "Sui" },
+  { symbol: "SEI",  binance: "SEIUSDT",  label: "Sei" },
+  { symbol: "PEPE", binance: "PEPEUSDT", label: "Pepe" },
+  { symbol: "INJ",  binance: "INJUSDT",  label: "Injective" },
+  { symbol: "FIL",  binance: "FILUSDT",  label: "Filecoin" },
+  { symbol: "AAVE", binance: "AAVEUSDT", label: "Aave" },
+  { symbol: "APT",  binance: "APTUSDT",  label: "Aptos" },
+  { symbol: "NEAR", binance: "NEARUSDT", label: "NEAR" },
+  { symbol: "FET",  binance: "FETUSDT",  label: "Fetch.ai" },
+];
+
+export const CHART_CRYPTO_BINANCE_LIST: string[] = CHART_CRYPTO_SYMBOLS.map((c) => c.binance);
+
+export function getChartSymbolLabel(binanceSymbol: string): string {
+  const opt = CHART_CRYPTO_SYMBOLS.find((c) => c.binance === binanceSymbol);
+  return opt?.label ?? (binanceSymbol.replace(/USDT$/i, "").trim() || "Crypto");
+}
+
+export type MarketCategory = "crypto" | "general" | "sports" | "weather";
+
+export function getMarketCategoryFromMetadata(metadata?: string | null): MarketCategory {
+  try {
+    const m = metadata ? JSON.parse(metadata) : {} as Record<string, unknown>;
+    const cat = (m.category ?? m.marketCategory ?? "").toString().toLowerCase();
+    if (cat === "crypto" || cat === "general" || cat === "sports" || cat === "weather") return cat as MarketCategory;
+    const res = m.resolution as { type?: string } | undefined;
+    const resType = (res?.type ?? "").toString();
+    if (resType === "price_above") return "crypto";
+    if (resType === "weather_rained") return "weather";
+    if (resType === "sports_winner") return "sports";
+    if (resType === "ai_sentiment") return "general";
+    return "general";
+  } catch {
+    return "general";
+  }
+}
+
+export function getChartSymbolFromMetadata(metadata?: string | null, question?: string): string {
+  try {
+    const m = metadata ? JSON.parse(metadata) : {};
+    const raw: string = (m.chartSymbol ?? m.symbol ?? m.resolution?.symbol ?? m.asset ?? m.pair ?? m.betToken ?? "").toString().trim();
+    if (raw) {
+      const upper = raw.toUpperCase().replace(/USDT$/, "").replace(/_USD$/, "").replace(/-USD$/, "").trim();
+      if (upper) {
+        const binance = upper.length >= 2 ? `${upper}USDT` : "ETHUSDT";
+        if (CHART_CRYPTO_BINANCE_LIST.includes(binance)) return binance;
+      }
+    }
+    if (question && question.trim()) {
+      const q = question.trim();
+      for (const opt of CHART_CRYPTO_SYMBOLS) {
+        if (new RegExp(`\\b${opt.symbol}\\b`, "i").test(q)) return opt.binance;
+      }
+    }
+    return CHART_CRYPTO_BINANCE_LIST[0] ?? "ETHUSDT";
+  } catch {
+    return CHART_CRYPTO_BINANCE_LIST[0] ?? "ETHUSDT";
+  }
+}

@@ -7,11 +7,13 @@ import type {
   HybridPredictResponse,
   AIAnalysisResponse,
   FeedPriceResponse,
+  SentimentResponse,
   PrivateMarketRegisterRequest,
   PrivateMarketRegisterResponse,
   PrivateMarketAccessResponse,
   ConditionalConditionView,
   FetchResponse,
+  SentimentResponse,
 } from "@/types/api";
 
 // En el navegador: si NEXT_PUBLIC_API_BASE_URL está definida, usarla (peticiones directas al backend);
@@ -80,7 +82,7 @@ export async function getMarkets(
   const raw = await fetchApi<PaginatedResponse<MarketView> | { data: PaginatedResponse<MarketView> }>(
     `/api/markets?${params}`
   );
-  // Aceptar tanto { items, total, page, limit } como { data: { items, total, page, limit } }
+  // Accept both { items, total, page, limit } and { data: { items, total, page, limit } }
   if (raw && typeof raw === "object" && "items" in raw && Array.isArray((raw as PaginatedResponse<MarketView>).items)) {
     return raw as PaginatedResponse<MarketView>;
   }
@@ -95,6 +97,25 @@ export async function getMarkets(
 
 export async function getMarket(id: number): Promise<MarketView> {
   return fetchApi<MarketView>(`/api/markets/${id}`);
+}
+
+/** DELETE /api/admin/markets/:id — dev only (backend returns 403 in production). */
+export async function deleteMarket(id: number): Promise<{ deleted: number }> {
+  const base = getBaseUrl();
+  const url = `${base}/api/admin/markets/${id}`;
+  const res = await fetch(url, { method: "DELETE" });
+  if (!res.ok) {
+    const text = await res.text();
+    let message: string;
+    try {
+      const json = JSON.parse(text) as { error?: string };
+      message = json.error ?? text;
+    } catch {
+      message = text || `Error ${res.status}`;
+    }
+    throw new Error(message);
+  }
+  return res.json() as Promise<{ deleted: number }>;
 }
 
 export async function getMarketPredictions(id: number): Promise<PredictionView[]> {
@@ -174,6 +195,51 @@ export async function checkHealth(): Promise<boolean> {
 export async function getFeedPrice(feed: string): Promise<FeedPriceResponse> {
   const params = new URLSearchParams({ feed });
   return fetchApi<FeedPriceResponse>(`/api/feeds/price?${params}`);
+}
+
+export interface WeatherCurrentResponse {
+  temp: number;
+  precipitation: number;
+  humidity: number;
+  cloud_cover: number;
+  timestamp: string;
+}
+
+export async function getWeatherCurrent(lat: number, lon: number): Promise<WeatherCurrentResponse> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  return fetchApi<WeatherCurrentResponse>(`/api/weather/current?${params}`);
+}
+
+/** Resolves short Google Maps links (maps.app.goo.gl, goo.gl/maps) and returns lat/lon. */
+export async function resolveMapsLocation(url: string): Promise<{ lat: number; lon: number }> {
+  const params = new URLSearchParams({ url: url.trim() });
+  return fetchApi<{ lat: number; lon: number }>(`/api/weather/resolve-location?${params}`);
+}
+
+export interface WeatherHistoryForecastResponse {
+  daily: {
+    time: string[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_sum: number[];
+  };
+}
+
+export async function getWeatherHistoryForecast(
+  lat: number,
+  lon: number,
+  resolutionDate?: string
+): Promise<WeatherHistoryForecastResponse> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  if (resolutionDate) params.set("resolution_date", resolutionDate);
+  return fetchApi<WeatherHistoryForecastResponse>(`/api/weather/history-forecast?${params}`);
+}
+
+export async function getAISentimentPreview(text: string): Promise<SentimentResponse> {
+  return fetchApi<SentimentResponse>("/api/ai/sentiment", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
 }
 
 export async function registerPrivateMarket(

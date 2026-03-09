@@ -24,7 +24,7 @@ export function subscribeToMarketResolution(
       localStorage.setItem("pc_watched_markets", JSON.stringify(watched));
     }
   } catch {
-    // localStorage no disponible (SSR o modo privado)
+    // localStorage not available (SSR or private mode)
   }
 }
 
@@ -44,7 +44,7 @@ export function removeWatchedMarket(marketId: number): void {
     const updated = watched.filter((m) => m.id !== marketId);
     localStorage.setItem("pc_watched_markets", JSON.stringify(updated));
   } catch {
-    // ignorar
+    // ignore
   }
 }
 
