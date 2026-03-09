@@ -8,9 +8,8 @@ loadEnvConfig(path.join(__dirname, ".."));
 const withPWA = require("next-pwa")({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
-  register: true,
+  register: process.env.NODE_ENV !== "development",
   skipWaiting: true,
-  // Excluye rutas de API del service worker
   buildExcludes: [/middleware-manifest\.json$/],
 });
 
@@ -60,7 +59,7 @@ const nextConfig = {
     ];
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts"],
+    optimizePackageImports: ["lucide-react"],
     turbo: {
       resolveAlias: {
         "@react-native-async-storage/async-storage": "./empty-module.js",
@@ -72,7 +71,6 @@ const nextConfig = {
     },
   },
   webpack(config, { dev, isServer }) {
-    // Dependencias opcionales de node que no existen en el entorno browser/Next.js
     config.resolve.fallback = {
       ...config.resolve.fallback,
       "@react-native-async-storage/async-storage": false,
@@ -84,10 +82,12 @@ const nextConfig = {
     if (dev && !isServer) {
       config.infrastructureLogging = { level: "error" };
       config.watchOptions = config.watchOptions || {};
-      config.watchOptions.aggregateTimeout = 800;
+      config.watchOptions.aggregateTimeout = 1200;
     }
     return config;
   },
 };
 
-module.exports = withPWA(nextConfig);
+// Solo aplicar PWA en producción para evitar errores de webpack en desarrollo
+module.exports =
+  process.env.NODE_ENV === "production" ? withPWA(nextConfig) : nextConfig;

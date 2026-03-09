@@ -1,14 +1,27 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
-import { WrongNetworkBanner } from "@/components/wrong-network-banner";
 import { Footer } from "@/components/footer";
-import { PWAInstallBanner } from "@/components/pwa-install-banner";
 import { MarketWatcherProvider } from "@/components/market-watcher-provider";
-import { LiveTicker } from "@/components/live-ticker";
+
+const WrongNetworkBanner = dynamic(
+  () => import("@/components/wrong-network-banner").then((m) => ({ default: m.WrongNetworkBanner })),
+  { ssr: true }
+);
+
+const LiveTicker = dynamic(
+  () => import("@/components/live-ticker").then((m) => ({ default: m.LiveTicker })),
+  { ssr: false }
+);
+
+const PWAInstallBanner = dynamic(
+  () => import("@/components/pwa-install-banner").then((m) => ({ default: m.PWAInstallBanner })),
+  { ssr: false }
+);
 
 export const metadata: Metadata = {
   title: "PraesagiumChain",
