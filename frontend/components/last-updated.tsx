@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 interface LastUpdatedProps {
   /** Timestamp (Date.now()) del último refresco exitoso */
   updatedAt: number | undefined;
-  /** Umbral en ms para considerar los datos "frescos" (default: 15 000) */
+  /** Threshold in ms to consider data "fresh" (default: 15 000) */
   freshThresholdMs?: number;
   className?: string;
 }

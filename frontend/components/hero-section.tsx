@@ -272,7 +272,7 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
               letterSpacing: "0.02em",
             }}
           >
-          {/* Línea 1 — letras caen desde arriba */}
+          {/* Line 1 — letters fall from above */}
           <span className="block text-foreground" aria-label="PREDICT THE">
             {"PREDICT THE".split("").map((ch, i) =>
               ch === " " ? (
@@ -290,7 +290,7 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
             )}
           </span>
 
-          {/* Línea 2 — typewriter con glow */}
+          {/* Line 2 — typewriter with glow */}
           <span
             className="block relative"
             style={{ minHeight: "1.15em" }}
@@ -305,7 +305,7 @@ export function HeroSection({ marketsRef }: HeroSectionProps) {
             <span className="cursor-blink ml-1 text-cyan" aria-hidden>|</span>
           </span>
 
-          {/* Línea 3 — letras suben desde abajo + shimmer de color continuo */}
+          {/* Line 3 — letters rise from below + continuous color shimmer */}
           <span className="hero-line3-shimmer" aria-label="ON-CHAIN.">
             {"ON-CHAIN.".split("").map((ch, i) =>
               ch === " " ? (

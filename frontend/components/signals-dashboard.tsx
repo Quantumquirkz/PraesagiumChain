@@ -458,7 +458,7 @@ export function SignalsDashboard({ symbol = "BTC/USD", binanceSymbol = "BTCUSDT"
 
   const anyLoading  = results.some((r) => r.isLoading);
   const activeCount = results.filter((r) => r.data?.price != null && !r.isError).length;
-  // Usar el primer precio disponible para la gráfica (fallback si Binance falla)
+  // Use first available price for the chart (fallback if Binance fails)
   const chartPrice = results.find((r) => r.data?.price != null)?.data?.price ?? null;
   const binancePrice = results[0]?.data?.price ?? chartPrice;
   const [lastUpdated, setLastUpdated] = useState<string>("");

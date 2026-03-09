@@ -39,7 +39,7 @@ export function NoPositions({ className }: { className?: string }) {
       <Link
         href="/markets"
         className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-border-bright bg-transparent px-4 py-2.5 font-body text-sm font-medium text-foreground",
+          "inline-flex items-center gap-2 rounded-lg border border-border-bright bg-transparent px-4 py-2.5 font-body text-sm font-medium text-foreground",
           "hover:bg-cyan-dim hover:border-cyan hover:text-cyan transition-colors"
         )}
       >

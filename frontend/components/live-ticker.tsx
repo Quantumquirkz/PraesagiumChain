@@ -12,7 +12,7 @@ interface TickerItem {
   change?: number | null;
 }
 
-// ─── Items de eventos de mercado (estáticos / mock) ───────────────────────────
+// Market event items (static / mock)
 
 const MARKET_EVENTS: TickerItem[] = [
   { key: "ev1", label: "Market #4", value: "resolved YES" },

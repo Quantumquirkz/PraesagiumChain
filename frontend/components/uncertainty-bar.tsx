@@ -67,10 +67,10 @@ export function UncertaintyBar({
       )}
 
       {highUncertainty && (
-        <div className="flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5">
+        <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5">
           <span className="text-amber-400 text-[10px]">⚠</span>
           <span className="font-mono text-[11px] text-amber-400">
-            Alta incertidumbre — datos insuficientes
+            High uncertainty — insufficient data
           </span>
         </div>
       )}

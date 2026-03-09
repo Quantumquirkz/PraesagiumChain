@@ -13,17 +13,17 @@ function HeroIllustration() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      {/* Glow de fondo */}
+      {/* Background glow */}
       <ellipse cx="100" cy="120" rx="70" ry="18" fill="var(--cyan)" fillOpacity="0.06" />
 
-      {/* Barras del chart */}
+      {/* Chart bars */}
       <rect x="28" y="88" width="22" height="32" rx="3" fill="var(--violet)" fillOpacity="0.25" stroke="var(--violet)" strokeOpacity="0.5" strokeWidth="1" />
       <rect x="58" y="68" width="22" height="52" rx="3" fill="var(--cyan)" fillOpacity="0.2" stroke="var(--cyan)" strokeOpacity="0.5" strokeWidth="1" />
       <rect x="88" y="52" width="22" height="68" rx="3" fill="var(--cyan)" fillOpacity="0.3" stroke="var(--cyan)" strokeOpacity="0.7" strokeWidth="1" />
       <rect x="118" y="72" width="22" height="48" rx="3" fill="var(--violet)" fillOpacity="0.2" stroke="var(--violet)" strokeOpacity="0.4" strokeWidth="1" />
       <rect x="148" y="84" width="22" height="36" rx="3" fill="var(--violet)" fillOpacity="0.15" stroke="var(--violet)" strokeOpacity="0.35" strokeWidth="1" />
 
-      {/* Línea de tendencia */}
+      {/* Trend line */}
       <path
         d="M39 84 L69 62 L99 46 L129 68 L159 80"
         stroke="var(--cyan)"
@@ -34,12 +34,12 @@ function HeroIllustration() {
         opacity="0.7"
       />
 
-      {/* Puntos en la línea */}
+      {/* Points on the line */}
       <circle cx="39" cy="84" r="3.5" fill="var(--cyan)" opacity="0.9" />
       <circle cx="99" cy="46" r="4.5" fill="var(--cyan)" opacity="1" />
       <circle cx="159" cy="80" r="3.5" fill="var(--cyan)" opacity="0.9" />
 
-      {/* Círculo central con signo de interrogación */}
+      {/* Central circle with question mark */}
       <circle cx="99" cy="46" r="14" fill="var(--bg-elevated)" stroke="var(--cyan)" strokeWidth="1.5" strokeOpacity="0.8" />
       <text
         x="99"
@@ -53,10 +53,10 @@ function HeroIllustration() {
         ?
       </text>
 
-      {/* Línea base */}
+      {/* Base line */}
       <line x1="20" y1="120" x2="180" y2="120" stroke="var(--border-bright)" strokeWidth="1" />
 
-      {/* Destellos decorativos */}
+      {/* Decorative highlights */}
       <circle cx="172" cy="36" r="2" fill="var(--cyan)" opacity="0.5" />
       <circle cx="24" cy="52" r="1.5" fill="var(--violet)" opacity="0.6" />
       <circle cx="185" cy="70" r="1.5" fill="var(--green)" opacity="0.5" />
@@ -130,12 +130,12 @@ export function NoMarkets({
 
   return (
     <div className={cn("flex flex-col items-center justify-center w-full max-w-4xl mx-auto py-14 px-6 text-center", className)}>
-      {/* Ilustración */}
+      {/* Illustration */}
       <div className="mb-8 fade-up">
         <HeroIllustration />
       </div>
 
-      {/* Título y subtítulo */}
+      {/* Title and subtitle */}
       <div className="mb-10 fade-up fade-up-delay-1">
         <h2 className="font-display font-extrabold text-3xl sm:text-[32px] text-foreground mb-3 tracking-wide">
           NO MARKETS YET
@@ -147,7 +147,7 @@ export function NoMarkets({
         </p>
       </div>
 
-      {/* Pasos — grid más ancho y tarjetas que llenan el espacio */}
+      {/* Steps — wider grid and cards that fill the space */}
       <div className="mb-10 w-full max-w-3xl fade-up fade-up-delay-2">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {STEPS.map((step, i) => (
@@ -173,7 +173,7 @@ export function NoMarkets({
         </div>
       </div>
 
-      {/* CTA — botones más amigables: redondeados, mismo tamaño, secundario con fondo suave */}
+      {/* CTA — friendlier buttons: rounded, same size, secondary with soft background */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 fade-up fade-up-delay-3">
         <Link
           href="/markets/create"

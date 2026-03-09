@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { HeroMarketCard } from "@/components/hero-market-card";
 import type { HeroMarketCardData } from "@/components/hero-market-card";
 
-// ─── Datos demo ───────────────────────────────────────────────────────────────
+// Demo data
 
 const DEMO_MARKETS: HeroMarketCardData[] = [
   {
@@ -89,7 +89,7 @@ export function HeroDemoPanel() {
       }}
       aria-label="Panel demo interactivo"
     >
-      {/* Contenedor scroll en mobile (altura fija 420px), sin scroll en md+ */}
+      {/* Scroll container on mobile (fixed height 420px), no scroll on md+ */}
       <div className="hero-demo-panel-scroll flex h-[420px] min-h-0 flex-col overflow-y-auto overflow-x-hidden md:h-auto md:min-h-0 md:overflow-visible">
         {/* Header */}
         <div className="mb-4 flex shrink-0 items-center justify-between">
@@ -125,7 +125,7 @@ export function HeroDemoPanel() {
               type="button"
               onClick={() => setActiveIndex(i)}
               className={`
-                flex-1 truncate rounded-lg border px-2 py-2 text-left transition-all
+                flex-1 truncate rounded-xl border px-2 py-2 text-left transition-all
                 ${activeIndex === i
                   ? "border-cyan bg-cyan-dim/30"
                   : "border-border bg-elevated/30 hover:border-border-bright"

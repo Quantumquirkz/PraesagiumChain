@@ -141,7 +141,7 @@ export function TVChart({
   const indicators = controlledInd ?? internalInd;
 
   const handleTf = (tf: Timeframe) => {
-    // Al cambiar timeframe: resetear todo para hacer fit del nuevo rango
+    // On timeframe change: reset everything to fit the new range
     fittedRef.current       = false;
     userScrolledRef.current = false;
     lastBarTimeRef.current  = 0;
@@ -166,8 +166,8 @@ export function TVChart({
   const { data: liveData, isLoading, isError } = useOHLCVHistory(symbol, timeframe, 300);
   const usingLive = !!symbol && !isError && !!liveData;
 
-  // useMemo: rawBars solo cambia cuando cambian los datos reales o el timeframe,
-  // NO cuando cambia el hover state (evita el bug de "gráfica loca")
+  // useMemo: rawBars only changes when real data or timeframe changes,
+  // NOT when hover state changes (avoids "crazy chart" bug)
   const rawBars = useMemo<OHLCVBar[]>(() => {
     const source = usingLive ? liveData! : generateMockOHLCV(timeframe, 300);
     return source
@@ -297,7 +297,7 @@ export function TVChart({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height]);
 
-  // ── Effect 1: datos nuevos (rawBars) — actualiza series + auto-scroll ─────────
+  // Effect 1: new data (rawBars) — update series + auto-scroll
   useEffect(() => {
     if (!candleRef.current || !rawBars.length) return;
 
@@ -379,21 +379,21 @@ export function TVChart({
     if (!ts) return;
 
     if (!fittedRef.current) {
-      // Primera carga: fit completo y posicionar al final
+      // First load: full fit and position at end
       ts.fitContent();
       fittedRef.current     = true;
       userScrolledRef.current = false;
     } else if (isNewData && !userScrolledRef.current) {
-      // Nuevos datos y el usuario no ha hecho scroll: seguir la vela más reciente
+      // New data and user has not scrolled: follow the latest candle
       progScrollRef.current = true;
       ts.scrollToRealTime();
-      // Pequeño timeout para que el listener no capture este scroll como manual
+      // Short timeout so the listener does not treat this scroll as manual
       setTimeout(() => { progScrollRef.current = false; }, 100);
     }
-    // Si el usuario hizo scroll, no tocamos la vista
+    // If the user scrolled, we don't touch the view
   }, [rawBars]);
 
-  // ── Effect 2: visibilidad de indicadores (NO toca la vista) ──────────────────
+  // Effect 2: indicator visibility (does not touch the view)
   useEffect(() => {
     volRef.current?.applyOptions({ visible: indicators.has("volume") });
     ma7Ref.current?.applyOptions({ visible: indicators.has("ma7") });
@@ -457,7 +457,7 @@ export function TVChart({
   // ── Skeleton ──────────────────────────────────────────────────────────────────
   if (symbol && isLoading) {
     return (
-      <div className={cn("rounded-lg overflow-hidden", className)} style={{ height: height + 60, background: C.bg }}>
+      <div className={cn("rounded-xl overflow-hidden", className)} style={{ height: height + 60, background: C.bg }}>
         <div className="flex items-center gap-3 p-3">
           <div className="h-7 w-28 rounded animate-pulse bg-[#0d1117]" />
           <div className="h-4 w-20 rounded animate-pulse bg-[#0d1117]" />
@@ -517,7 +517,7 @@ export function TVChart({
             <button
               type="button"
               onClick={followLatest}
-              className="rounded-md border border-cyan/50 bg-cyan-dim px-2.5 py-1 font-mono text-[10px] text-cyan hover:brightness-110 transition-all animate-pulse"
+              className="rounded-lg border border-cyan/50 bg-cyan-dim px-2.5 py-1 font-mono text-[10px] text-cyan hover:brightness-110 transition-all animate-pulse"
               title="Follow latest candle"
             >
               ▶ Follow
@@ -537,7 +537,7 @@ export function TVChart({
       {/* ── Chart ── */}
       <div
         ref={containerRef}
-        className="w-full rounded-lg overflow-hidden cursor-crosshair"
+        className="w-full rounded-xl overflow-hidden cursor-crosshair"
         style={{ background: C.bg }}
       />
 
