@@ -72,12 +72,12 @@ export function SignalFusionPanel({ defaultParams, className }: SignalFusionPane
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-violet" />
           <span className="font-display font-bold text-[13px] tracking-widest text-text-muted uppercase">
-            Fusión de Señales
+            Signal Fusion
           </span>
         </div>
         {hybridPct != null && (
           <span className="font-mono text-sm font-bold text-foreground">
-            Predicción híbrida:{" "}
+            Hybrid prediction:{" "}
             <span
               className={cn(
                 hybridPct >= 60 ? "text-green-400" : hybridPct <= 40 ? "text-red-400" : "text-amber-400"
@@ -92,7 +92,7 @@ export function SignalFusionPanel({ defaultParams, className }: SignalFusionPane
       <div className="p-4 space-y-3">
         {!state && !isPending && (
           <p className="font-mono text-xs text-text-muted text-center py-2">
-            Presiona Recalcular para ver el desglose de señales
+            Press Recalculate to see the signal breakdown
           </p>
         )}
 
@@ -111,7 +111,7 @@ export function SignalFusionPanel({ defaultParams, className }: SignalFusionPane
         {state && !isPending && (
           <div className="font-mono text-xs">
             <div className="flex items-center gap-2 pb-1">
-              <span className="text-text-muted">Predicción híbrida:</span>
+              <span className="text-text-muted">Hybrid prediction:</span>
               <span className="font-bold text-foreground">
                 {hybridPct}%
               </span>
@@ -148,11 +148,11 @@ export function SignalFusionPanel({ defaultParams, className }: SignalFusionPane
           disabled={isPending}
         >
           <RefreshCw className={cn("h-3.5 w-3.5", isPending && "animate-spin")} />
-          {isPending ? "Calculando…" : "Recalcular"}
+          {isPending ? "Calculating…" : "Recalculate"}
         </Button>
 
         <p className="font-mono text-[10px] text-text-muted text-center">
-          Pesos: PHPE {Math.round(state?.weights.phpe ?? 0.35 * 100)}% · Sentimiento {Math.round(state?.weights.sentiment ?? 0.40 * 100)}% · Precio {Math.round(state?.weights.price ?? 0.25 * 100)}%
+          Weights: PHPE {Math.round(state?.weights.phpe ?? 0.35 * 100)}% · Sentiment {Math.round(state?.weights.sentiment ?? 0.40 * 100)}% · Price {Math.round(state?.weights.price ?? 0.25 * 100)}%
         </p>
       </div>
     </div>

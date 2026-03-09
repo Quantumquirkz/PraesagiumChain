@@ -12,7 +12,7 @@ export interface TxStatusProps {
   hash: `0x${string}` | undefined;
   /** Número de confirmaciones para considerar la tx final (default 3) */
   requiredConfirmations?: number;
-  /** Callback llamado cuando la tx se confirma con éxito */
+  /** Callback called when the tx confirms successfully */
   onConfirmed?: () => void;
   /** ms tras confirmación antes de hacer fade-out (default 5 000) */
   dismissAfterMs?: number;
@@ -44,7 +44,8 @@ export function TxStatus({
     }
   }, [hash]);
 
-  // Fade-out 5 s después de confirmación exitosa
+  // Fade-out 5 s after successful confirmation. Dismiss when receipt status or dismissAfterMs changes;
+  // omit receipt ref to avoid re-running on receipt object identity.
   useEffect(() => {
     if (receipt?.status !== "success") return;
     onConfirmed?.();

@@ -43,15 +43,15 @@ function ConditionNode({
   } else if (expectedMet) {
     statusIcon = "✅";
     statusColor = "text-green-400";
-    statusText = "Resuelto: SÍ";
+    statusText = "Resolved: YES";
   } else if (expectedFailed) {
     statusIcon = "❌";
     statusColor = "text-red-400";
-    statusText = `Resuelto: ${outcome}`;
+    statusText = `Resolved: ${outcome}`;
   } else if (market?.status === "Locked") {
     statusIcon = "🔒";
     statusColor = "text-violet";
-    statusText = "Cerrado";
+    statusText = "Closed";
   }
 
   return (
@@ -163,7 +163,7 @@ export function ConditionalTree({ marketId, className }: ConditionalTreeProps) {
         )}
         {anyFailed && (
           <span className="rounded-full border border-red-400/30 bg-red-400/10 px-2 py-0.5 font-mono text-[10px] text-red-400">
-            Condición fallida
+            Condition failed
           </span>
         )}
       </div>

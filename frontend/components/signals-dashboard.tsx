@@ -268,6 +268,12 @@ function LivePredictionChart({
             PHPE Prediction
           </span>
           <span
+            className="font-mono text-[9px] text-text-muted border border-border rounded px-1.5 py-0.5"
+            title="Simulated from live price; use Predict for backend PHPE."
+          >
+            Simulated
+          </span>
+          <span
             className="h-1.5 w-1.5 rounded-full animate-pulse"
             style={{ background: "var(--green)", boxShadow: "0 0 6px var(--green)" }}
             aria-hidden
@@ -436,7 +442,7 @@ function SourceCard({
 
 interface SignalsDashboardProps {
   symbol?: string;
-  /** Símbolo Binance (ej. BTCUSDT, ETHUSDT). Si no se pasa, se usa BTC. */
+  /** Binance symbol (e.g. BTCUSDT, ETHUSDT). If not provided, BTC is used. */
   binanceSymbol?: string;
 }
 
@@ -542,6 +548,9 @@ export function SignalsDashboard({ symbol = "BTC/USD", binanceSymbol = "BTCUSDT"
             <span className="font-mono text-[10px] text-text-muted">{activeCount} active</span>
           </div>
           <span className="font-mono text-[10px] text-text-muted">Refreshes every 0.5s</span>
+          <span className="font-mono text-[9px] text-text-muted" title="Chart is client-side simulation; Predict uses backend PHPE.">
+            Simulated prediction from live price
+          </span>
         </div>
         <span className="font-mono text-[10px] text-text-muted">PHPE Fusion Engine · Bayesian weighted</span>
       </div>

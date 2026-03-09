@@ -173,7 +173,7 @@ interface StatRowProps {
 
 function StatRow({ stats }: StatRowProps) {
   return (
-    <div className="flex items-center gap-4" role="list" aria-label="Métricas del producto">
+    <div className="flex items-center gap-4" role="list" aria-label="Product metrics">
       {stats.map((s, i) => (
         <div key={i} className="flex items-center gap-4" role="listitem">
           {i > 0 && (

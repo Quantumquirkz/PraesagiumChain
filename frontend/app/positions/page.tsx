@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAccount, useReadContracts } from "wagmi";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ function parseMarketOnChain(
 
 /** Payout estimado con fee del 2%:
  *  claimable = (userStake / winningSideTotal) * totalPool * 0.98
- *  Usa aritmética entera con factor 1e6 para precisión.
+ *  Uses integer arithmetic with factor 1e6 for precision.
  */
 function estimatePayout(
   userStake: bigint,
@@ -95,11 +95,13 @@ type PositionItem = {
 
 interface ClaimButtonProps {
   marketId: number;
-  /** ETH formateado para mostrar en el botón, p.ej. "0.0490 ETH" */
+  /** ETH formatted for display on the button, e.g. "0.0490 ETH" */
   claimableEth: string;
+  /** Called when claim tx confirms; used to mark market as claimed in local UI cache. */
+  onClaimSuccess?: () => void;
 }
 
-function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
+function ClaimButton({ marketId, claimableEth, onClaimSuccess }: ClaimButtonProps) {
   const { claim, hash, isPending, isConfirming, isSuccess, error, reset } =
     useClaimWinnings();
   const queryClient = useQueryClient();
@@ -107,6 +109,7 @@ function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
 
   useEffect(() => {
     if (isSuccess) {
+      onClaimSuccess?.();
       toast.success(`Claimed ${claimableEth}!`, {
         action: hash
           ? {
@@ -198,17 +201,24 @@ function ClaimButton({ marketId, claimableEth }: ClaimButtonProps) {
         ) : null}
         {label}
       </Button>
-      {/* TxStatus aparece en cuanto hay hash, se desvanece 5s tras confirmación */}
+      {/* TxStatus appears as soon as there is a hash, fades out 5s after confirmation */}
       <TxStatus hash={hash} requiredConfirmations={3} dismissAfterMs={5_000} />
     </div>
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
+// ─── Main page ─────────────────────────────────────────────────────────
 
 export default function PositionsPage() {
   const { address, isConnected } = useAccount();
   const mounted = useIsMounted();
+
+  /** Client-side cache of market IDs for which the user just claimed; contract does not zero stakes so we show "Claimed" from this. */
+  const [claimedMarketIds, setClaimedMarketIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setClaimedMarketIds(new Set());
+  }, [address]);
 
   // 1. Load market list from API
   const { data: marketsData, isLoading: marketsLoading, isError: marketsError, error: marketsErrorDetail, refetch: refetchMarkets } = useQuery({
@@ -332,7 +342,7 @@ export default function PositionsPage() {
 
         const userWinningSide = outcomeIsYes ? yesStake : outcomeIsNo ? noStake : 0n;
 
-        // Si el usuario tenía stake en el lado ganador pero ahora es 0 → ya reclamó
+        // If the user had stake on the winning side but it's now 0 → already claimed
         const hadWinningStake =
           (outcomeIsYes && yesStake === 0n && noStake === 0n) ||
           (outcomeIsNo && noStake === 0n && yesStake === 0n);
@@ -367,17 +377,21 @@ export default function PositionsPage() {
           estimatedPayout = userWinningSide;
         }
 
+        // Optimistic "claimed" from client cache (contract does not zero stakes after claim)
+        const isClaimedInCache = won && claimedMarketIds.has(market.id);
+        const result: PositionResult = isClaimedInCache ? "claimed" : won ? "won" : "lost";
+
         return {
           market,
           stake,
-          result: won ? "won" : "lost",
-          estimatedPayout,
+          result,
+          estimatedPayout: isClaimedInCache ? 0n : estimatedPayout,
           side,
           stakeAmount,
         };
       })
       .filter((p: PositionItem | null): p is PositionItem => p !== null);
-  }, [markets, stakesResult, marketOnChainMap]);
+  }, [markets, stakesResult, marketOnChainMap, claimedMarketIds]);
 
   // 6. Stats summary
   const stats = useMemo(() => {
@@ -443,6 +457,13 @@ export default function PositionsPage() {
 
   return (
     <div className="container py-8 px-4">
+      <nav className="flex items-center gap-1.5 font-mono text-xs text-text-muted mb-4" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-foreground transition-colors">
+          Markets
+        </Link>
+        <span aria-hidden>→</span>
+        <span className="text-text-secondary">Positions</span>
+      </nav>
       <h1 className="font-display font-extrabold text-[36px] text-foreground mb-8">
         MY POSITIONS
       </h1>
@@ -573,6 +594,7 @@ export default function PositionsPage() {
                           marketId={market.on_chain_market_id ?? market.id}
                           result={result}
                           estimatedPayout={estimatedPayout}
+                          onClaimSuccess={() => setClaimedMarketIds((prev) => new Set(prev).add(market.id))}
                         />
                       </td>
                     </tr>
@@ -622,6 +644,7 @@ export default function PositionsPage() {
                       marketId={market.on_chain_market_id ?? market.id}
                       result={result}
                       estimatedPayout={estimatedPayout}
+                      onClaimSuccess={() => setClaimedMarketIds((prev) => new Set(prev).add(market.id))}
                     />
                   </div>
                 </div>
@@ -634,7 +657,7 @@ export default function PositionsPage() {
   );
 }
 
-// ─── Sub-componentes de presentación ─────────────────────────────────────────
+// ─── Presentation subcomponents ─────────────────────────────────────────
 
 function SideBadge({ side }: { side: "yes" | "no" | "both" }) {
   if (side === "both") {
@@ -692,12 +715,13 @@ interface ActionCellProps {
   marketId: number;
   result: PositionResult;
   estimatedPayout: bigint;
+  onClaimSuccess?: () => void;
 }
 
-function ActionCell({ marketId, result, estimatedPayout }: ActionCellProps) {
+function ActionCell({ marketId, result, estimatedPayout, onClaimSuccess }: ActionCellProps) {
   if (result === "won" && estimatedPayout > 0n) {
     const ethStr = formatEth(estimatedPayout);
-    return <ClaimButton marketId={marketId} claimableEth={ethStr} />;
+    return <ClaimButton marketId={marketId} claimableEth={ethStr} onClaimSuccess={onClaimSuccess} />;
   }
   if (result === "claimed") {
     return (

@@ -51,7 +51,7 @@ function ConnectModal({ open, onOpenChange }: ConnectModalProps) {
 
       try {
         if (typeof window !== "undefined") window.focus();
-        // Pequeña pausa para que la pestaña y MetaMask estén listos (reduce cierres inesperados).
+        // Short pause so the tab and MetaMask are ready (reduces unexpected closes).
         await new Promise((r) => setTimeout(r, 180));
 
         const result = await connectAsync({ connector });

@@ -32,7 +32,7 @@ export interface SignalFusionParams {
   marketId?: number;
 }
 
-// Pesos hardcoded del backend (series=0.35, sentiment=0.40, precio=0.25)
+// Backend hardcoded weights (series=0.35, sentiment=0.40, price=0.25)
 const DEFAULT_WEIGHTS: SignalWeights = {
   phpe: 0.35,
   sentiment: 0.40,
@@ -43,9 +43,9 @@ function deriveSignalProbabilities(
   hybridProb: number,
   params: SignalFusionParams
 ): { phpe: number | null; sentiment: number | null; price: number | null } {
-  // El backend no devuelve probabilidades individuales por señal, solo el resultado fusionado.
-  // Derivamos estimaciones aproximadas basadas en el resultado híbrido con pequeñas variaciones
-  // para mostrar la contribución relativa de cada señal.
+  // Backend does not return per-signal probabilities, only the fused result.
+  // We derive approximate estimates from the hybrid result with small variations
+  // to show the relative contribution of each signal.
   const base = hybridProb;
   const hasSentiment = !!params.sentimentText;
   const hasPrice = !!(params.binanceSymbol || params.useChainlinkPrice);
@@ -72,15 +72,15 @@ export function useSignalFusion(initialParams?: SignalFusionParams) {
       const state: SignalFusionState = {
         phpe: {
           probability: signals.phpe,
-          label: "PHPE (series temporal)",
+          label: "PHPE (time series)",
         },
         sentiment: {
           probability: signals.sentiment,
-          label: "Sentimiento IA",
+          label: "AI Sentiment",
         },
         price: {
           probability: signals.price,
-          label: `Precio ${params.binanceSymbol ?? (params.useChainlinkPrice ? "Chainlink" : "—")}`,
+          label: `Price ${params.binanceSymbol ?? (params.useChainlinkPrice ? "Chainlink" : "—")}`,
         },
         hybrid: {
           probability: result.probability,

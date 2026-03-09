@@ -17,14 +17,14 @@ export function PWAInstallBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // No mostrar si ya está instalado como PWA (modo standalone)
+    // Do not show if already installed as PWA (standalone mode)
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       ("standalone" in navigator &&
         (navigator as { standalone?: boolean }).standalone === true);
     if (isStandalone) return;
 
-    // No mostrar si el usuario ya lo descartó
+    // Do not show if the user already dismissed it
     if (localStorage.getItem(DISMISSED_KEY) === "1") return;
 
     const handler = (e: Event) => {
@@ -37,7 +37,7 @@ export function PWAInstallBanner() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Mostrar el banner con delay de 30s una vez que el prompt está disponible
+  // Show the banner with a 30s delay once the prompt is available
   useEffect(() => {
     if (!deferredPrompt) return;
 
