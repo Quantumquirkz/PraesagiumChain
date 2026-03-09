@@ -1,17 +1,17 @@
 /**
  * deploy-markets-onchain.js
  *
- * 1. Lee todos los mercados base/ai del backend
- * 2. Crea cada uno en el contrato PredictionMarket en Sepolia
- * 3. Registra el mercado en el backend con el on_chain_market_id correcto
+ * 1. Reads all base/ai markets from the backend
+ * 2. Creates each on the PredictionMarket contract on Sepolia
+ * 3. Registers the market in the backend with the correct on_chain_market_id
  *
- * Suposición: Para mercados sin on_chain_market_id, el script usa el ID de backend (m.id)
- * para comprobar si ya existe on-chain (getMarket(m.id)). Esto es válido cuando los mercados
- * se crean en el mismo orden (backend primero, luego este script). Si los mercados on-chain
- * se crean por otra vía (p. ej. frontend), los IDs pueden no coincidir; en ese caso usar
- * on_chain_market_id en el backend cuando ya exista.
+ * Assumption: For markets without on_chain_market_id, the script uses the backend ID (m.id)
+ * to check if it already exists on-chain (getMarket(m.id)). This is valid when markets
+ * are created in the same order (backend first, then this script). If on-chain markets
+ * are created by another path (e.g. frontend), IDs may not match; in that case use
+ * on_chain_market_id in the backend when it already exists.
  *
- * Uso:
+ * Usage:
  *   npx hardhat run scripts/deploy-markets-onchain.js --network sepolia
  */
 
@@ -91,14 +91,14 @@ async function main() {
   console.log(`Contract : ${CONTRACT_ADDRESS}\n`);
 
   if (balance < ethers.parseEther("0.05")) {
-    console.error("⚠  Balance muy bajo. Se necesitan al menos 0.05 ETH para el gas.");
+    console.error("⚠  Balance too low. At least 0.05 ETH is needed for gas.");
     process.exit(1);
   }
 
   const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, deployer);
 
-  // Obtener mercados del backend
-  console.log("Obteniendo mercados del backend…");
+  // Fetch markets from backend
+  console.log("Fetching markets from backend…");
   const allMarkets = await fetchAllMarkets();
   const deployable = allMarkets.filter((m) =>
     DEPLOYABLE_TYPES.includes(m.market_type) && m.status === "Open"
@@ -107,9 +107,9 @@ async function main() {
 
   console.log(`Total backend        : ${allMarkets.length}`);
   console.log(`Deployables (base/ai): ${deployable.length}`);
-  console.log(`Omitidos (private/conditional): ${skippedTypes.length}\n`);
+  console.log(`Skipped (private/conditional): ${skippedTypes.length}\n`);
 
-  // Verificar cuáles ya tienen on_chain_market_id asignado
+  // Check which already have on_chain_market_id assigned
   const now = Math.floor(Date.now() / 1000);
   const toCreate = [];
   const alreadySynced = [];
@@ -124,7 +124,7 @@ async function main() {
       expiredSkip.push(m);
       continue;
     }
-    // Si el backend ya tiene on_chain_market_id, considerar ya desplegado si existe en chain
+    // If backend already has on_chain_market_id, consider already deployed if it exists on chain
     const chainIdToCheck = m.on_chain_market_id ?? m.id;
     try {
       await contract.getFunction("getMarket")(BigInt(chainIdToCheck));
@@ -134,12 +134,12 @@ async function main() {
     }
   }
 
-  console.log(`✓ Ya on-chain (ID coincide) : ${alreadySynced.length}`);
-  console.log(`⊘ Expirados (skip)          : ${expiredSkip.length}`);
-  console.log(`→ A desplegar               : ${toCreate.length}\n`);
+  console.log(`✓ Already on-chain (ID matches) : ${alreadySynced.length}`);
+  console.log(`⊘ Expired (skip)               : ${expiredSkip.length}`);
+  console.log(`→ To deploy                   : ${toCreate.length}\n`);
 
   if (toCreate.length === 0) {
-    console.log("✓ Todos los mercados deployables ya están on-chain.");
+    console.log("✓ All deployable markets are already on-chain.");
     return;
   }
 
@@ -218,6 +218,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("\nError fatal:", err);
+  console.error("\nFatal error:", err);
   process.exit(1);
 });
