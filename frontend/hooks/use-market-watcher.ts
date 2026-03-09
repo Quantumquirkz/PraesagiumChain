@@ -12,11 +12,11 @@ import {
 const POLL_INTERVAL_MS = 30_000;
 
 /**
- * Hace polling cada 30s de los mercados guardados en localStorage.
- * Cuando detecta que un mercado pasó a "Resolved", dispara una notificación
- * push y lo elimina de la lista de vigilados.
+ * Polls every 30s for markets stored in localStorage.
+ * When it detects a market moved to "Resolved", triggers a notification
+ * push and removes it from the watched list.
  *
- * Se monta una sola vez en el layout global; no requiere props.
+ * Mounted once in the global layout; no props required.
  */
 export function useMarketWatcher() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -36,7 +36,7 @@ export function useMarketWatcher() {
               removeWatchedMarket(id);
             }
           } catch {
-            // 404 u otro error: dejar de vigilar este mercado para no seguir haciendo polling
+            // 404 or other error: stop watching this market to avoid further polling
             removeWatchedMarket(id);
           }
         })
@@ -52,8 +52,8 @@ export function useMarketWatcher() {
 }
 
 /**
- * Solicita permiso de notificación la primera vez que el usuario apuesta.
- * Llama a esta función justo después de una apuesta exitosa.
+ * Requests notification permission the first time the user places a bet.
+ * Call this right after a successful bet.
  */
 export async function ensureNotificationPermission(): Promise<void> {
   await requestNotificationPermission();

@@ -15,7 +15,7 @@ export function useMarketOnChain(marketId: number) {
   })
 
   // wagmi v2 no expone refetchInterval nativo en useReadContract;
-  // usamos un intervalo manual para revalidar los datos on-chain cada 10s.
+  // We use a manual interval to revalidate on-chain data every 10s.
   useEffect(() => {
     if (!enabled) return
     const id = setInterval(() => {

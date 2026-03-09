@@ -11,6 +11,7 @@ export function useMarkets(page: number, limit: number, status?: string) {
     staleTime: 30_000,
     refetchInterval: 45_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -37,6 +38,7 @@ export function useInfiniteMarkets(status?: string) {
     staleTime: 30_000,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   })
 }
 

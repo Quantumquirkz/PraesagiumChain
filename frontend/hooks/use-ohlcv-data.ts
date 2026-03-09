@@ -19,7 +19,7 @@ export interface OHLCVCandle extends OHLCV {
   time: number
 }
 
-// ─── Hook principal: datos históricos desde Binance pública ──────────────────
+// Main hook: historical data from public Binance
 
 export function useOHLCVHistory(
   symbol: string | undefined,
