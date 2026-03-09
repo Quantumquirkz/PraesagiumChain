@@ -1,34 +1,34 @@
-# Instalación de PraesagiumChain
+# PraesagiumChain Installation
 
-Para evitar errores de `node-gyp` (EPERM en `C:\Windows`), rutas UNC y “no package.json”, **todo debe ejecutarse en WSL con Node instalado dentro de WSL**, no con Node de Windows.
-
----
-
-## 1. Usar terminal WSL en Cursor
-
-El proyecto incluye configuración para que la terminal integrada sea **WSL** por defecto en Windows:
-
-- **Archivo:** `.vscode/settings.json` → `terminal.integrated.defaultProfile.windows: "Ubuntu (WSL)"`
-- Si tu distro WSL tiene otro nombre (p. ej. `Ubuntu-22.04`), cambia en ese archivo `"Ubuntu"` por el nombre de tu distro en el perfil.
-
-**Qué hacer:** cierra las terminales abiertas, abre una **nueva** terminal en Cursor (Ctrl+` o Terminal → Nueva terminal). Debe abrirse una terminal de tipo **Ubuntu (WSL)**. El prompt debería ser algo como `usuario@equipo:~$` o `usuario@equipo:/ruta$`.
-
-Si no ves la opción "Ubuntu (WSL)", instala la extensión **WSL** en Cursor y vuelve a abrir la terminal.
+To avoid `node-gyp` errors (EPERM on `C:\Windows`), UNC paths, and "no package.json", **everything must run in WSL with Node installed inside WSL**, not with Windows Node.
 
 ---
 
-## 2. Node dentro de WSL
+## 1. Use WSL terminal in Cursor
 
-En esa terminal WSL, comprueba qué Node usas:
+The project includes configuration so the integrated terminal defaults to **WSL** on Windows:
+
+- **File:** `.vscode/settings.json` → `terminal.integrated.defaultProfile.windows: "Ubuntu (WSL)"`
+- If your WSL distro has a different name (e.g. `Ubuntu-22.04`), change `"Ubuntu"` to your distro name in that profile.
+
+**What to do:** close any open terminals, open a **new** terminal in Cursor (Ctrl+` or Terminal → New terminal). It should open an **Ubuntu (WSL)** terminal. The prompt should look like `user@host:~$` or `user@host:/path$`.
+
+If you don't see the "Ubuntu (WSL)" option, install the **WSL** extension in Cursor and open the terminal again.
+
+---
+
+## 2. Node inside WSL
+
+In that WSL terminal, check which Node you're using:
 
 ```bash
 node -p "process.platform"
 ```
 
-- Si sale **`linux`** → bien, sigue al paso 3.
-- Si sale **`win32`** o da error → estás usando Node de Windows. Instala Node dentro de WSL:
+- If you see **`linux`** → good, continue to step 3.
+- If you see **`win32`** or an error → you're using Windows Node. Install Node inside WSL:
 
-**Con nvm (recomendado):**
+**With nvm (recommended):**
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
@@ -37,72 +37,72 @@ nvm install 20
 nvm use 20
 ```
 
-**Con apt:**
+**With apt:**
 
 ```bash
 sudo apt update && sudo apt install -y nodejs npm
 ```
 
-Vuelve a comprobar: `node -p "process.platform"` debe ser `linux`.
+Check again: `node -p "process.platform"` should be `linux`.
 
 ---
 
-## 3. Instalar todo el proyecto
+## 3. Install the whole project
 
-# En la raíz del proyecto ejecuta (directamente con bash, no con npm):
+# From the project root run (with bash directly, not npm):
 #
 #   ./scripts/install-all.sh
 #
-# No uses "npm run install:all" si en WSL tu npm es el de Windows (falla con CMD/UNC).
+# Do not use "npm run install:all" if your npm in WSL is the Windows one (fails with CMD/UNC).
 
-Ese script instala:
+That script installs:
 
-- Dependencias **raíz** (Hardhat, OpenZeppelin, Chainlink)
-- Dependencias **frontend** (Next.js, Wagmi, etc.)
-- Dependencias **CRE** (con `--ignore-scripts`, el postinstall `cre-setup` no está en npm público)
-- **Backend Rust** (si tienes `cargo` instalado)
+- **Root** dependencies (Hardhat, OpenZeppelin, Chainlink)
+- **Frontend** dependencies (Next.js, Wagmi, etc.)
+- **CRE** dependencies (with `--ignore-scripts`; the postinstall `cre-setup` is not on public npm)
+- **Backend Rust** (if you have `cargo` installed)
 
 ---
 
-## 4. Si solo falla el frontend
+## 4. If only the frontend fails
 
-Si la raíz y el resto están bien pero el frontend no termina de instalar o da errores:
+If the root and the rest install fine but the frontend fails or errors:
 
 ```bash
 ./scripts/install-frontend.sh
 ```
 
-o:
+or:
 
 ```bash
 npm run install:frontend
 ```
 
-Eso limpia `frontend/node_modules` y hace un `npm install` limpio en el frontend.
+That cleans `frontend/node_modules` and does a fresh `npm install` in the frontend.
 
 ---
 
-## 5. Comprobar que Node es el correcto
+## 5. Verify Node is correct
 
 ```bash
 ./scripts/check-node.sh
 ```
 
-Debe decir algo como: `OK: Node es de Linux`.
+It should say something like: `OK: Node is Linux`.
 
 ---
 
-## 6. Cómo arrancar
+## 6. How to run
 
 - **Frontend:** `cd frontend && npm run dev` → http://localhost:3000  
-- **Nodo Hardhat local:** `npm run node`  
-- **Backend (tras tener Hardhat en marcha):** `npm run backend`
+- **Local Hardhat node:** `npm run node`  
+- **Backend (after Hardhat is running):** `npm run backend`
 
 ---
 
-## Resumen rápido
+## Quick summary
 
-1. Abrir **nueva terminal** en Cursor (debe ser WSL).
-2. Comprobar `node -p "process.platform"` → `linux`.
-3. En la raíz: `./scripts/install-all.sh` (o `npm run install:all`).
-4. Arrancar: `cd frontend && npm run dev`.
+1. Open a **new terminal** in Cursor (must be WSL).
+2. Check `node -p "process.platform"` → `linux`.
+3. From project root: `./scripts/install-all.sh` (or `npm run install:all`).
+4. Run: `cd frontend && npm run dev`.

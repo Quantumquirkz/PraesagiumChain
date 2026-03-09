@@ -1,34 +1,34 @@
-# Auditoría Frontend/Backend — Inventario de flujos y endpoints
+# Frontend/Backend Audit — Flow and Endpoint Inventory
 
-**Fecha:** 2025-03-07  
-**Objetivo:** Lista de flujos/endpoints con estado OK / Frágil / Roto y contrato API verificado.
-
----
-
-## 1. Flujos frontend y estado
-
-| Flujo | Archivo(s) | API / Contrato | Estado | Notas |
-|-------|------------|----------------|--------|--------|
-| Dashboard | `app/page.tsx` | `getStats`, `getMarkets` | OK | Paginación y filtro `status`; `getMarkets` normaliza `items` y `data.items`. |
-| Detalle mercado | `market-page-client.tsx` | `getMarket`, `getMarketPredictions`, on-chain `getMarket`, `getUserStake` | OK | `chainIdForContract = market.on_chain_market_id ?? id`; predictions usan `market.id`. |
-| Crear mercado | `markets/create/page.tsx` | `createMarketBackend`, `registerPrivateMarket` | OK | Body alineado con backend; private register con `PrivateMarketRegisterRequest`. |
-| Posiciones | `positions/page.tsx` | `getMarkets`, on-chain `getUserStake` | OK | Outcome preferido on-chain; claim usa `on_chain_market_id ?? market.id`; error guard con Retry. |
-| Señales | `signals-dashboard.tsx` | `fetchSource` | OK | Finnhub requiere `FINNHUB_API_KEY`; UI muestra mensaje cuando no está configurado. |
-| Join privado | `join-private-market-card.tsx` | `validatePrivateMarketKey` → GET `/api/markets/private/access?key=` | OK | Mensaje 404 amigable: "Invalid or expired access key...". Backend valida longitud de key (≤64). |
-| Footer health | `footer.tsx` | `checkHealth` → `fetch("/health")` | OK | Proxy en next.config.js; no usa `getBaseUrl()`. |
-| Árbol condicional | `conditional-tree.tsx` | `getMarketConditions`, `getMarket` | OK | Endpoints y tipos alineados. |
-| Market stream | `use-market-stream.ts` | GET `/api/markets/:id/stream` (SSE) | OK | Router y handler presentes. |
+**Date:** 2025-03-07  
+**Goal:** List of flows/endpoints with status OK / Fragile / Broken and API contract verified.
 
 ---
 
-## 2. Contrato API (frontend lib/api.ts vs backend router + models)
+## 1. Frontend flows and status
 
-| Función FE | Método | Path | Body/Query | Estado |
-|------------|--------|------|------------|--------|
+| Flow | File(s) | API / Contract | Status | Notes |
+|------|---------|----------------|--------|-------|
+| Dashboard | `app/page.tsx` | `getStats`, `getMarkets` | OK | Pagination and `status` filter; `getMarkets` normalizes `items` and `data.items`. |
+| Market detail | `market-page-client.tsx` | `getMarket`, `getMarketPredictions`, on-chain `getMarket`, `getUserStake` | OK | `chainIdForContract = market.on_chain_market_id ?? id`; predictions use `market.id`. |
+| Create market | `markets/create/page.tsx` | `createMarketBackend`, `registerPrivateMarket` | OK | Body aligned with backend; private register with `PrivateMarketRegisterRequest`. |
+| Positions | `positions/page.tsx` | `getMarkets`, on-chain `getUserStake` | OK | Preferred outcome on-chain; claim uses `on_chain_market_id ?? market.id`; error guard with Retry. |
+| Signals | `signals-dashboard.tsx` | `fetchSource` | OK | Finnhub requires `FINNHUB_API_KEY`; UI shows message when not configured. |
+| Join private | `join-private-market-card.tsx` | `validatePrivateMarketKey` → GET `/api/markets/private/access?key=` | OK | Friendly 404 message: "Invalid or expired access key...". Backend validates key length (≤64). |
+| Footer health | `footer.tsx` | `checkHealth` → `fetch("/health")` | OK | Proxy in next.config.js; does not use `getBaseUrl()`. |
+| Conditional tree | `conditional-tree.tsx` | `getMarketConditions`, `getMarket` | OK | Endpoints and types aligned. |
+| Market stream | `use-market-stream.ts` | GET `/api/markets/:id/stream` (SSE) | OK | Router and handler present. |
+
+---
+
+## 2. API contract (frontend lib/api.ts vs backend router + models)
+
+| FE function | Method | Path | Body/Query | Status |
+|-------------|--------|------|------------|--------|
 | `getStats` | GET | `/api/markets/stats` | — | OK |
-| `getMarkets` | GET | `/api/markets` | page, limit, status | OK; normaliza `items` y `data`. |
-| `getMarket` | GET | `/api/markets/:id` | — | OK; backend devuelve MarketView con `on_chain_market_id`. |
-| `getMarketPredictions` | GET | `/api/markets/:id/predictions` | — | OK; backend devuelve `Vec<PredictionView>`. |
+| `getMarkets` | GET | `/api/markets` | page, limit, status | OK; normalizes `items` and `data`. |
+| `getMarket` | GET | `/api/markets/:id` | — | OK; backend returns MarketView with `on_chain_market_id`. |
+| `getMarketPredictions` | GET | `/api/markets/:id/predictions` | — | OK; backend returns `Vec<PredictionView>`. |
 | `createMarketBackend` | POST | `/api/markets` | question, close_time, resolve_time, market_type?, metadata?, on_chain_market_id? | OK |
 | `getHybridPrediction` | POST | `/api/predict/hybrid` | body | OK |
 | `getMarketAIAnalysis` | POST | `/api/markets/:id/ai/analysis` | sentiment_text?, binance_symbol? | OK |
@@ -42,12 +42,12 @@
 
 ---
 
-## 3. Tipos frontend vs backend (models.rs)
+## 3. Frontend types vs backend (models.rs)
 
-| Tipo | Coincidencia | Nota |
-|------|--------------|------|
-| MarketView | OK | Backend incluye `on_chain_market_id` (opcional). |
-| PaginatedResponse | OK | items, total, page, limit; backend i64 serializa como number. |
+| Type | Match | Note |
+|------|-------|------|
+| MarketView | OK | Backend includes optional `on_chain_market_id`. |
+| PaginatedResponse | OK | items, total, page, limit; backend i64 serializes as number. |
 | PredictionView | OK | probability (f32→number), uncertainty, model_version, model_hash?, timestamp. |
 | ConditionalConditionView | OK | id, condition_contract, condition_market_id, expected_outcome. |
 | FetchResponse | OK | source, price?, price_change_24h?, volume_24h?, sentiment?; backend Option<> → null. |
@@ -55,32 +55,32 @@
 | PrivateMarketRegisterResponse | OK | access_key, market_id, message. |
 | PrivateMarketAccessResponse | OK | market_id, question, close_time, resolve_time, creator. |
 | HybridPredictResponse | OK | probability, uncertainty?, market_id?. |
-| AIAnalysisResponse | OK | analysis, description (verificar handler ai.rs). |
+| AIAnalysisResponse | OK | analysis, description (verify ai.rs handler). |
 
 ---
 
-## 4. Errores conocidos y mitigaciones
+## 4. Known errors and mitigations
 
-- **Backend inalcanzable:** `fetchApi` lanza error con mensaje; en local no definir `NEXT_PUBLIC_API_BASE_URL` para usar proxy.
-- **Finnhub:** UI muestra mensaje si falta `FINNHUB_API_KEY` en backend.
-- **Metadata mercado:** `generateMetadata` en `markets/[id]/page.tsx` usa try/catch y fallback si `getMarket` falla.
-- **ID mercado:** En detalle y posiciones, usar `market.on_chain_market_id ?? id` para llamadas al contrato; `market.id` para API de predictions/conditions.
-
----
-
-## 5. Criterio ID backend vs on-chain
-
-- **URL `/markets/[id]`:** `id` es el ID de backend (tabla markets).
-- **Contrato (getMarket, getUserStake):** usar `market.on_chain_market_id ?? id` para que coincida con el ID on-chain cuando el mercado está indexado.
-- **API predictions/conditions:** usar `market.id` (siempre ID de backend).
+- **Backend unreachable:** `fetchApi` throws with message; locally do not set `NEXT_PUBLIC_API_BASE_URL` to use proxy.
+- **Finnhub:** UI shows message if `FINNHUB_API_KEY` is missing in backend.
+- **Market metadata:** `generateMetadata` in `markets/[id]/page.tsx` uses try/catch and fallback if `getMarket` fails.
+- **Market ID:** In detail and positions, use `market.on_chain_market_id ?? id` for contract calls; `market.id` for predictions/conditions API.
 
 ---
 
-## 6. Fase 2 — Endpoints backend verificados
+## 5. Backend ID vs on-chain ID
 
-| Endpoint | Código esperado | Tests integración |
-|----------|-----------------|-------------------|
-| GET /health | 200, ok/status | (implícito en arranque) |
+- **URL `/markets/[id]`:** `id` is the backend table ID.
+- **Contract (getMarket, getUserStake):** use `market.on_chain_market_id ?? id` so it matches on-chain ID when the market is indexed.
+- **Predictions/conditions API:** use `market.id` (always backend ID).
+
+---
+
+## 6. Phase 2 — Backend endpoints verified
+
+| Endpoint | Expected code | Integration tests |
+|----------|---------------|-------------------|
+| GET /health | 200, ok/status | (implicit on startup) |
 | GET /api/markets/stats | 200, MarketStats | — |
 | GET /api/markets | 200, PaginatedResponse | list_markets_returns_paginated |
 | GET /api/markets/:id | 200 MarketView / 404 | get_by_id_returns_404_for_nonexistent |
@@ -89,48 +89,48 @@
 | GET /api/markets/private/access?key= | 200 / 404 | private_access_returns_404_for_invalid_key |
 | GET /api/sources/fetch | 200 FetchResponse / 400 | sources_fetch_returns_400_for_unknown_source |
 
-Los tests de integración que requieren `DATABASE_URL` (PostgreSQL) se omiten si no está definida. Ejecutar: `cargo test` en `backend-rust/`.
+Integration tests that require `DATABASE_URL` (PostgreSQL) are skipped when it is not set. Run: `cargo test` in `backend-rust/`.
 
 ---
 
-## 7. Fase 4 — Subagents (resumen)
+## 7. Phase 4 — Subagents summary
 
 **Code reviewer**
-- Estado: OK tras corrección. Se corrigió la vista móvil de posiciones para usar `market.on_chain_market_id ?? market.id` en `ActionCell` (antes usaba solo `market.id`).
-- Sugerencias opcionales: tener presente que el test de predictions con id inexistente fija el comportamiento 200+[]; el queryKey de predictions usa `market?.id ?? id` (correcto para API).
+- Status: OK after fix. Positions mobile view was updated to use `market.on_chain_market_id ?? market.id` in `ActionCell` (previously used only `market.id`).
+- Optional suggestions: note that the predictions test for non-existent id defines behaviour 200+[]; predictions queryKey uses `market?.id ?? id` (correct for API).
 
 **Security auditor**
-- Hallazgos originales: 0 críticos, 0 altos, 2 medios, 3 bajos.
-- **Aplicado (mejoras post-auditoría):**
-  - Límites en create market: `metadata` ≤ 10_000 caracteres, `creator` ≤ 100 (`backend-rust/src/services/market.rs`).
-  - Límites en register private: `question` ≤ 500, `creator_address` ≤ 100 (`backend-rust/src/api/private_markets.rs`).
-  - Límite de longitud en params de `/api/sources/fetch`: `symbol`, `fsym`, `tsym`, `pair` ≤ 64 caracteres (`backend-rust/src/api/sources.rs`).
-  - Mensaje genérico para `ExternalApi` en producción: el cliente recibe "External service error"; el detalle solo en logs (`backend-rust/src/error.rs`).
-  - Límite global del body: 2 MB mediante `DefaultBodyLimit::max(2 * 1024 * 1024)` en `backend-rust/src/startup.rs`; cuerpos mayores pueden devolver 413.
-  - Validación de longitud de `key` en GET `/api/markets/private/access` (≤ 64 caracteres) ya aplicada con anterioridad.
-- Pendiente: ninguno de los ítems anteriores; recomendaciones del security-auditor cubiertas.
+- Original findings: 0 critical, 0 high, 2 medium, 3 low.
+- **Applied (post-audit improvements):**
+  - Create market limits: `metadata` ≤ 10_000 chars, `creator` ≤ 100 (`backend-rust/src/services/market.rs`).
+  - Register private limits: `question` ≤ 500, `creator_address` ≤ 100 (`backend-rust/src/api/private_markets.rs`).
+  - Length limits on `/api/sources/fetch` params: `symbol`, `fsym`, `tsym`, `pair` ≤ 64 chars (`backend-rust/src/api/sources.rs`).
+  - Generic message for `ExternalApi` in production: client gets "External service error"; detail only in logs (`backend-rust/src/error.rs`).
+  - Global body limit: 2 MB via `DefaultBodyLimit::max(2 * 1024 * 1024)` in `backend-rust/src/startup.rs`; larger bodies may return 413.
+  - `key` length validation on GET `/api/markets/private/access` (≤ 64 chars) was already in place.
+- Pending: none of the above; security-auditor recommendations covered.
 
-**Code reviewer (mejoras post-auditoría):** Estado OK. Sugerencias opcionales: aplicar los mismos límites en `create_conditional()` (question, metadata, creator) y validar longitud de `source` en sources/fetch (≤ 64).
+**Code reviewer (post-audit):** Status OK. Optional: apply same limits in `create_conditional()` (question, metadata, creator) and validate `source` length in sources/fetch (≤ 64).
 
-**Security auditor (mejoras post-auditoría):** Estado OK. Recomendaciones opcionales: mismos límites en create_conditional; límite de longitud para param `source` en fetch.
+**Security auditor (post-audit):** Status OK. Optional: same limits in create_conditional; length limit for `source` param in fetch.
 
 ---
 
-## 8. Fase 5 — Checklist E2E y documentación
+## 8. Phase 5 — E2E checklist and documentation
 
-**Checklist E2E (manual o automatizado)**
+**E2E checklist (manual or automated)**
 
-1. Iniciar backend (`npm run backend` o equivalente) y frontend (`npm run dev`).
-2. Sin `NEXT_PUBLIC_API_BASE_URL`: comprobar que el proxy sirve `/health` y `/api/markets`.
-3. Dashboard: listado, filtro por status, paginación.
-4. Detalle de mercado: carga, predicciones, stake on-chain, bet (si wallet conectada y mercado Open).
-5. Crear mercado: flujo completo (on-chain + opcional backend + opcional private register).
-6. Posiciones: listado de mercados con stake y claim cuando corresponda (usar `on_chain_market_id` para claim).
-7. Señales: al menos una fuente (p. ej. Binance) devuelve datos; Finnhub muestra mensaje si no hay API key.
-8. Join private: clave válida e inválida muestran mensaje adecuado (clave inválida → "Invalid or expired access key...").
+1. Start backend (`npm run backend` or equivalent) and frontend (`npm run dev`).
+2. Without `NEXT_PUBLIC_API_BASE_URL`: verify proxy serves `/health` and `/api/markets`.
+3. Dashboard: list, status filter, pagination.
+4. Market detail: load, predictions, on-chain stake, bet (if wallet connected and market Open).
+5. Create market: full flow (on-chain + optional backend + optional private register).
+6. Positions: list markets with stake and claim when applicable (use `on_chain_market_id` for claim).
+7. Signals: at least one source (e.g. Binance) returns data; Finnhub shows message if no API key.
+8. Join private: valid and invalid key show appropriate message (invalid key → "Invalid or expired access key...").
 
-**Documentación actualizada**
+**Documentation updated**
 
 - `docs/architecture.md`: Frontend section documents backend proxy, `FINNHUB_API_KEY` for Signals.
-- Este documento (`docs/audit.md`): inventario de flujos, contrato API, endpoints verificados, resumen de subagents y checklist E2E.
-- Tests de integración en backend: documentados en § 6; ejecutar `cargo test` en `backend-rust/` (los tests que requieren `DATABASE_URL` se omiten si no está definida para PostgreSQL).
+- This document (`docs/audit.md`): flow inventory, API contract, verified endpoints, subagents summary, E2E checklist.
+- Backend integration tests: documented in § 6; run `cargo test` in `backend-rust/` (tests requiring `DATABASE_URL` are skipped when not set for PostgreSQL).
