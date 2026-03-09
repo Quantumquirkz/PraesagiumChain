@@ -1,6 +1,6 @@
 # PraesagiumChain — Backend (Rust / Axum)
 
-REST API with PHPE prediction engine, AI (Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL** (required). Redis and ClickHouse are optional for cache/sessions and analytics.
+REST API with PHPE prediction engine, AI (Groq / Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL** (required). Redis and ClickHouse are optional for cache/sessions and analytics.
 
 ---
 
@@ -36,9 +36,9 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
 
 3. Optional variables:
    - `PORT` (default `4000`)
-   - `REDIS_URL` (e.g. `redis://localhost:6379`) for SIWE nonce store
+   - `REDIS_URL` (e.g. `redis://localhost:6380`) for SIWE nonce store when using the Docker stack
    - `CLICKHOUSE_URL` (e.g. `http://localhost:8123`) for analytics events
-   - `AI_PROVIDER`, `GEMINI_API_KEY` / `HF_API_KEY` for sentiment
+   - `AI_PROVIDER`, `GROQ_API_KEY` / `GEMINI_API_KEY` / `HF_API_KEY` for sentiment
    - `RPC_URL`, `PREDICTION_MARKET_ADDRESS`, `START_BLOCK` for the **event indexer** (see below)
    - `CORS_ORIGINS` (comma-separated origins in production)
 

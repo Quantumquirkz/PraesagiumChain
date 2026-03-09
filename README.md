@@ -33,7 +33,7 @@
 
 **PraesagiumChain** is a decentralized prediction market platform built for the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon). Users create binary (Yes/No) markets on real-world events — price movements, weather, sports outcomes, news sentiment — stake ETH, and markets are resolved trustlessly via the **Chainlink Runtime Environment (CRE)** using AI and live data feeds.
 
-The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Gemini / Hugging Face), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
+The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Groq / Gemini / Hugging Face), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
 
 The backend is a production-grade **Rust/Axum** REST API backed by PostgreSQL, with a built-in on-chain event indexer, rate limiting, and 7 external data source integrations. The smart contract layer includes standard markets, private commit-reveal markets (Confidential Compute), conditional markets, tokenized (ERC-721) markets, and an on-chain reputation system.
 
@@ -89,6 +89,7 @@ flowchart TB
     end
 
     subgraph external [External Services]
+        Groq[Groq LLM API]
         Gemini[Gemini AI]
         HF[Hugging Face]
         Binance[Binance API]
@@ -98,6 +99,7 @@ flowchart TB
 
     UI <-->|HTTP REST| API
     Wallet <-->|ethers / wagmi| chain
+    AISvc --> Groq
     AISvc --> Gemini
     AISvc --> HF
     Sources --> Binance
