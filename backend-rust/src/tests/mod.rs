@@ -207,6 +207,8 @@ mod api_markets_tests {
             gemini_model: None,
             hf_api_key: None,
             hf_model: None,
+            groq_api_key: None,
+            groq_model: None,
             prediction_cache_ttl: 300,
             rpc_url: None,
             prediction_market_address: None,

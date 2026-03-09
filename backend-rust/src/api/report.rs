@@ -247,6 +247,8 @@ pub struct WeatherDailySeries {
     pub temperature_2m_max: Vec<f64>,
     pub temperature_2m_min: Vec<f64>,
     pub precipitation_sum: Vec<f64>,
+    pub relative_humidity_2m_max: Vec<f64>,
+    pub wind_speed_10m_max: Vec<f64>,
 }
 
 /// GET /api/weather/history-forecast?lat=9&lon=-79.5&resolution_date=2026-03-09
@@ -255,7 +257,7 @@ pub async fn weather_history_forecast(
     State(state): State<Arc<AppState>>,
     Query(q): Query<WeatherHistoryForecastQuery>,
 ) -> Result<impl IntoResponse> {
-    use chrono::{Datelike, Utc};
+    use chrono::Utc;
 
     let now = Utc::now();
     let today = now.format("%Y-%m-%d").to_string();
@@ -267,12 +269,12 @@ pub async fn weather_history_forecast(
     });
 
     let archive_url = format!(
-        "{}?latitude={}&longitude={}&start_date={}&end_date={}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum",
+        "{}?latitude={}&longitude={}&start_date={}&end_date={}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_max,wind_speed_10m_max",
         OPEN_METEO_ARCHIVE, q.lat, q.lon, start_hist, yesterday
     );
     // Forecast API returns ~16 days from today; no start/end params.
     let forecast_url = format!(
-        "{}?latitude={}&longitude={}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum",
+        "{}?latitude={}&longitude={}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_max,wind_speed_10m_max",
         OPEN_METEO_FORECAST, q.lat, q.lon
     );
 
@@ -285,6 +287,8 @@ pub async fn weather_history_forecast(
     let mut temperature_2m_max: Vec<f64> = Vec::new();
     let mut temperature_2m_min: Vec<f64> = Vec::new();
     let mut precipitation_sum: Vec<f64> = Vec::new();
+    let mut relative_humidity_2m_max: Vec<f64> = Vec::new();
+    let mut wind_speed_10m_max: Vec<f64> = Vec::new();
 
     if let Ok(resp) = archive_resp {
         if resp.status().is_success() {
@@ -295,12 +299,16 @@ pub async fn weather_history_forecast(
                     json.get("daily").and_then(|d| d.get("temperature_2m_min")).and_then(|a| a.as_array()),
                     json.get("daily").and_then(|d| d.get("precipitation_sum")).and_then(|a| a.as_array()),
                 ) {
+                    let hum_a = json.get("daily").and_then(|d| d.get("relative_humidity_2m_max")).and_then(|a| a.as_array());
+                    let wind_a = json.get("daily").and_then(|d| d.get("wind_speed_10m_max")).and_then(|a| a.as_array());
                     for i in 0..t.len() {
                         if let Some(s) = t.get(i).and_then(|v| v.as_str()) {
                             time.push(s.to_string());
                             temperature_2m_max.push(max_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
                             temperature_2m_min.push(min_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
                             precipitation_sum.push(prec_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
+                            relative_humidity_2m_max.push(hum_a.and_then(|a| a.get(i).and_then(|v| v.as_f64())).unwrap_or(0.0));
+                            wind_speed_10m_max.push(wind_a.and_then(|a| a.get(i).and_then(|v| v.as_f64())).unwrap_or(0.0));
                         }
                     }
                 }
@@ -317,6 +325,8 @@ pub async fn weather_history_forecast(
                     json.get("daily").and_then(|d| d.get("temperature_2m_min")).and_then(|a| a.as_array()),
                     json.get("daily").and_then(|d| d.get("precipitation_sum")).and_then(|a| a.as_array()),
                 ) {
+                    let hum_a = json.get("daily").and_then(|d| d.get("relative_humidity_2m_max")).and_then(|a| a.as_array());
+                    let wind_a = json.get("daily").and_then(|d| d.get("wind_speed_10m_max")).and_then(|a| a.as_array());
                     for i in 0..t.len() {
                         if let Some(s) = t.get(i).and_then(|v| v.as_str()) {
                             if s < today.as_str() {
@@ -329,6 +339,8 @@ pub async fn weather_history_forecast(
                             temperature_2m_max.push(max_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
                             temperature_2m_min.push(min_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
                             precipitation_sum.push(prec_a.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0));
+                            relative_humidity_2m_max.push(hum_a.and_then(|a| a.get(i).and_then(|v| v.as_f64())).unwrap_or(0.0));
+                            wind_speed_10m_max.push(wind_a.and_then(|a| a.get(i).and_then(|v| v.as_f64())).unwrap_or(0.0));
                         }
                     }
                 }
@@ -344,6 +356,8 @@ pub async fn weather_history_forecast(
                 temperature_2m_max,
                 temperature_2m_min,
                 precipitation_sum,
+                relative_humidity_2m_max,
+                wind_speed_10m_max,
             },
         }),
     ))

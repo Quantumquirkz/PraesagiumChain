@@ -29,7 +29,9 @@ pub struct Config {
     pub ai_provider: String,
     pub hf_api_key: Option<String>,
     pub hf_model: Option<String>,
+    #[allow(dead_code)] // Reserved for future Groq AI provider
     pub groq_api_key: Option<String>,
+    #[allow(dead_code)] // Reserved for future Groq AI provider
     pub groq_model: Option<String>,
     #[serde(default)]
     pub gemini_api_key: Option<String>,
