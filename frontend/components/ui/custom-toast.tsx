@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Toaster as SonnerToaster, toast as sonnerToast, type ExternalToast } from "sonner";
 
 const TOAST_CLASS =
-  "!rounded-md !border !border-border !bg-elevated !shadow-lg [&_[data-title]]:font-body [&_[data-title]]:font-semibold [&_[data-title]]:text-[14px] [&_[data-title]]:text-[var(--text-primary)] [&_[data-description]]:text-[12px] [&_[data-description]]:text-[var(--text-secondary)]";
+  "!rounded-xl !border !border-border !bg-elevated !shadow-lg [&_[data-title]]:font-body [&_[data-title]]:font-semibold [&_[data-title]]:text-[14px] [&_[data-title]]:text-[var(--text-primary)] [&_[data-description]]:text-[12px] [&_[data-description]]:text-[var(--text-secondary)]";
 const SUCCESS_CLASS = "!border-l-[3px] !border-l-[var(--green)]";
 const ERROR_CLASS = "!border-l-[3px] !border-l-[var(--red)]";
 const LOADING_CLASS = "!border-l-[3px] !border-l-[var(--cyan)]";
@@ -65,7 +65,7 @@ const TOAST_STYLES = `
   [data-sonner-toast] {
     background: var(--bg-elevated) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
   }
   [data-sonner-toast] [data-title] {
     font-family: var(--font-body), DM Sans, sans-serif !important;
