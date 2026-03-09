@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useBalance, useWriteContract } from "wagmi";
 import { formatEther } from "viem";
 import { toast } from "sonner";
@@ -17,15 +19,17 @@ import {
   ExternalLink,
   Trophy,
   Clock,
+  Trash2,
 } from "lucide-react";
 import type { MarketView, PredictionView } from "@/types/api";
 import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
-import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL } from "@/lib/constants";
+import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL, getMarketCategoryFromMetadata } from "@/lib/constants";
 import type { IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
 import { BetForm } from "@/components/bet-form";
 import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -35,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { deleteMarket } from "@/lib/api";
 import { usePHPEPrediction } from "@/hooks/use-phpe-prediction";
 import { useAIAnalysis } from "@/hooks/use-ai-analysis";
 import type { Timeframe } from "@/lib/ohlcv-utils";
@@ -44,7 +49,7 @@ import { ModelVerifier } from "@/components/model-verifier";
 import { SignalFusionPanel } from "@/components/signal-fusion-panel";
 import { ConditionalTree } from "@/components/conditional-tree";
 import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
-import { ChainlinkPriceBadge } from "@/components/chainlink-price-badge";
+import { WeatherDetailChart } from "@/components/weather-detail-chart";
 
 const PHPEHistoryChart = dynamic(
   () =>
@@ -119,6 +124,18 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   Cancelled: "badge-cancelled",
 };
 
+function parseGoogleMapsUrl(url: string): { lat: number; lon: number } | null {
+  const u = url.trim();
+  if (!u) return null;
+  const atMatch = u.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lon: parseFloat(atMatch[2]) };
+  const qMatch = u.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lon: parseFloat(qMatch[2]) };
+  const llMatch = u.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (llMatch) return { lat: parseFloat(llMatch[1]), lon: parseFloat(llMatch[2]) };
+  return null;
+}
+
 export interface MarketDetailProps {
   marketId: number;
   market: MarketView;
@@ -127,7 +144,7 @@ export interface MarketDetailProps {
   onChainLoading?: boolean;
   onChainError?: boolean;
   userStake: UserStakeOnChain | null;
-  /** Llamado tras apostar con éxito para refrescar stake y totales on-chain */
+  /** Called after a successful bet to refresh stake and on-chain totals */
   onBetSuccess?: () => void;
 }
 
@@ -145,6 +162,8 @@ export function MarketDetail({
   const [timeframe, setTimeframe] = useState<Timeframe>("1h");
   const [indicators, setIndicators] = useState<Set<IndicatorId>>(new Set<IndicatorId>(["ma7", "volume"]));
   const [stakesMounted, setStakesMounted] = useState(false);
+
+  const safePredictions = predictions ?? [];
 
   // Extract Binance symbol from market metadata.
   // Supports: meta.symbol, meta.resolution.symbol, meta.asset, meta.pair, meta.betToken
@@ -169,20 +188,61 @@ export function MarketDetail({
     }
   })();
 
+  // Weather market: show weather chart (historial + pronóstico) using lat/lon from metadata (Google Maps link).
+  const weatherChartParams = (() => {
+    try {
+      const meta = market.metadata ? JSON.parse(market.metadata) : {} as Record<string, unknown>;
+      const res = meta.resolution as { type?: string; lat?: string | number; lon?: string | number; date?: string; googleMapsUrl?: string } | undefined;
+      if (!res || (res.type ?? "") !== "weather_rained") return null;
+      const lat = res.lat != null ? parseFloat(String(res.lat)) : NaN;
+      const lon = res.lon != null ? parseFloat(String(res.lon)) : NaN;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return {
+        lat,
+        lon,
+        resolutionDate: typeof res.date === "string" && res.date.trim() ? res.date.trim() : undefined,
+        googleMapsUrl: typeof res.googleMapsUrl === "string" ? res.googleMapsUrl : undefined,
+      };
+    } catch {
+      return null;
+    }
+  })();
+  const isWeatherMarket = getMarketCategoryFromMetadata(market.metadata) === "weather";
+  const hasWeatherLocation = weatherChartParams !== null;
+
+  const [localWeatherParams, setLocalWeatherParams] = useState<{
+    lat: number;
+    lon: number;
+    googleMapsUrl?: string;
+  } | null>(null);
+  const [localMapsInputValue, setLocalMapsInputValue] = useState("");
+  const effectiveWeatherParams = weatherChartParams ?? localWeatherParams;
+
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
   const { writeContractAsync, isPending: writePending } = useWriteContract();
 
-  let totalYes = marketOnChain ? marketOnChain.totalYesStake : BigInt(Number(market.total_yes_stake));
-  let totalNo = marketOnChain ? marketOnChain.totalNoStake : BigInt(Number(market.total_no_stake));
-  // Si el contrato devuelve totales 0 pero el usuario tiene stake, usar su stake como mínimo (evita 50/50 fantasma)
+  let totalYes = marketOnChain
+    ? marketOnChain.totalYesStake
+    : BigInt(Math.floor(Number(market.total_yes_stake ?? 0)));
+  let totalNo = marketOnChain
+    ? marketOnChain.totalNoStake
+    : BigInt(Math.floor(Number(market.total_no_stake ?? 0)));
+  // If contract returns 0 totals but user has stake, use their stake as minimum (avoids ghost 50/50)
   if (totalYes + totalNo === BigInt(0) && userStake && (userStake.yesStake + userStake.noStake) > BigInt(0)) {
     totalYes = userStake.yesStake;
     totalNo = userStake.noStake;
   }
   const totalStake = totalYes + totalNo;
-  const yesPct = totalStake > BigInt(0) ? Number((totalYes * BigInt(100)) / totalStake) : 50;
-  const noPct = 100 - yesPct;
+  const yesPct =
+    totalStake > BigInt(0)
+      ? Number((totalYes * BigInt(100)) / totalStake)
+      : 50;
+  const noPct = typeof yesPct === "number" && !Number.isNaN(yesPct) ? 100 - yesPct : 50;
 
   const isResolved = market.status === "Resolved";
   const isOpen = market.status === "Open";
@@ -222,7 +282,7 @@ export function MarketDetail({
     <div className="space-y-0">
 
       {/* ══════════════════════════════════════════════════════════
-          ZONA 1 — HEADER + STATS (full width, estilo CoinGecko)
+          ZONE 1 — HEADER + STATS (full width, CoinGecko style)
       ══════════════════════════════════════════════════════════ */}
       <div className="pb-5 border-b border-border">
         {/* Breadcrumb */}
@@ -232,7 +292,7 @@ export function MarketDetail({
           <span className="text-text-secondary">#{marketId}</span>
         </nav>
 
-        {/* Título + badges + share */}
+        {/* Title + badges + share */}
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
             <h1 className="font-display font-extrabold text-[22px] leading-tight text-foreground">
@@ -246,7 +306,7 @@ export function MarketDetail({
             <span className="rounded-full border border-border bg-elevated px-3 py-1 font-mono text-[11px] uppercase text-text-secondary">
               {market.market_type || "Base"}
             </span>
-            {/* On-chain indicator: si la API ya tiene on_chain_market_id, mostramos On-chain de inmediato (no "Checking…") */}
+            {/* On-chain indicator: if API already has on_chain_market_id, show On-chain immediately (not "Checking…") */}
             {market.on_chain_market_id != null ? (
               <span className="flex items-center gap-1.5 rounded-full border border-green/30 bg-green-dim px-3 py-1 font-mono text-[11px] text-green">
                 <span className="relative flex h-1.5 w-1.5">
@@ -298,22 +358,24 @@ export function MarketDetail({
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          ZONA 2 — GRÁFICA FULL WIDTH + SIDEBAR ACCIÓN
-          Layout: [gráfica grande] | [sidebar estrecho]
+          ZONE 2 — FULL WIDTH CHART + ACTION SIDEBAR
+          Layout: [large chart] | [narrow sidebar]
       ══════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-0 pt-0">
 
-        {/* ── GRÁFICA (columna izquierda, full height) ── */}
+        {/* ── Chart (left column, full height) ── */}
         <div className="min-w-0 border-r border-border pr-0 lg:pr-5 pt-5">
 
-          {/* Árbol de condiciones */}
+          {/* Condition tree */}
           {market.market_type === "conditional" && (
             <div className="mb-4">
               <ConditionalTree marketId={marketId} />
             </div>
           )}
 
-          {/* ── Chart toolbar ── */}
+          {/* ── Chart toolbar (only for non-weather markets) ── */}
+          {!isWeatherMarket && (
+            <>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
 
             {/* Timeframe selector */}
@@ -390,8 +452,58 @@ export function MarketDetail({
               </div>
             ))}
           </div>
+            </>
+          )}
 
-          {/* LA GRÁFICA — lightweight-charts con zoom/pan nativo */}
+          {/* CHART — weather (history + forecast) or price (TVChart) */}
+          {isWeatherMarket && effectiveWeatherParams ? (
+            <WeatherDetailChart
+              lat={effectiveWeatherParams.lat}
+              lon={effectiveWeatherParams.lon}
+              resolutionDate={effectiveWeatherParams.resolutionDate}
+              googleMapsUrl={effectiveWeatherParams.googleMapsUrl}
+              className="mb-6"
+            />
+          ) : isWeatherMarket ? (
+            <div className="rounded-xl border border-border bg-elevated/30 px-4 py-6">
+              <p className="font-mono text-sm text-foreground mb-1 text-center">
+                Weather chart (history + forecast)
+              </p>
+              <p className="font-mono text-xs text-text-muted text-center mb-4">
+                Paste the Google Maps link for the location (Share location) to see the chart with real data and forecast.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 max-w-lg mx-auto">
+                <Input
+                  type="url"
+                  placeholder="https://www.google.com/maps/@9.03,-79.51,12z"
+                  value={localMapsInputValue}
+                  onChange={(e) => setLocalMapsInputValue(e.target.value)}
+                  className="font-mono text-sm flex-1"
+                  aria-label="Google Maps link"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-cyan text-cyan hover:bg-cyan/10 font-mono shrink-0"
+                  onClick={() => {
+                    const coords = parseGoogleMapsUrl(localMapsInputValue);
+                    if (coords) {
+                      setLocalWeatherParams({
+                        lat: coords.lat,
+                        lon: coords.lon,
+                        googleMapsUrl: localMapsInputValue.trim() || undefined,
+                      });
+                    } else {
+                      toast.error("Invalid link. Paste a Google Maps location link (e.g. from Share location).");
+                    }
+                  }}
+                >
+                  View chart
+                </Button>
+              </div>
+            </div>
+          ) : (
           <TVChart
             height={480}
             embedded
@@ -401,8 +513,9 @@ export function MarketDetail({
             indicators={indicators}
             onIndicatorsChange={setIndicators}
           />
+          )}
 
-          {/* ── MARKET STAKES (debajo de la gráfica, full width) ── */}
+          {/* ── MARKET STAKES (below chart, full width) ── */}
           <div className="mt-6 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-display font-bold text-[12px] text-text-muted tracking-widest uppercase">
@@ -470,24 +583,24 @@ export function MarketDetail({
               </button>
             </div>
 
-            {/* Análisis y descripción generados por IA (mercado, datos, noticias) */}
+            {/* AI analysis and description (market, data, news) */}
             <AIAnalysisBlock
               marketId={marketId}
               binanceSymbol={chartSymbol ?? "BTCUSDT"}
             />
 
-            {predictions.length === 0 ? (
+            {safePredictions.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <BarChart2 className="h-8 w-8 text-text-muted opacity-30" />
                 <p className="font-mono text-sm text-text-muted">No predictions yet</p>
                 <p className="font-mono text-xs text-text-muted opacity-60">Use the AI Preview in the sidebar to generate one</p>
               </div>
-            ) : predictions.length > 1 ? (
+            ) : safePredictions.length > 1 ? (
               <ul className="space-y-3">
-                {predictions.map((p, i) => <PredictionRow key={i} p={p} />)}
+                {safePredictions.map((p, i) => <PredictionRow key={i} p={p} />)}
               </ul>
             ) : (
-              <PredictionRow p={predictions[0]} />
+              <PredictionRow p={safePredictions[0]} />
             )}
           </div>
 
@@ -498,19 +611,13 @@ export function MarketDetail({
 
           {/* ── PHPE HISTORY ── */}
           <div className="mt-6">
-            <PHPEHistoryChart predictions={predictions} />
+            <PHPEHistoryChart predictions={safePredictions} />
           </div>
         </div>
 
         {/* ── SIDEBAR (columna derecha, sticky) ── */}
         <aside className="lg:pl-5 pt-5 space-y-4 min-w-0">
           <div className="lg:sticky lg:top-4 space-y-4">
-
-            {/* CHAINLINK DATA FEEDS */}
-            <div className="flex flex-wrap gap-2">
-              <ChainlinkPriceBadge feed="ETH_USD" />
-              <ChainlinkPriceBadge feed="BTC_USD" />
-            </div>
 
             {/* COUNTDOWN */}
             <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
@@ -577,12 +684,12 @@ export function MarketDetail({
                     Checking on-chain status…
                   </p>
                 )}
-                {/* Aviso informativo si el mercado aún no está en la red (solo cuando no tenemos on_chain_market_id) */}
+                {/* Info notice when market is not yet on-chain (only when we don't have on_chain_market_id) */}
                 {market.on_chain_market_id == null && !onChainLoading && (onChainError || !marketOnChain) && (
                   <div className="mb-3 flex items-start gap-2 rounded-lg border border-cyan-500/25 bg-cyan-500/8 px-3 py-2">
                     <span className="text-cyan-400 text-sm shrink-0 mt-0.5" aria-hidden>ℹ</span>
                     <p className="font-mono text-[10px] text-cyan-200/90 leading-relaxed">
-                      Para apostar on-chain, el mercado debe estar desplegado en la red. Puedes crearlo desde{" "}
+                      To bet on-chain, the market must be deployed on the network. You can create it from{" "}
                       <Link href="/markets/create" className="text-cyan-300 underline underline-offset-2 hover:text-cyan-200">
                         Create Market
                       </Link>.
@@ -640,6 +747,40 @@ export function MarketDetail({
                     </a>
                   </div>
                 )}
+              </div>
+              <div className="mt-4 pt-4 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-red/50 text-red hover:bg-red-dim font-mono text-xs"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (!confirm("Delete this market from the app? (Development only)")) return;
+                    setIsDeleting(true);
+                    try {
+                      await deleteMarket(market.id);
+                      await queryClient.invalidateQueries({ queryKey: ["markets"] });
+                      await queryClient.invalidateQueries({ queryKey: ["markets-infinite"] });
+                      await queryClient.invalidateQueries({ queryKey: ["market", market.id] });
+                      await queryClient.invalidateQueries({ queryKey: ["stats"] });
+                      toast.success("Market deleted");
+                      router.push("/");
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Error deleting");
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  aria-label="Delete market"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" aria-hidden />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+                  )}
+                  Delete market
+                </Button>
               </div>
             </div>
 
@@ -733,7 +874,7 @@ function AIAnalysisBlock({
     <div className="mb-6 space-y-3">
       <div className="flex flex-col sm:flex-row gap-2">
         <Textarea
-          placeholder="Opcional: pega noticias, tweets o contexto de redes para enriquecer el análisis..."
+          placeholder="Optional: paste news, tweets or social context to enrich the analysis..."
           value={sentimentText}
           onChange={(e: { target: { value: string } }) => setSentimentText(e.target.value)}
           className="font-mono text-xs min-h-[60px] bg-elevated border-border resize-none flex-1"
@@ -751,26 +892,27 @@ function AIAnalysisBlock({
           }
           disabled={isPending}
           className="border-violet text-violet hover:bg-violet-dim font-display font-bold tracking-widest h-9 shrink-0"
-          aria-label="Generar análisis IA"
+          aria-label="Generate AI analysis"
+          title="Generate AI analysis"
         >
           {isPending ? (
             <>
               <Loader2 className="mr-1.5 h-3 w-3 animate-spin" aria-hidden />
-              Generando…
+              Generating…
             </>
           ) : (
-            "Generar análisis IA"
+            "Generate AI analysis"
           )}
         </Button>
       </div>
       {error && (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-3" role="alert">
           <p className="font-mono text-xs text-amber-200">
-            {error instanceof Error ? error.message : "Error al generar análisis"}
+            {error instanceof Error ? error.message : "Error generating analysis"}
           </p>
           {(error instanceof Error && /429|quota|RESOURCE_EXHAUSTED|límite/i.test(error.message)) && (
             <p className="mt-2 font-mono text-[11px] text-amber-200/80">
-              Espera 1–2 minutos y pulsa de nuevo «Generar análisis IA».
+              Wait 1–2 minutes and click «Generate AI analysis» again.
             </p>
           )}
         </div>
@@ -778,15 +920,15 @@ function AIAnalysisBlock({
       {data && !isPending && (
         <div className="rounded-lg border border-violet/20 bg-violet-dim/30 p-4 space-y-4">
           <div>
-            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">Análisis IA</p>
+            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">AI analysis</p>
             <p className="font-body text-sm text-foreground leading-relaxed">{data.analysis}</p>
           </div>
           <div className="border-t border-border/50 pt-3">
-            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">Fuentes de información</p>
+            <p className="font-mono text-[10px] text-violet uppercase tracking-widest mb-1.5">Information sources</p>
             <p className="font-body text-sm text-text-secondary leading-relaxed">{data.description}</p>
           </div>
           <p className="font-mono text-[9px] text-text-muted italic">
-            Generado a partir del mercado, datos de precio (Binance, Chainlink) y contexto de noticias/redes.
+            Generated from market data, price data (Binance, Chainlink) and news/social context.
           </p>
         </div>
       )}
@@ -889,7 +1031,7 @@ function PHPEWidget({ marketId }: { marketId: number }) {
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-3" role="alert">
           <p className="font-mono text-xs text-amber-200">{error instanceof Error ? error.message : "Prediction failed"}</p>
           {(error instanceof Error && /429|quota|RESOURCE_EXHAUSTED|límite/i.test(error.message)) && (
-            <p className="mt-2 font-mono text-[11px] text-amber-200/80">Espera 1–2 minutos y vuelve a pulsar ANALYZE.</p>
+            <p className="mt-2 font-mono text-[11px] text-amber-200/80">Wait 1–2 minutes and click ANALYZE again.</p>
           )}
         </div>
       )}

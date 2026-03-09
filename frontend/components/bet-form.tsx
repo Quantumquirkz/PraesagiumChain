@@ -31,7 +31,7 @@ export interface BetFormProps {
   question?: string;
   /** JSON string from market.metadata — used to extract betToken */
   metadata?: string;
-  /** Llamado tras confirmar la apuesta on-chain para refrescar tu stake en pantalla */
+  /** Called after confirming the on-chain bet to refresh your stake on screen */
   onBetSuccess?: () => void;
 }
 
@@ -54,7 +54,7 @@ function isValidAmount(val: string): boolean {
   return !Number.isNaN(n) && n > 0;
 }
 
-// ─── Estados del botón ────────────────────────────────────────────────────────
+// Button states
 
 type BtnState = "idle" | "pending" | "confirming" | "success" | "error";
 
@@ -133,7 +133,7 @@ function BetButton({ state, disabled }: BetButtonProps) {
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// Main component
 
 export function BetForm({ marketId, marketStatus, question, metadata, onBetSuccess }: BetFormProps) {
   const { address, isConnected } = useAccount();
@@ -141,7 +141,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
   const { data: balance, isLoading: balanceLoading } = useBalance({ address });
   const queryClient = useQueryClient();
 
-  // Si el balance tarda mucho (ej. RPC lenta), no bloquear el formulario para siempre
+  // If balance is slow (e.g. slow RPC), don't block the form forever
   const [balanceLoadTimedOut, setBalanceLoadTimedOut] = useState(false);
   useEffect(() => {
     if (!balanceLoading) {
@@ -164,7 +164,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [btnState, setBtnState] = useState<BtnState>("idle");
 
-  // ── Sincronizar estado del botón con el ciclo de vida de la tx ──────────────
+  // Sync button state with tx lifecycle
 
   useEffect(() => {
     if (isPending) {
@@ -192,19 +192,19 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
         },
       });
 
-      // Refrescar datos on-chain (tu stake y totales) para que se vea la apuesta en pantalla
+      // Refresh on-chain data (your stake and totals) so the bet shows on screen
       onBetSuccess?.();
       queryClient.invalidateQueries({ queryKey: ["market", marketId] });
       queryClient.invalidateQueries({ queryKey: ["user-stake", marketId] });
 
-      // Suscribir al mercado para notificación cuando se resuelva
+      // Subscribe to market for notification when resolved
       if (question) {
         subscribeToMarketResolution(marketId, question);
       }
-      // Pedir permiso de notificación en la primera apuesta
+      // Request notification permission on first bet
       requestNotificationPermission();
 
-      // Resetear formulario tras 2 s
+      // Reset form after 2 s
       const t = setTimeout(() => {
         setAmount("");
         setSelectedOutcome(null);
@@ -226,7 +226,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     }
   }, [error]);
 
-  // ── Validaciones ─────────────────────────────────────────────────────────────
+  // Validations
 
   const validate = useCallback((): boolean => {
     if (!selectedOutcome) {
@@ -261,7 +261,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
       e.preventDefault();
       if (btnState === "success") return;
 
-      // Resetear error previo al reintentar
+      // Reset previous error when retrying
       if (btnState === "error") {
         reset();
         setBtnState("idle");
@@ -273,7 +273,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     [btnState, validate, placeBet, marketId, selectedOutcome, amount, reset]
   );
 
-  // ── Guardia: mercado no abierto ───────────────────────────────────────────────
+  // Guard: market not open
 
   if (marketStatus !== "Open") {
     return (
@@ -283,7 +283,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     );
   }
 
-  // ── Guardia: wallet no conectada ──────────────────────────────────────────────
+  // Guard: wallet not connected
 
   if (!isConnected) {
     return (
@@ -324,7 +324,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
     );
   }
 
-  // ── Formulario principal ──────────────────────────────────────────────────────
+  // Main form
 
   const isDisabled = isPending || isConfirming || btnState === "success";
   const amountNum = Number.parseFloat(amount) || 0;
@@ -332,20 +332,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
   return (
     <form onSubmit={handleSubmit} className="space-y-3" noValidate>
 
-      {/* Token badge */}
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">Bet with</span>
-        <span
-          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-display font-bold text-xs"
-          style={{ borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` }}
-        >
-          <span className="text-sm leading-none">{betToken.icon}</span>
-          {betToken.symbol}
-          <span className="font-mono font-normal text-[9px] opacity-70">· SepoliaETH</span>
-        </span>
-      </div>
-
-      {/* Selector Yes / No */}
+      {/* Yes / No selector */}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -383,7 +370,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
         </button>
       </div>
 
-      {/* Input de cantidad */}
+      {/* Amount input — market symbol (defined when creating the market) */}
       <div>
         <div className={cn(
           "flex rounded-lg border bg-elevated overflow-hidden transition-all",
@@ -411,16 +398,16 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
               if (btnState === "error") { reset(); setBtnState("idle"); }
             }}
             disabled={isDisabled}
-            aria-label={`Bet amount in ${betToken.symbol}`}
+            aria-label={`Amount in ${betToken.symbol}`}
             className="border-0 bg-transparent font-mono text-xl focus-visible:ring-0 disabled:opacity-40"
           />
-          <span className="flex items-center pr-3 font-mono text-xs text-text-muted shrink-0 select-none">
+          <span className="flex items-center pr-3 font-mono text-sm font-medium shrink-0 select-none" style={{ color: betToken.color }}>
             {betToken.symbol}
           </span>
         </div>
 
-        {/* Quick-amount pills */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        {/* Quick amounts + MAX on one line */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {QUICK_AMOUNTS.map((v) => (
             <button
               key={v}
@@ -435,7 +422,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
               )}
               style={amount === v ? { borderColor: betToken.color, color: betToken.color, background: `${betToken.color}18` } : {}}
             >
-              {v} <span className="opacity-60">{betToken.symbol}</span>
+              {v} {betToken.symbol}
             </button>
           ))}
           {balance && (
@@ -447,7 +434,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
                 setFieldError(null);
               }}
               disabled={isDisabled}
-              className="rounded-md border px-2.5 py-1 font-mono text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-md border px-2.5 py-1 font-mono text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ borderColor: `${betToken.color}60`, color: betToken.color, background: `${betToken.color}14` }}
             >
               MAX
@@ -455,21 +442,20 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           )}
         </div>
 
-        {/* Balance */}
+        {/* Balance: single line */}
         {balanceLoading && !balanceLoadTimedOut && (
           <p className="mt-1.5 font-mono text-[11px] text-text-muted">Loading balance…</p>
         )}
         {balanceLoadTimedOut && balanceLoading && (
-          <p className="mt-1.5 font-mono text-[11px] text-amber-500/90">Balance took long to load — you can try placing a bet.</p>
+          <p className="mt-1.5 font-mono text-[11px] text-amber-500/90">Balance is slow to load; you can try placing a bet.</p>
         )}
-        {balance && !balanceLoading && (
+        {balanceReady && balance != null && (
           <p className="mt-1.5 font-mono text-[11px] text-text-muted">
-            Balance: <span className="text-foreground">{formatEth(balance.value)}</span>
-            <span className="ml-1 opacity-60">SepoliaETH</span>
+            Balance: <span className="text-foreground">{formatEth(balance.value)}</span> ETH
           </p>
         )}
 
-        {/* Payout estimado */}
+        {/* Estimated payout */}
         {amountNum > 0 && selectedOutcome && (
           <div className={cn(
             "mt-2 rounded-lg border p-2.5 flex items-center justify-between",
@@ -484,7 +470,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
           </div>
         )}
 
-        {/* Errores */}
+        {/* Errors */}
         {fieldError && (
           <p className="mt-1.5 text-xs text-red flex items-center gap-1" role="alert">
             <span>⚠</span> {fieldError}
@@ -498,7 +484,7 @@ export function BetForm({ marketId, marketStatus, question, metadata, onBetSucce
       {/* Botón */}
       <BetButton state={btnState} disabled={isDisabled} />
 
-      {/* Progreso tx */}
+      {/* Tx progress */}
       <TxStatus hash={hash} requiredConfirmations={3} dismissAfterMs={5_000} />
     </form>
   );

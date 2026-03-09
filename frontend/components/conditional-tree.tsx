@@ -39,7 +39,7 @@ function ConditionNode({
   if (isLoading) {
     statusIcon = "…";
     statusColor = "text-text-muted";
-    statusText = "Cargando";
+    statusText = "Loading";
   } else if (expectedMet) {
     statusIcon = "✅";
     statusColor = "text-green-400";
@@ -63,7 +63,7 @@ function ConditionNode({
           href={`/markets/${condition.condition_market_id}`}
           className="text-cyan hover:underline underline-offset-2"
         >
-          Mercado #{condition.condition_market_id}
+          Market #{condition.condition_market_id}
         </Link>
         {market && (
           <span className="text-text-muted truncate max-w-[200px]" title={market.question}>
@@ -73,7 +73,7 @@ function ConditionNode({
           </span>
         )}
         <span className="text-text-muted">
-          Esperado:{" "}
+          Expected:{" "}
           <span
             className={cn(
               "font-bold",
@@ -122,7 +122,7 @@ export function ConditionalTree({ marketId, className }: ConditionalTreeProps) {
     return (
       <div className={cn("flex items-center gap-2 py-3 font-mono text-xs text-text-muted", className)}>
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Cargando condiciones…
+        Loading conditions…
       </div>
     );
   }
@@ -154,7 +154,7 @@ export function ConditionalTree({ marketId, className }: ConditionalTreeProps) {
       <div className="flex items-center gap-2">
         <GitBranch className="h-4 w-4 text-violet" />
         <span className="font-display font-bold text-[13px] tracking-widest text-text-muted uppercase">
-          Árbol de Condiciones
+          Condition tree
         </span>
         {allMet && (
           <span className="rounded-full border border-green-400/30 bg-green-400/10 px-2 py-0.5 font-mono text-[10px] text-green-400">
