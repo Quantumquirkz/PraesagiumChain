@@ -273,8 +273,9 @@ export function MarketDetail({
   const claimable = userWon && userStake ? (outcomeYes ? userStake.yesStake : userStake.noStake) : BigInt(0);
 
   const isCreator =
-    Boolean(address && market.creator) &&
-    address.toLowerCase() === market.creator!.toLowerCase();
+    !!address &&
+    !!market.creator &&
+    address.toLowerCase() === market.creator.toLowerCase();
 
   const betToken = getBetTokenFromMetadata(market.metadata);
   const formatAmount = (wei: bigint): string =>

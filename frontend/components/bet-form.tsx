@@ -209,7 +209,7 @@ export function BetForm({ marketId, marketStatus, closeTime, question, metadata,
       }, 2000);
       return () => clearTimeout(t);
     }
-  }, [isSuccess, hash, marketId, question, queryClient, reset, onBetSuccess]);
+  }, [isSuccess, hash, isPending, marketId, question, queryClient, reset, onBetSuccess]);
 
   useEffect(() => {
     if (error) {
