@@ -29,10 +29,6 @@ pub struct Config {
     pub ai_provider: String,
     pub hf_api_key: Option<String>,
     pub hf_model: Option<String>,
-    #[allow(dead_code)] // Reserved for future Groq AI provider
-    pub groq_api_key: Option<String>,
-    #[allow(dead_code)] // Reserved for future Groq AI provider
-    pub groq_model: Option<String>,
     #[serde(default)]
     pub gemini_api_key: Option<String>,
     #[serde(default)]
@@ -127,11 +123,9 @@ impl Config {
             start_block: std::env::var("START_BLOCK")
                 .ok()
                 .and_then(|s| s.parse().ok()),
-            ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "groq".to_string()),
+            ai_provider: std::env::var("AI_PROVIDER").unwrap_or_else(|_| "mock".to_string()),
             hf_api_key: std::env::var("HF_API_KEY").ok(),
             hf_model: std::env::var("HF_MODEL").ok(),
-            groq_api_key: std::env::var("GROQ_API_KEY").ok(),
-            groq_model: std::env::var("GROQ_MODEL").ok(),
             gemini_api_key: std::env::var("GEMINI_API_KEY").ok(),
             gemini_model: std::env::var("GEMINI_MODEL").ok(),
             finnhub_api_key: std::env::var("FINNHUB_API_KEY").ok(),
