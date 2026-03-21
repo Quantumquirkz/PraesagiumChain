@@ -32,7 +32,7 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 1. Create a branch from `main` (e.g. `feature/your-feature` or `fix/your-fix`).
 2. Keep changes focused and reasonably scoped.
 3. Run tests: `npm test` and `npm run test:backend`.
-4. Ensure the code compiles and passes linting.
+4. Ensure the code compiles and passes linting (`cd frontend && npm run lint` after a full `npm install` in `frontend/`; `cd backend-rust && cargo clippy -- -D warnings`). Prefer small, focused PRs for removing unused code or tightening imports.
 5. Never commit `.env` or secrets; use `config/env.example` as reference.
 6. Update documentation if you change behavior or add features.
 
@@ -40,6 +40,17 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 
 - Do not introduce known vulnerabilities. For smart contracts, follow Checks-Effects-Interactions and use Slither/cargo-audit.
 - If you discover a security issue, please report it privately (do not open a public issue).
+- CI and operations expectations: [docs/operations.md](docs/operations.md).
+
+### Cursor: rules, skills, and agents
+
+- **Workspace rules** (`.cursorrules`) define architecture and quality bars; large or risky changes should have an [ADR](docs/adr/) when they introduce new patterns or dependencies.
+- **Skills** in Cursor are optional checklists—use them for the area you touch (e.g. Postgres when editing `backend-rust/migrations_pg/`, React/Next for `frontend/`), not as a reason to add scope.
+- **Subagents / Task tool:** useful for exploring unfamiliar parts of the repo or fixing CI; human review remains required for architecture and security decisions.
+
+### Repository layout
+
+Top-level folders are summarized in [docs/architecture.md](docs/architecture.md#repository-layout). Strategy documents: [`StartUp/`](StartUp/).
 
 ## License
 

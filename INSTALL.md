@@ -1,4 +1,10 @@
-# PraesagiumChain Installation
+# PraesagiumChain Installation (Windows / WSL)
+
+**Full stack setup** (PostgreSQL, Docker, contracts, backend, frontend) is documented in **[docs/setup.md](docs/setup.md)** — use that as the primary guide for new machines.
+
+This file is the **supplement for Windows developers**: terminal profile, Node inside WSL, and `node-gyp`-related pitfalls. Follow it when you develop on Windows with WSL2.
+
+---
 
 To avoid `node-gyp` errors (EPERM on `C:\Windows`), UNC paths, and "no package.json", **everything must run in WSL with Node installed inside WSL**, not with Windows Node.
 
@@ -49,11 +55,13 @@ Check again: `node -p "process.platform"` should be `linux`.
 
 ## 3. Install the whole project
 
-# From the project root run (with bash directly, not npm):
-#
-#   ./scripts/install-all.sh
-#
-# Do not use "npm run install:all" if your npm in WSL is the Windows one (fails with CMD/UNC).
+From the project root, run (with bash directly, not npm):
+
+```bash
+./scripts/install-all.sh
+```
+
+Do not use `npm run install:all` if your npm in WSL is the Windows one (fails with CMD/UNC).
 
 That script installs:
 
