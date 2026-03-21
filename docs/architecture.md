@@ -1,6 +1,23 @@
 # Architecture — Contracts, Database, PHPE, and Frontend
 
-This document provides an overview of the PraesagiumChain architecture: smart contracts, database schema, PHPE prediction engine, and frontend structure. For full implementation details, see the source files referenced below.
+Overview of architecture and **repository layout**. Implementation details live in the linked sources.
+
+## Repository layout
+
+| Directory | Role |
+|-----------|------|
+| [`contracts/`](../contracts/) | Solidity (Hardhat): `npm run compile`, `npm test` |
+| [`backend-rust/`](../backend-rust/) | Axum API, PHPE: `npm run backend`, `cargo test` |
+| [`frontend/`](../frontend/) | Next.js: `cd frontend && npm run dev` |
+| [`cre/`](../cre/) | CRE workflows (TypeScript) |
+| [`scripts/`](../scripts/) | Deploy, demo — [scripts/README.md](../scripts/README.md) |
+| [`config/`](../config/) | `env.example` → copy to root `.env` |
+| [`k8s/`](../k8s/) | Optional Kubernetes (not needed locally) |
+| [`research/notebook/`](../research/notebook/) | Optional Jupyter experiments |
+| [`StartUp/`](../StartUp/) | Business strategy (Spanish) |
+| Root | `package.json`, Hardhat, `docker-compose.yml` |
+
+One `.env` at repo root for backend, scripts, and frontend (Next loads via `loadEnvConfig`).
 
 ---
 
