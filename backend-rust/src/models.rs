@@ -342,19 +342,6 @@ pub struct PrivateMarketByCreatorItem {
     pub access_key: String,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-#[allow(dead_code)]
-pub struct PrivateMarketAccessKeyRow {
-    pub id: i64,
-    pub on_chain_market_id: i64,
-    pub access_key: String,
-    pub creator_address: String,
-    pub question: String,
-    pub close_time: i64,
-    pub resolve_time: i64,
-    pub created_at: i64,
-}
-
 /// A persisted resolution record (read from `market_resolutions`).
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct MarketResolution {

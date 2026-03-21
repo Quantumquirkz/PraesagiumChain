@@ -127,13 +127,6 @@ mod error_tests {
     }
 
     #[tokio::test]
-    async fn rate_limit_returns_429() {
-        let err = AppError::RateLimit;
-        let resp = err.into_response();
-        assert_eq!(resp.status(), axum::http::StatusCode::TOO_MANY_REQUESTS);
-    }
-
-    #[tokio::test]
     async fn external_api_returns_502() {
         let err = AppError::ExternalApi("upstream down".into());
         let resp = err.into_response();
@@ -207,8 +200,6 @@ mod api_markets_tests {
             gemini_model: None,
             hf_api_key: None,
             hf_model: None,
-            groq_api_key: None,
-            groq_model: None,
             prediction_cache_ttl: 300,
             rpc_url: None,
             prediction_market_address: None,
@@ -238,7 +229,6 @@ mod api_markets_tests {
             config,
             db,
             event_bus: crate::services::EventBus::new(),
-            clickhouse: None,
             indexer_state: None,
             started_at: chrono::Utc::now().timestamp(),
             nonce_store: crate::api::auth::new_nonce_store(None).unwrap(),

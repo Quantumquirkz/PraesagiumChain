@@ -22,14 +22,6 @@ pub struct FinnhubSource {
 }
 
 impl FinnhubSource {
-    #[allow(dead_code)]
-    pub fn new(api_key: Option<String>) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            api_key,
-        }
-    }
-
     pub fn with_client(client: reqwest::Client, api_key: Option<String>) -> Self {
         Self { client, api_key }
     }

@@ -23,10 +23,6 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(#[from] anyhow::Error),
-
-    #[allow(dead_code)]
-    #[error("Rate limit exceeded")]
-    RateLimit,
 }
 
 impl IntoResponse for AppError {
@@ -63,7 +59,6 @@ impl IntoResponse for AppError {
                 tracing::error!("Internal error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal error".to_string())
             }
-            AppError::RateLimit => (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded".to_string()),
         };
 
         let body = Json(json!({ "error": message }));

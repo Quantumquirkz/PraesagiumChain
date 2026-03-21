@@ -6,14 +6,14 @@
 //!   2. Client signs the EIP-4361 message with their wallet.
 //!   3. Client calls `POST /api/auth/verify` with address + signature.
 //!      Server recovers the signer, validates the nonce, and returns a JWT.
-//!   4. Protected endpoints check the `Authorization: Bearer <jwt>` header.
+//!   4. Clients send `Authorization: Bearer <jwt>` on future protected routes (extractor TBD).
 //!
 //! Nonce store: in-memory (default) or Redis when REDIS_URL is set (production).
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use ethers::core::types::{Address, Signature};
 use ethers::utils::hash_message;
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -265,20 +265,6 @@ pub async fn verify(
     }))
 }
 
-// ─── JWT validation helper (used by middleware) ───────────────────────────────
-
-/// Validates a Bearer JWT and returns the claims on success.
-#[allow(dead_code)]
-pub fn validate_jwt(token: &str, secret: &str) -> std::result::Result<Claims, String> {
-    let key = DecodingKey::from_secret(secret.as_bytes());
-    let mut validation = Validation::new(Algorithm::HS256);
-    validation.validate_exp = true;
-
-    decode::<Claims>(token, &key, &validation)
-        .map(|data| data.claims)
-        .map_err(|e| format!("Invalid JWT: {e}"))
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 fn normalize_address(raw: &str) -> Result<String> {
@@ -337,60 +323,3 @@ fn recover_signer(message: &str, signature_hex: &str) -> Result<String> {
     Ok(format!("{:?}", recovered))
 }
 
-// ─── JWT extractor middleware ─────────────────────────────────────────────────
-
-/// Axum extractor that validates the `Authorization: Bearer <jwt>` header.
-/// Use this in protected handlers: `auth: AuthenticatedUser`.
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct AuthenticatedUser {
-    pub address: String,
-}
-
-#[axum::async_trait]
-impl<S> axum::extract::FromRequestParts<S> for AuthenticatedUser
-where
-    S: Send + Sync,
-    Arc<AppState>: axum::extract::FromRef<S>,
-{
-    type Rejection = (StatusCode, String);
-
-    async fn from_request_parts(
-        parts: &mut axum::http::request::Parts,
-        state: &S,
-    ) -> std::result::Result<Self, Self::Rejection> {
-        use axum::extract::FromRef;
-
-        let app_state: Arc<AppState> = Arc::from_ref(state);
-        let jwt_secret = app_state
-            .config
-            .jwt_secret
-            .as_deref()
-            .unwrap_or("praesagium-default-secret-change-in-production");
-
-        let auth_header = parts
-            .headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    "Missing Authorization header".to_string(),
-                )
-            })?;
-
-        let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                "Authorization header must start with 'Bearer '".to_string(),
-            )
-        })?;
-
-        let claims = validate_jwt(token, jwt_secret)
-            .map_err(|e| (StatusCode::UNAUTHORIZED, e))?;
-
-        Ok(AuthenticatedUser {
-            address: claims.sub,
-        })
-    }
-}

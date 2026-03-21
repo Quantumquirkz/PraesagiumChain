@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use crate::error::{AppError, Result};
 use crate::models::{
-    PrivateMarketAccessKeyRow, PrivateMarketAccessResponse, PrivateMarketByCreatorItem,
+    PrivateMarketAccessResponse, PrivateMarketByCreatorItem,
     PrivateMarketRegisterRequest, PrivateMarketRegisterResponse,
 };
 use crate::state::AppState;
@@ -122,8 +122,17 @@ pub async fn access(
         return Err(AppError::Validation("key too long or invalid format".into()));
     }
 
-    let row: Option<PrivateMarketAccessKeyRow> = sqlx::query_as(
-        "SELECT id, on_chain_market_id, access_key, creator_address, question, close_time, resolve_time, created_at \
+    #[derive(sqlx::FromRow)]
+    struct AccessRow {
+        on_chain_market_id: i64,
+        creator_address: String,
+        question: String,
+        close_time: i64,
+        resolve_time: i64,
+    }
+
+    let row: Option<AccessRow> = sqlx::query_as(
+        "SELECT on_chain_market_id, creator_address, question, close_time, resolve_time \
          FROM private_market_access_keys WHERE access_key = $1",
     )
     .bind(key)

@@ -20,18 +20,6 @@ pub struct ModelMetadata {
     pub weights_checksum: [u8; 32],
 }
 
-/// Payload for on-chain submission (probability in basis points).
-#[allow(dead_code)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OnChainPredictionPayload {
-    pub market_id: u64,
-    pub probability_bps: u16,
-    pub uncertainty_bps: u16,
-    pub model_version: String,
-    pub model_hash: [u8; 32],
-    pub timestamp: u64,
-}
-
 impl PredictionResult {
     pub fn to_bps(&self) -> (u16, u16) {
         let p_bps = (self.probability * 10_000.0).round().clamp(0.0, 10_000.0) as u16;

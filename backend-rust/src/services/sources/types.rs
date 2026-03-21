@@ -14,8 +14,8 @@ pub struct Signal {
 /// Raw Binance 24h ticker response fields used internally.
 #[derive(Debug, Deserialize)]
 pub struct BinanceTicker {
-    #[allow(dead_code)]
-    pub symbol: String,
+    #[serde(rename = "symbol")]
+    pub _symbol: String,
     #[serde(rename = "lastPrice")]
     pub last_price: String,
     #[serde(rename = "priceChangePercent")]
