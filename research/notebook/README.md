@@ -1,11 +1,13 @@
 # Simulation notebook — PraesagiumChain
 
+Optional **research / experimentation** for PHPE-style simulations. Not required to run the app, backend, or frontend.
+
 ## Setup (virtual environment)
 
 On systems using PEP 668 (Debian/Ubuntu), create a venv before installing:
 
 ```bash
-cd notebook
+cd research/notebook
 python3 -m venv .venv
 source .venv/bin/activate   # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
