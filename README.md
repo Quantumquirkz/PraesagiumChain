@@ -33,7 +33,7 @@
 
 **PraesagiumChain** is a decentralized prediction market platform built for the [Chainlink Prediction Markets Hackathon](https://chain.link/community/hackathon). Users create binary (Yes/No) markets on real-world events — price movements, weather, sports outcomes, news sentiment — stake ETH, and markets are resolved trustlessly via the **Chainlink Runtime Environment (CRE)** using AI and live data feeds.
 
-The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Groq / Gemini / Hugging Face), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
+The platform goes beyond a simple oracle integration. Its core is the **PHPE (Praesagium Hybrid Predictive Engine)**, a Rust-based ML pipeline that fuses time-series predictions, AI sentiment (Gemini / Hugging Face / mock), and live price data (Binance, Chainlink) into a single calibrated probability with an **uncertainty band** — something no other prediction market platform currently exposes to users.
 
 The backend is a production-grade **Rust/Axum** REST API backed by PostgreSQL, with a built-in on-chain event indexer, rate limiting, and 7 external data source integrations. The smart contract layer includes standard markets, private commit-reveal markets (Confidential Compute), conditional markets, tokenized (ERC-721) markets, and an on-chain reputation system.
 
@@ -89,7 +89,6 @@ flowchart TB
     end
 
     subgraph external [External Services]
-        Groq[Groq LLM API]
         Gemini[Gemini AI]
         HF[Hugging Face]
         Binance[Binance API]
@@ -99,7 +98,6 @@ flowchart TB
 
     UI <-->|HTTP REST| API
     Wallet <-->|ethers / wagmi| chain
-    AISvc --> Groq
     AISvc --> Gemini
     AISvc --> HF
     Sources --> Binance
@@ -327,7 +325,7 @@ REDIS_URL=redis://localhost:6380
 CLICKHOUSE_URL=http://localhost:8123
 ```
 
-Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see the `k8s/` directory.
+Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see [k8s/README.md](k8s/README.md).
 
 ### CRE Workflow Simulation
 
@@ -746,12 +744,16 @@ PraesagiumChain/
 │   ├── verify/verify.js          # Etherscan/Polygonscan verification
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
-├── notebook/                     # Python simulation notebooks
+├── research/notebook/            # Optional Python/Jupyter experiments (not runtime)
 ├── docs/
-│   ├── setup.md                  # Step-by-step setup guide
-│   ├── configuration.md          # Environment and API keys
+│   ├── setup.md                  # Setup guide
+│   ├── architecture.md         # Layout + contracts, DB, PHPE, frontend
+│   ├── operations.md            # Security, CI audits, scaling notes
+│   ├── configuration.md        # Environment variables
 │   ├── deploy.md                 # Sepolia deployment
-│   └── architecture.md           # Contracts, DB, PHPE, frontend
+│   ├── contracts.md              # Contract summary
+│   ├── audit.md                  # Pointers to API source files
+│   └── adr/                      # Architecture decision records
 ├── hardhat.config.js
 ├── package.json                  # Hardhat + contracts tooling
 └── .env                          # gitignored — copy from config/env.example
@@ -840,37 +842,9 @@ The full architecture — contracts, database, PHPE, and frontend — is documen
 
 ---
 
-## Recent Improvements
+## Changelog
 
-The following improvements were implemented after the initial release:
-
-### UI/UX Overhaul
-- **Pure dark/light theme** — dark mode uses `#000000` background; light mode uses `#ffffff`. Toggled via `next-themes`.
-- **Interactive candlestick chart** — replaced Recharts with [lightweight-charts v5](https://tradingview.github.io/lightweight-charts/) (TradingView). Supports zoom, pan, multi-pane indicators (RSI, MACD, Bollinger Bands), and auto-follow mode that scrolls to the latest prediction as new data arrives.
-- **CoinGecko-inspired market detail layout** — full-width chart with a sticky sidebar for the bet form, countdown, and creator info. Stats row (Total Pool, YES/NO odds, close/resolve dates) above the chart.
-- **Network enforcement** — `useNetworkGuard` hook reads `chainId` directly from `window.ethereum` and subscribes to MetaMask's `chainChanged` event. Persistent banner on the Create Market page with a "Switch to Sepolia" button.
-- **Navigation redesign** — pill-style active indicator, Lucide icons per nav item, drawer slide-in animation on mobile.
-- **Empty state redesign** — illustrated onboarding steps with call-to-action buttons.
-- **Bet form** — gradient YES/NO buttons, payout estimation, quick-amount pills.
-
-### Codebase Cleanup (~1,622 lines removed)
-- Deleted 5 dead frontend components: `ohlcv-chart.tsx`, `create-market-form.tsx`, `stakes-chart.tsx`, `network-switcher.tsx`, `resolution-source-badge.tsx`.
-- Deleted unused hook `use-create-market.ts`.
-- Removed stale npm dependencies: `@radix-ui/react-toast`, `recharts`.
-- Removed redundant TypeScript type shims in `frontend/types/`.
-- Removed unused Rust crates: `config`, `url`.
-- Removed dead Rust code: `run_prediction_with_context()` in `prediction.rs`, unused `cache` field in `HybridPredictor`.
-- Standardized ETH formatting: all display uses `formatEth` from `@/lib/utils`.
-
-### Codebase Cleanup (latest)
-- **Removed unused components:** `automation-status-badge.tsx`, `creator-reputation-badge.tsx`.
-- **Removed unused exports/functions:** `formatCountdown` and `statusColor` from `lib/utils.ts`; `getSentiment` and `getSources` from `lib/api.ts`; `wagmiConfig` export from `lib/wagmi.ts` (only `config` is exported); unused indicators from `lib/ohlcv-utils.ts` (`computeStochastic`, `computeStochasticRSI`, `computeIchimoku`, `computeATR`, `computeOBV`, `computeBOP`, `formatTimeLabel`); unused `Countdown` component from `countdown.tsx` (kept `useCountdown`, `formatCountdownDisplay`, `CountdownBlocks`); `ResolutionSourceType` no longer exported from `resolution-source-picker.tsx`.
-- **Config:** Removed `recharts` from `optimizePackageImports` in `next.config.js`; single `.env` at repo root (Next.js loads via `loadEnvConfig`).
-- **Backend:** Removed unused `trace` feature from `tower-http` in `backend-rust/Cargo.toml`.
-
-### Backend Stability
-- Backend uses **PostgreSQL** only; `DATABASE_URL` is required (no SQLite).
-- Increased default rate limits: `RATE_LIMIT_PER_SECOND=300`, `RATE_LIMIT_BURST=200`.
+UI stack: Next.js 14 App Router, wagmi v2, Tailwind, lightweight-charts, dark/light via `next-themes`. Backend: PostgreSQL (required), optional Redis/ClickHouse; default rate limits `RATE_LIMIT_PER_SECOND=300`, `RATE_LIMIT_BURST=200`. For detailed history, use `git log`.
 
 ---
 
@@ -878,13 +852,18 @@ The following improvements were implemented after the initial release:
 
 | Document | Description |
 |----------|-------------|
-| [docs/setup.md](docs/setup.md) | **Step-by-step setup guide** — prerequisites, install, config, run (for anyone to use the project) |
-| [docs/configuration.md](docs/configuration.md) | Environment variables and API keys |
-| [docs/deploy.md](docs/deploy.md) | Sepolia deployment guide |
-| [docs/architecture.md](docs/architecture.md) | Contracts, database, PHPE, and frontend |
-| [docs/audit.md](docs/audit.md) | Audit inventory: flows, endpoints, contract API |
-| [docs/adr/adr-001-clickhouse-analytics.md](docs/adr/adr-001-clickhouse-analytics.md) | ADR: ClickHouse for analytics |
-| [cre/README.md](cre/README.md) | CRE workflow setup, simulation, and CLI reference |
+| [docs/setup.md](docs/setup.md) | Setup — prerequisites, install, run |
+| [docs/architecture.md](docs/architecture.md) | Repo layout, contracts, DB, PHPE, frontend |
+| [docs/operations.md](docs/operations.md) | Security, CI audits, scaling |
+| [docs/configuration.md](docs/configuration.md) | Environment variables |
+| [docs/deploy.md](docs/deploy.md) | Sepolia deployment |
+| [docs/contracts.md](docs/contracts.md) | Contract overview |
+| [docs/audit.md](docs/audit.md) | Where to verify API flows (source pointers) |
+| [docs/adr/adr-001-clickhouse-analytics.md](docs/adr/adr-001-clickhouse-analytics.md) | ADR: ClickHouse |
+| [INSTALL.md](INSTALL.md) | Windows / WSL supplement |
+| [scripts/README.md](scripts/README.md) | `scripts/` index |
+| [StartUp/](StartUp/) | Strategy (FODA, roadmap, Spanish) |
+| [cre/README.md](cre/README.md) | CRE workflows |
 
 ---
 

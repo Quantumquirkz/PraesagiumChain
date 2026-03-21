@@ -1,6 +1,6 @@
 # PraesagiumChain — Backend (Rust / Axum)
 
-REST API with PHPE prediction engine, AI (Groq / Gemini / Hugging Face), reputation service, and optional on-chain event indexer. Database: **PostgreSQL** (required). Redis and ClickHouse are optional for cache/sessions and analytics.
+REST API with PHPE prediction engine, AI (Gemini / Hugging Face / mock), reputation service, and optional on-chain event indexer. Database: **PostgreSQL** (required). Redis and ClickHouse are optional for cache/sessions and analytics.
 
 ---
 
@@ -11,6 +11,8 @@ REST API with PHPE prediction engine, AI (Groq / Gemini / Hugging Face), reputat
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
   Then open a new terminal or run: `source "$HOME/.cargo/env"`.
+
+- **`Cargo.lock`**: committed in this repo for **reproducible builds** of this binary. Use `cargo build` / `cargo test` as usual; bump dependencies intentionally via `Cargo.toml` and refresh the lockfile in a dedicated change.
 
 - **PostgreSQL**: required. Use `DATABASE_URL=postgresql://...` in `.env`. For local dev, run PostgreSQL via Docker: `docker compose up -d` (see repo root).
 
@@ -38,7 +40,7 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
    - `PORT` (default `4000`)
    - `REDIS_URL` (e.g. `redis://localhost:6380`) for SIWE nonce store when using the Docker stack
    - `CLICKHOUSE_URL` (e.g. `http://localhost:8123`) for analytics events
-   - `AI_PROVIDER`, `GROQ_API_KEY` / `GEMINI_API_KEY` / `HF_API_KEY` for sentiment
+   - `AI_PROVIDER`, `GEMINI_API_KEY` / `GEMINI_MODEL`, `HF_API_KEY` / `HF_MODEL` for sentiment (default provider is **mock**)
    - `RPC_URL`, `PREDICTION_MARKET_ADDRESS`, `START_BLOCK` for the **event indexer** (see below)
    - `CORS_ORIGINS` (comma-separated origins in production)
 

@@ -1,6 +1,8 @@
 # PraesagiumChain — Step-by-Step Setup Guide
 
-This document provides a detailed, step-by-step guide for **anyone** (including new team members or external contributors) to set up and run PraesagiumChain from scratch. All instructions are in English.
+This document is the **canonical setup guide** for the full stack (prerequisites, env, infrastructure, contracts, backend, frontend). All instructions are in English.
+
+If you use **Windows**, also read **[INSTALL.md](../INSTALL.md)** at the repo root for WSL-only details (Cursor terminal profile, verifying Linux Node, `install-all.sh` quirks).
 
 ---
 
@@ -8,13 +10,13 @@ This document provides a detailed, step-by-step guide for **anyone** (including 
 
 If you are joining the project or need to run it on a new machine:
 
-1. **Prerequisites** — Install Node.js 18+, Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands.
+1. **Prerequisites** — Install Node.js 18+, Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands (see [INSTALL.md](../INSTALL.md) if anything fails with Windows Node).
 2. **Single `.env`** — The whole stack (backend, frontend, scripts) uses one `.env` file at the repo root. Copy from `config/env.example`.
 3. **Four terminals** — You need: (1) Hardhat node, (2) backend, (3) one-time deploy, (4) frontend. See [Summary: Minimal Commands](#summary-minimal-commands-to-run-the-project) at the bottom.
 4. **Docker permission denied** — On Linux/WSL, if `./scripts/docker-up.sh` fails with permission denied, run `sudo ./scripts/docker-up.sh`.
 5. **Frontend chunk errors** — If you see `Cannot find module './xxxx.js'` or chunk load failures, delete the build cache and restart: `cd frontend && rm -rf .next && npm run dev`.
 
-For full architecture and configuration details, see [configuration.md](configuration.md), [deploy.md](deploy.md), and [architecture.md](architecture.md).
+For architecture and folder layout, see [architecture.md](architecture.md). For env vars and deploy, see [configuration.md](configuration.md) and [deploy.md](deploy.md).
 
 ---
 
@@ -55,7 +57,7 @@ Before you begin, install the following tools on your system:
 
 **Accounts you may need:**
 
-- [Groq Console](https://console.groq.com/keys) — for `GROQ_API_KEY` (optional; mock provider available)
+- Optional: [Google AI Studio](https://aistudio.google.com/apikey) for `GEMINI_API_KEY` if you set `AI_PROVIDER=gemini` (default backend AI is **mock**, no key).
 - Ethereum wallet with [Sepolia ETH](https://sepoliafaucet.com) — for testnet deployment and betting
 
 **Windows users:** Use WSL2 (Ubuntu) for all commands. Do not use CMD or PowerShell; the project expects a Unix-like environment.
@@ -102,8 +104,8 @@ nano .env   # or: code .env, vim .env, etc.
 |----------|-------|-------------|
 | `DATABASE_URL` | `postgresql://praesagium:praesagium@localhost:5433/praesagium` | PostgreSQL connection string (Docker maps host port 5433) |
 | `RPC_URL` | `http://127.0.0.1:8545` | Hardhat local node (or Sepolia RPC for testnet) |
-| `AI_PROVIDER` | `groq` or `mock` | Use `mock` to skip AI; use `groq` if you have `GROQ_API_KEY` |
-| `GROQ_API_KEY` | Your API key | Required only if `AI_PROVIDER=groq` |
+| `AI_PROVIDER` | `mock` (default), `gemini`, or `huggingface` | Use `mock` for no external AI key; `gemini`/`huggingface` need the matching keys in `.env` |
+| `GEMINI_API_KEY` / `HF_API_KEY` | As needed | See [configuration.md](configuration.md) |
 | `PRIVATE_KEY` | Your wallet private key (without `0x`) | For deploying contracts and running the demo |
 | `API_BASE_URL` | `http://localhost:4000` | Backend URL for scripts |
 

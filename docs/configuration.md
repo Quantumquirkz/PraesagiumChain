@@ -26,10 +26,10 @@ For the full template, see [config/env.example](../config/env.example).
 | `PORT` | No | Backend HTTP port (default `4000`). |
 | `REDIS_URL` | No | When backend runs on host and Docker maps Redis to 6380: `redis://localhost:6380`. |
 | `CLICKHOUSE_URL` | No | Optional analytics (e.g. `http://localhost:8123`). |
-| `AI_PROVIDER` | No | `groq` (default), `gemini`, `huggingface`, or `mock`. |
-| `GROQ_API_KEY` | No* | Required if `AI_PROVIDER=groq`. Get from [Groq Console](https://console.groq.com/keys). |
-| `GROQ_MODEL` | No | Groq model (default `llama-3.3-70b-versatile`). |
-| `HF_API_KEY` | No | Hugging Face sentiment (alternative). Get from [Hugging Face](https://huggingface.co/settings/tokens). |
+| `AI_PROVIDER` | No | `mock` (default if unset), `gemini`, or `huggingface`. Any other value (including legacy `groq`) falls back to **mock** — there is no Groq provider wired in the backend yet. |
+| `GEMINI_API_KEY` | No* | Used when `AI_PROVIDER=gemini`. If missing, backend uses mock AI. |
+| `GEMINI_MODEL` | No | Gemini model (default `gemini-2.0-flash`). |
+| `HF_API_KEY` / `HF_MODEL` | No* | Used when `AI_PROVIDER=huggingface`. Both required for the real HF provider; otherwise mock. |
 | `PRIVATE_KEY` | Yes (deploy) | Wallet private key (no `0x` prefix) for deploying contracts. **Never commit.** |
 | `API_BASE_URL` | No | Backend URL for scripts (default `http://localhost:4000`). |
 | `ORACLE_CONSUMER_ADDRESS` | Yes (resolveFromBackend) | OracleConsumer contract address. Required for `scripts/resolveFromBackend.js` to call `oracleCallback`. Set after deploy. |
@@ -70,8 +70,8 @@ For Chainlink CRE workflow simulation:
 
 | Key | Purpose | Where to Get | Required? |
 |-----|---------|--------------|------------|
-| `GROQ_API_KEY` | AI sentiment (PHPE / predictions) | [Groq Console](https://console.groq.com/keys) | No; use `AI_PROVIDER=mock` to skip |
-| `HF_API_KEY` | Hugging Face sentiment (alternative) | [Hugging Face](https://huggingface.co/settings/tokens) | No |
+| `GEMINI_API_KEY` | AI sentiment when `AI_PROVIDER=gemini` | [Google AI Studio](https://aistudio.google.com/apikey) | No; default is mock |
+| `HF_API_KEY` | AI sentiment when `AI_PROVIDER=huggingface` | [Hugging Face](https://huggingface.co/settings/tokens) | No |
 | `API_FOOTBALL_KEY` | Sports market resolution | [API-Football](https://www.api-football.com/) | No; only for sports markets |
 | `FINNHUB_API_KEY` | Finnhub source (Signals page) | [Finnhub](https://finnhub.io/register) | No |
 | `ETHERSCAN_API_KEY` | Contract verification | [Etherscan](https://etherscan.io/myapikey) | No |
@@ -87,8 +87,8 @@ For Chainlink CRE workflow simulation:
 ```env
 DATABASE_URL=postgresql://praesagium:praesagium@localhost:5433/praesagium
 RPC_URL=http://127.0.0.1:8545
-AI_PROVIDER=groq
-GROQ_API_KEY=<your_key>
+AI_PROVIDER=mock
+# Optional: AI_PROVIDER=gemini + GEMINI_API_KEY=... or huggingface + HF_API_KEY + HF_MODEL
 PRIVATE_KEY=<your_key>
 API_BASE_URL=http://localhost:4000
 
@@ -129,7 +129,6 @@ NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
 
 - [Sepolia Faucet](https://sepoliafaucet.com/)
 - [Sepolia Etherscan](https://sepolia.etherscan.io)
-- [Groq Console](https://console.groq.com/keys)
 - [Alchemy](https://dashboard.alchemy.com/)
 - [Infura](https://infura.io/)
 - [Etherscan API](https://etherscan.io/myapikey)
