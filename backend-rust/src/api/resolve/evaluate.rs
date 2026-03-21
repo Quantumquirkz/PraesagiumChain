@@ -1,36 +1,19 @@
-//! Universal resolution endpoint for CRE workflows.
-//!
-//! POST /api/resolve/evaluate
-//!   Accepts a market_id, resolution_type, and type-specific params.
-//!   Calls the appropriate oracle (price feed, weather, sports, AI sentiment, or hybrid PHPE).
-//!   Persists the result to `market_resolutions` for a full audit trail.
-//!   Returns outcome (0/1), confidence, source, and raw_value.
-//!
-//! GET /api/markets/:id/resolutions
-//!   Returns the full resolution history for a market.
+//! POST /api/resolve/evaluate — dispatch and persist resolutions.
 
-use axum::{
-    extract::{Path, State},
-    Json,
-};
+use axum::{extract::State, Json};
 use serde::Deserialize;
 use std::sync::Arc;
 use tracing::info;
 
 use crate::error::{AppError, Result};
-use crate::models::{MarketResolution, ResolveRequest, ResolveResponse};
+use crate::models::{ResolveRequest, ResolveResponse};
 use crate::state::AppState;
 
 const OPEN_METEO_ARCHIVE: &str = "https://archive-api.open-meteo.com/v1/archive";
 const BINANCE_PRICE: &str = "https://api.binance.com/api/v3/ticker/price";
 const COINGECKO_PRICE: &str = "https://api.coingecko.com/api/v3/simple/price";
 
-// ─── POST /api/resolve/evaluate ─────────────────────────────────────────────
-
-/// Universal oracle resolution handler.
-///
-/// Dispatches to the correct oracle based on `resolution_type`, computes
-/// outcome + confidence, persists the result, and returns it.
+/// Universal oracle resolution handler: dispatches by `resolution_type`, persists, returns JSON.
 pub async fn evaluate(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ResolveRequest>,
@@ -66,25 +49,6 @@ pub async fn evaluate(
 
     Ok(Json(response))
 }
-
-// ─── GET /api/markets/:id/resolutions ───────────────────────────────────────
-
-pub async fn list_resolutions(
-    State(state): State<Arc<AppState>>,
-    Path(market_id): Path<i64>,
-) -> Result<Json<Vec<MarketResolution>>> {
-    let rows: Vec<MarketResolution> = sqlx::query_as::<_, MarketResolution>(
-        "SELECT id, market_id, resolution_type, outcome, confidence, source, raw_value, resolved_at \
-         FROM market_resolutions WHERE market_id = $1 ORDER BY resolved_at DESC LIMIT 100",
-    )
-    .bind(market_id)
-    .fetch_all(state.db.pool())
-    .await
-    .map_err(|e| AppError::Internal(anyhow::anyhow!("list_resolutions: {}", e)))?;
-
-    Ok(Json(rows))
-}
-
 // ─── Resolution helpers ──────────────────────────────────────────────────────
 
 #[derive(Deserialize)]

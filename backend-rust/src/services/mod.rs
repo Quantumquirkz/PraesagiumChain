@@ -1,5 +1,8 @@
+//! Domain services and registries. `sources_registry` is internal; use `SourcesRegistry`.
+
 pub mod cache;
 pub mod chainlink_feeds;
+mod market_sql;
 pub mod market;
 pub mod prediction;
 pub mod indexer;
