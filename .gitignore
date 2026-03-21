@@ -3,6 +3,7 @@ node_modules/
 **/.venv/
 **/target/
 **/Cargo.lock
+!backend-rust/Cargo.lock
 
 # Build artifacts
 coverage/

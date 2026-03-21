@@ -29,8 +29,11 @@ jobs:
           NEXT_PUBLIC_RPC_URL: "https://rpc.sepolia.org"
           NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_BLOCK_EXPLORER_URL: "https://sepolia.etherscan.io"
-      - name: Security audit (npm)
-        run: npm audit --audit-level=high || true
+      # Blocks on critical CVEs only; triage high locally (see docs/operations.md)
+      - name: Security audit (npm root)
+        run: npm audit --audit-level=critical
+      - name: Security audit (npm frontend)
+        run: cd frontend && npm audit --audit-level=critical
 
   test-backend:
     runs-on: ubuntu-latest
@@ -56,6 +59,7 @@ jobs:
         run: cd backend-rust && cargo clippy -- -D warnings
       - name: Run backend tests
         run: npm run test:backend
+      # Advisory DB may report transitive issues (ethers, sqlx); run `cargo audit` locally and track upgrades
       - name: Security audit (cargo)
         run: |
           cargo install cargo-audit 2>/dev/null || true
