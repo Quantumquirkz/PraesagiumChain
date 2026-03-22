@@ -16,7 +16,7 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
-# Environment (templates in config/ are committed)
+# Environment (env.example at repo root is committed; no real secrets)
 .env
 .env.*
 **/.env
