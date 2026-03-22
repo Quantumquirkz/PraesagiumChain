@@ -1,1 +1,17 @@
-{"name":"praesagium-resolver-confidential","version":"0.1.0","type":"module","scripts":{"postinstall":"npx --yes cre-setup"},"dependencies":{"@chainlink/cre-sdk":"^1.0.7","zod":"^3.23.0"},"devDependencies":{"@types/minimatch":"^5.1.2"}}
+{
+  "name": "praesagium-resolver-confidential",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "postinstall": "npx --yes cre-setup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.7",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/minimatch": "^5.1.2",
+    "typescript": "^5.6.3"
+  }
+}
