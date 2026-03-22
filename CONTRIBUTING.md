@@ -24,16 +24,16 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 ### Development Setup
 
 1. Clone the repository and run `npm install` and `cd backend-rust && cargo build`.
-2. Copy `config/env.example` to `.env` and fill required values.
+2. Copy `env.example` to `.env` and fill required values.
 3. See [docs/setup.md](docs/setup.md) for the full setup guide.
 
 ### Pull Request Process
 
 1. Create a branch from `main` (e.g. `feature/your-feature` or `fix/your-fix`).
 2. Keep changes focused and reasonably scoped.
-3. Run tests: `npm test` and `npm run test:backend`.
-4. Ensure the code compiles and passes linting (`cd frontend && npm run lint` after a full `npm install` in `frontend/`; `cd backend-rust && cargo clippy -- -D warnings`). Prefer small, focused PRs for removing unused code or tightening imports.
-5. Never commit `.env` or secrets; use `config/env.example` as reference.
+3. Run tests: `npm run test:all` (contracts, Rust backend, and frontend Vitest), or individually `npm test`, `npm run test:backend`, `npm run test:frontend`.
+4. Ensure the code compiles and passes linting (`cd frontend && npm run lint` after `npm install` at repo root; `cd backend-rust && cargo clippy -- -D warnings`). Prefer small, focused PRs for removing unused code or tightening imports.
+5. Never commit `.env` or secrets; use `env.example` as reference.
 6. Update documentation if you change behavior or add features.
 
 ### Security
@@ -41,6 +41,10 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 - Do not introduce known vulnerabilities. For smart contracts, follow Checks-Effects-Interactions and use Slither/cargo-audit.
 - If you discover a security issue, please report it privately (do not open a public issue).
 - CI and operations expectations: [docs/operations.md](docs/operations.md).
+
+### npm workspaces
+
+The root `package.json` declares `"workspaces": ["frontend"]`. Install once from the repo root: `npm install` or `npm ci`. Do not run `npm install` separately in `frontend/`; there is no `frontend/package-lock.json` (the lockfile lives at the repo root).
 
 ### Cursor: rules, skills, and agents
 
@@ -50,7 +54,7 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 
 ### Repository layout
 
-Top-level folders are summarized in [docs/architecture.md](docs/architecture.md#repository-layout). Strategy documents: [`StartUp/`](StartUp/).
+Top-level folders are summarized in [docs/architecture.md](docs/architecture.md#repository-layout). Strategy documents: [docs/startup/](docs/startup/).
 
 ## License
 

@@ -239,7 +239,7 @@ cd ..
 **Step 2 — Configure environment**
 
 ```bash
-cp config/env.example .env
+cp env.example .env
 ```
 
 Edit `.env` (single file for backend + frontend):
@@ -325,7 +325,7 @@ REDIS_URL=redis://localhost:6380
 CLICKHOUSE_URL=http://localhost:8123
 ```
 
-Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see [k8s/README.md](k8s/README.md).
+Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see [deploy/k8s/README.md](deploy/k8s/README.md).
 
 ### CRE Workflow Simulation
 
@@ -355,7 +355,7 @@ cre workflow simulate praesagium-resolver --target staging-settings
 
 ## Configuration
 
-Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.  
+Copy `env.example` to `.env` at the repo root. For CRE simulation, copy `cre/.env.example` to `cre/.env`.  
 **Minimal env for create market + bet on Sepolia:** [docs/configuration.md](docs/configuration.md).
 
 ### Backend
@@ -451,9 +451,10 @@ Copy `config/env.example` to `.env` at the repo root. For CRE simulation, copy `
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run Hardhat contract tests (5 tests) |
-| `npm run test:backend` | Run Rust backend tests (2 tests) |
-| `npm run test:all` | Run all tests (contracts + backend) |
+| `npm test` | Run Hardhat contract tests |
+| `npm run test:backend` | Run Rust backend tests |
+| `npm run test:frontend` | Run frontend unit tests (Vitest) |
+| `npm run test:all` | Run contract, backend, and frontend tests |
 | `npm run audit` | `npm audit` + `cargo audit` for dependency vulnerabilities |
 
 ### Database & Utilities
@@ -661,8 +662,6 @@ See [docs/deploy.md](docs/deploy.md) for a complete step-by-step guide.
 PraesagiumChain/
 ├── .github/
 │   └── workflows/deploy.yml      # CI: contract tests + Rust tests + audits
-├── config/
-│   └── env.example               # Template → copy to root .env
 ├── contracts/
 │   ├── PredictionMarket.sol      # Core: binary markets, bets, payouts
 │   ├── CREWorkflow.sol           # Bridge: oracle result → resolveMarket
@@ -744,7 +743,8 @@ PraesagiumChain/
 │   ├── verify/verify.js          # Etherscan/Polygonscan verification
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
-├── research/notebook/            # Optional Python/Jupyter experiments (not runtime)
+├── deploy/
+│   └── k8s/                      # Optional Kubernetes manifests
 ├── docs/
 │   ├── setup.md                  # Setup guide
 │   ├── architecture.md         # Layout + contracts, DB, PHPE, frontend
@@ -753,10 +753,14 @@ PraesagiumChain/
 │   ├── deploy.md                 # Sepolia deployment
 │   ├── contracts.md              # Contract summary
 │   ├── audit.md                  # Pointers to API source files
-│   └── adr/                      # Architecture decision records
+│   ├── adr/                      # Architecture decision records
+│   ├── startup/                  # Strategy (FODA, roadmap, Spanish)
+│   └── research/
+│       └── notebook/             # Optional Python/Jupyter experiments (not runtime)
+├── env.example                   # Copy to .env at repo root (backend + frontend + scripts)
 ├── hardhat.config.js
 ├── package.json                  # Hardhat + contracts tooling
-└── .env                          # gitignored — copy from config/env.example
+└── .env                          # gitignored — copy from env.example
 ```
 
 ---
@@ -764,13 +768,16 @@ PraesagiumChain/
 ## Testing
 
 ```bash
-# Contract tests (Hardhat) — 5 tests
+# Contract tests (Hardhat)
 npm test
 
-# Backend tests (Rust) — 2 tests
+# Backend tests (Rust)
 npm run test:backend
 
-# All tests
+# Frontend unit tests (Vitest)
+npm run test:frontend
+
+# All tests (contracts + backend + frontend)
 npm run test:all
 
 # Dependency audit
@@ -783,6 +790,7 @@ npm run audit
 |-------|-------|
 | Contract (Hardhat) | Market creation, bet placement, resolution, payout claiming, access control |
 | Backend (Rust) | API endpoint responses, PHPE engine output validation |
+| Frontend (Vitest) | API response helpers (e.g. paginated markets parsing) |
 
 ---
 
@@ -852,6 +860,7 @@ UI stack: Next.js 14 App Router, wagmi v2, Tailwind, lightweight-charts, dark/li
 
 | Document | Description |
 |----------|-------------|
+| [docs/README.md](docs/README.md) | Documentation index (all guides) |
 | [docs/setup.md](docs/setup.md) | Setup — prerequisites, install, run |
 | [docs/architecture.md](docs/architecture.md) | Repo layout, contracts, DB, PHPE, frontend |
 | [docs/operations.md](docs/operations.md) | Security, CI audits, scaling |
@@ -862,7 +871,7 @@ UI stack: Next.js 14 App Router, wagmi v2, Tailwind, lightweight-charts, dark/li
 | [docs/adr/adr-001-clickhouse-analytics.md](docs/adr/adr-001-clickhouse-analytics.md) | ADR: ClickHouse |
 | [INSTALL.md](INSTALL.md) | Windows / WSL supplement |
 | [scripts/README.md](scripts/README.md) | `scripts/` index |
-| [StartUp/](StartUp/) | Strategy (FODA, roadmap, Spanish) |
+| [docs/startup/](docs/startup/) | Strategy (FODA, roadmap, Spanish) |
 | [cre/README.md](cre/README.md) | CRE workflows |
 
 ---
@@ -918,8 +927,8 @@ This project follows the [Chainlink Prediction Markets Hackathon](https://chain.
 ## Contributing
 
 1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
-2. Install dependencies: `npm install && cd frontend && npm install && cd ../backend-rust && cargo build`
-3. Copy `config/env.example` to `.env`; configure (single file for backend + frontend)
+2. Install dependencies: `npm install` (includes frontend workspace) and `cd backend-rust && cargo build`
+3. Copy `env.example` to `.env`; configure (single file for backend + frontend)
 4. Make your changes; ensure tests pass: `npm run test:all`
 5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`), TypeScript (`npm run lint` in `frontend/`)
 6. Open a pull request against `main` with a clear description

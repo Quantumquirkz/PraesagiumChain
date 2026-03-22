@@ -86,7 +86,7 @@ or:
 npm run install:frontend
 ```
 
-That cleans `frontend/node_modules` and does a fresh `npm install` in the frontend.
+That cleans `node_modules` and `frontend/node_modules` and does a fresh `npm install` from the repo root (which includes the frontend workspace).
 
 ---
 

@@ -10,8 +10,8 @@ If you use **Windows**, also read **[INSTALL.md](../INSTALL.md)** at the repo ro
 
 If you are joining the project or need to run it on a new machine:
 
-1. **Prerequisites** — Install Node.js 18+, Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands (see [INSTALL.md](../INSTALL.md) if anything fails with Windows Node).
-2. **Single `.env`** — The whole stack (backend, frontend, scripts) uses one `.env` file at the repo root. Copy from `config/env.example`.
+1. **Prerequisites** — Install **Node.js 20** (matches CI), Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands (see [INSTALL.md](../INSTALL.md) if anything fails with Windows Node).
+2. **Single `.env`** — The whole stack (backend, frontend, scripts) uses one `.env` file at the repo root. Copy from `env.example` at the repo root.
 3. **Four terminals** — You need: (1) Hardhat node, (2) backend, (3) one-time deploy, (4) frontend. See [Summary: Minimal Commands](#summary-minimal-commands-to-run-the-project) at the bottom.
 4. **Docker permission denied** — On Linux/WSL, if `./scripts/docker-up.sh` fails with permission denied, run `sudo ./scripts/docker-up.sh`.
 5. **Frontend chunk errors** — If you see `Cannot find module './xxxx.js'` or chunk load failures, delete the build cache and restart: `cd frontend && rm -rf .next && npm run dev`.
@@ -75,7 +75,7 @@ cd PraesagiumChain
 npm install
 
 # Install frontend dependencies (Next.js, wagmi, Tailwind, etc.)
-cd frontend && npm install && cd ..
+npm install
 ```
 
 **Important:** The project uses **Hardhat 2.x**. If you previously ran `npm audit fix --force` and upgraded to Hardhat 3, revert with:
@@ -92,7 +92,7 @@ The project uses a **single `.env` file** at the repository root for both backen
 
 ```bash
 # Copy the template
-cp config/env.example .env
+cp env.example .env
 
 # Edit .env with your favorite editor
 nano .env   # or: code .env, vim .env, etc.
@@ -124,7 +124,7 @@ nano .env   # or: code .env, vim .env, etc.
 - `CLICKHOUSE_URL` — e.g. `http://localhost:8123` (for analytics)
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` — For mobile wallet support via WalletConnect (get from [cloud.walletconnect.com](https://cloud.walletconnect.com))
 
-See [config/env.example](../config/env.example) and [configuration.md](configuration.md) for all options.
+See [env.example](../env.example) and [configuration.md](configuration.md) for all options.
 
 ---
 
@@ -364,6 +364,16 @@ npm run dev
 
 Do not commit the `.next` folder; it is gitignored.
 
+### Stale Solidity build artifacts (`artifacts/`, `cache/`)
+
+If compilation errors persist after changing contracts, clean Hardhat outputs at the repo root:
+
+```bash
+npx hardhat clean
+```
+
+Then run `npm run compile` again. These directories are gitignored; do not commit them.
+
 ### Redis connection refused
 
 Docker maps Redis to port **6380** on the host. Use `REDIS_URL=redis://localhost:6380` (not 6379).
@@ -387,8 +397,8 @@ Use one of the Hardhat test accounts and import its private key into MetaMask (s
 # 1. Setup
 git clone https://github.com/quantumquirkz/PraesagiumChain.git
 cd PraesagiumChain
-npm install && cd frontend && npm install && cd ..
-cp config/env.example .env
+npm install && npm install
+cp env.example .env
 # Edit .env with DATABASE_URL, PRIVATE_KEY, AI_PROVIDER, etc.
 
 # 2. Infrastructure
