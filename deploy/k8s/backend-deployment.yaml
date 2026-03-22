@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: praesagium-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: praesagium-backend
+  template:
+    metadata:
+      labels:
+        app: praesagium-backend
+    spec:
+      containers:
+        - name: backend
+          # Replace :latest with a semver tag in production (e.g. :1.2.3)
+          image: praesagium-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          envFrom:
+            - secretRef:
+                name: praesagium-secrets
+            - configMapRef:
+                name: praesagium-config
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: praesagium-backend
+spec:
+  selector:
+    app: praesagium-backend
+  ports:
+    - port: 4000
+      targetPort: 4000
+  type: ClusterIP
