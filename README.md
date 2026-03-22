@@ -700,13 +700,13 @@ PraesagiumChain/
 │   │   ├── positions/            # My positions + payout claiming
 │   │   ├── about/                # About page
 │   │   └── signals/              # Live signals dashboard (PHPE + hybrid)
-│   ├── components/               # Reusable UI components
+│   ├── features/markets/         # Market domain: list/detail, bets, filters, private markets, skeletons
+│   │   ├── components/           # market-card, market-detail, bet-form, market-filters, etc.
+│   │   └── hooks/                # use-markets, use-place-bet, use-private-markets, on-chain readers
+│   ├── components/               # Shared UI (non–market-specific where possible)
 │   │   ├── ui/                   # shadcn/ui primitives (Button, Card, Dialog, etc.)
 │   │   ├── logo.tsx              # Brand logo (hexagon + circles, theme-aware)
-│   │   ├── market-card.tsx       # Market list item with YES/NO stake bar
-│   │   ├── market-detail.tsx     # Full market view (CoinGecko-inspired layout)
 │   │   ├── tv-chart.tsx          # Interactive candlestick chart (lightweight-charts v5)
-│   │   ├── bet-form.tsx          # Yes/No bet form with payout estimation
 │   │   ├── live-ticker.tsx       # Live price ticker bar
 │   │   ├── countdown.tsx         # Countdown blocks (days/hours/min/sec)
 │   │   ├── stats-cards.tsx       # Dashboard statistics cards
@@ -714,10 +714,8 @@ PraesagiumChain/
 │   │   ├── footer.tsx            # API health status + explorer link
 │   │   └── providers.tsx         # WagmiProvider + QueryClientProvider + ThemeProvider
 │   ├── hooks/
-│   │   ├── use-markets.ts        # React Query hook for market list + stats
 │   │   ├── use-network-guard.ts  # Enforces Sepolia; reads chainId from window.ethereum
-│   │   ├── use-place-bet.ts      # wagmi writeContract wrapper for placeBet
-│   │   ├── use-ohlcv-history.ts  # Fetches OHLCV data for tv-chart
+│   │   ├── use-ohlcv-data.ts     # Fetches OHLCV data for tv-chart
 │   │   └── use-signal-fusion.ts  # Hybrid prediction signal aggregation
 │   ├── lib/
 │   │   ├── api.ts                # All backend API calls (fetch wrapper)
@@ -759,6 +757,7 @@ PraesagiumChain/
 │   ├── startup/                  # Strategy (FODA, roadmap, Spanish)
 │   └── research/
 │       └── notebook/             # Optional Python/Jupyter experiments (not runtime)
+├── test/                         # Hardhat contract tests (see hardhat.config.js paths.tests)
 ├── env.example                   # Copy to .env at repo root (backend + frontend + scripts)
 ├── hardhat.config.js
 ├── package.json                  # Hardhat + contracts tooling

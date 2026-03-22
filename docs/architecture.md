@@ -7,6 +7,7 @@ Overview of architecture and **repository layout**. Implementation details live 
 | Directory | Role |
 |-----------|------|
 | [`contracts/`](../contracts/) | Solidity (Hardhat): `npm run compile`, `npm test` |
+| [`test/`](../test/) | Hardhat contract tests (`paths.tests` in `hardhat.config.js`) |
 | [`backend/`](../backend/) | Axum API, PHPE: `npm run backend`, `cargo test` |
 | [`frontend/`](../frontend/) | Next.js: `cd frontend && npm run dev` |
 | [`cre/`](../cre/) | CRE workflows (TypeScript) |
@@ -139,6 +140,8 @@ Formula: weighted average with graceful degradation if a source fails.
 ## 5. Frontend
 
 **Location:** [`frontend/`](../frontend/)
+
+Domain-oriented UI for markets lives under [`frontend/features/markets/`](../frontend/features/markets/) (components, hooks, and market skeletons); shared UI primitives remain under `frontend/components/` (e.g. `ui/`, layout chrome).
 
 ### Stack
 
