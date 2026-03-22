@@ -20,7 +20,7 @@ import {
   ResolutionSourcePicker,
   type ResolutionSourceParams,
 } from "@/components/resolution-source-picker";
-import { LiveContextPreview } from "@/components/live-context-preview";
+import { LiveContextPreview } from "@/features/markets/components/live-context-preview";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import {

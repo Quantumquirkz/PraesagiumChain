@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SignalFusionPanel } from "@/components/signal-fusion-panel";
+import { SignalFusionPanel } from "@/features/markets/components/signal-fusion-panel";
 import { cn } from "@/lib/utils";
 
 // ─── Source config ────────────────────────────────────────────────────────────

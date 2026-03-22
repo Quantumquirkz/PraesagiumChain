@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCommitReveal } from "@/hooks/use-commit-reveal";
+import { useCommitReveal } from "@/features/markets/hooks/use-commit-reveal";
 import { usePrivateMarketCommitCount, usePrivateTotalCommitted } from "@/features/markets/hooks/use-private-markets";
 import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";

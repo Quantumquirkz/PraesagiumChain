@@ -17,7 +17,7 @@ import {
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CommitRevealWizard } from "@/components/commit-reveal-wizard";
+import { CommitRevealWizard } from "@/features/markets/components/commit-reveal-wizard";
 import { JoinPrivateMarketCard, getStoredPrivateMarketIds, addStoredPrivateMarketId } from "@/features/markets/components/join-private-market-card";
 import { usePrivateMarket } from "@/features/markets/hooks/use-private-markets";
 import { getPrivateMarketsByCreator } from "@/lib/api";

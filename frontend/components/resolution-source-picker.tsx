@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DollarSign, Cloud, Trophy, Brain, Newspaper } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { WeatherChart } from "@/components/weather-chart";
+import { WeatherChart } from "@/features/markets/components/weather-chart";
 import { resolveMapsLocation } from "@/lib/api";
 import { cn } from "@/lib/utils";
 

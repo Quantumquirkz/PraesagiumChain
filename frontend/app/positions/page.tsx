@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { WalletButton } from "@/components/wallet-button";
 import { NoPositions } from "@/components/empty-states/no-positions";
 import { cn } from "@/lib/utils";
-import { useClaimWinnings } from "@/hooks/use-claim-winnings";
+import { useClaimWinnings } from "@/features/markets/hooks/use-claim-winnings";
 import { TxStatus } from "@/components/tx-status";
 import { useNetworkGuard } from "@/hooks/use-network-guard";
 import { useIsMounted } from "@/hooks/use-is-mounted";

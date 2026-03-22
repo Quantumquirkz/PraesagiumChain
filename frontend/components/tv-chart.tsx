@@ -17,7 +17,7 @@ import {
   type Time,
   type MouseEventParams,
 } from "lightweight-charts";
-import { useOHLCVHistory } from "@/hooks/use-ohlcv-data";
+import { useOHLCVHistory } from "@/features/markets/hooks/use-ohlcv-data";
 import {
   generateMockOHLCV,
   computeMA,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSignalFusion, type SignalFusionParams } from "@/hooks/use-signal-fusion";
+import { useSignalFusion, type SignalFusionParams } from "@/features/markets/hooks/use-signal-fusion";
 import { cn } from "@/lib/utils";
 
 interface SignalFusionPanelProps {

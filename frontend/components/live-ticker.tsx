@@ -1,6 +1,6 @@
 "use client";
 
-import { useTickerPrices } from "@/hooks/use-ticker-prices";
+import { useTickerPrices } from "@/features/markets/hooks/use-ticker-prices";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
