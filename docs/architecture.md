@@ -153,7 +153,9 @@ Domain-oriented UI for markets lives under [`frontend/features/markets/`](../fro
 | Styling | Tailwind CSS |
 | Components | Radix UI + shadcn/ui |
 | State | TanStack React Query |
-| Charts | lightweight-charts v5 (TradingView) |
+| Charts | lightweight-charts v5 (TradingView) + recharts (see below) |
+
+**Chart libraries (why two):** `lightweight-charts` powers the interactive OHLCV / indicator chart ([`tv-chart.tsx`](../frontend/components/tv-chart.tsx)) for a TradingView-like experience. `recharts` is used only for the PHPE probability history area chart ([`features/markets/components/phpe-history-chart.tsx`](../frontend/features/markets/components/phpe-history-chart.tsx)) because it composes well with React and reference lines for uncertainty bands. Unifying on a single library would reduce bundle size but require a non-trivial rewrite of one of these UIs; until then both are intentional.
 
 ### Key Pages
 
