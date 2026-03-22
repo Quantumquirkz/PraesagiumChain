@@ -7,7 +7,7 @@ Overview of architecture and **repository layout**. Implementation details live 
 | Directory | Role |
 |-----------|------|
 | [`contracts/`](../contracts/) | Solidity (Hardhat): `npm run compile`, `npm test` |
-| [`backend-rust/`](../backend-rust/) | Axum API, PHPE: `npm run backend`, `cargo test` |
+| [`backend/`](../backend/) | Axum API, PHPE: `npm run backend`, `cargo test` |
 | [`frontend/`](../frontend/) | Next.js: `cd frontend && npm run dev` |
 | [`cre/`](../cre/) | CRE workflows (TypeScript) |
 | [`scripts/`](../scripts/) | Deploy, demo — [scripts/README.md](../scripts/README.md) |
@@ -84,7 +84,7 @@ Market lifecycle: **Open** → **Locked** (closeTime) → **Resolved** (resolver
 
 ## 2. Database Schema
 
-**Location:** [`backend-rust/migrations_pg/`](../backend-rust/migrations_pg/)
+**Location:** [`backend/migrations_pg/`](../backend/migrations_pg/)
 
 Migrations: `001_initial.sql`, `007_resolution_config.sql`, `008_private_market_access_keys.sql`
 
@@ -105,7 +105,7 @@ The **EventIndexer** keeps the database in sync with on-chain events (`MarketCre
 
 ## 3. On-Chain / Off-Chain Sync
 
-**EventIndexer:** [`backend-rust/src/services/indexer.rs`](../backend-rust/src/services/indexer.rs)
+**EventIndexer:** [`backend/src/services/indexer.rs`](../backend/src/services/indexer.rs)
 
 - Polls RPC for `MarketCreated`, `MarketResolved`, `BetPlaced`
 - Inserts/updates `markets`, `creator_reputation`
@@ -117,13 +117,13 @@ The **EventIndexer** keeps the database in sync with on-chain events (`MarketCre
 
 ## 4. PHPE and Hybrid Prediction
 
-**PHPE (Praesagium Hybrid Predictive Engine):** [`backend-rust/phpe/`](../backend-rust/phpe/)
+**PHPE (Praesagium Hybrid Predictive Engine):** [`backend/phpe/`](../backend/phpe/)
 
 Pipeline: **Normalize** → **Causal infer** → **Temporal encode** → **Bayesian predict** → **Calibrate**
 
 Output: `probability` ∈ [0, 1], `uncertainty` ∈ [0, 1] (epistemic band)
 
-**Hybrid predictor:** [`backend-rust/src/services/hybrid.rs`](../backend-rust/src/services/hybrid.rs)
+**Hybrid predictor:** [`backend/src/services/hybrid.rs`](../backend/src/services/hybrid.rs)
 
 Fuses three signals:
 - PHPE time-series (35%)
@@ -179,6 +179,6 @@ Single `.env` at repo root. Next.js loads via `loadEnvConfig` in `next.config.js
 ## Source Files Reference
 
 - Contracts: [`contracts/`](../contracts/)
-- Backend: [`backend-rust/src/`](../backend-rust/src/)
-- PHPE: [`backend-rust/phpe/`](../backend-rust/phpe/)
+- Backend: [`backend/src/`](../backend/src/)
+- PHPE: [`backend/phpe/`](../backend/phpe/)
 - Frontend: [`frontend/`](../frontend/)

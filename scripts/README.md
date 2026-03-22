@@ -11,7 +11,7 @@ Shared helpers: [`lib/load-env.js`](lib/load-env.js) loads the repo-root `.env` 
 | `check-node.sh` | On WSL, verify Node is Linux (`linux`), not Windows (`win32`) | WSL | `./scripts/check-node.sh` |
 | `docker-up.sh` | Start Postgres, Redis, ClickHouse (`docker compose`), apply ClickHouse DDL | Docker | `./scripts/docker-up.sh` |
 | `backup-db.sh` | PostgreSQL dump using `DATABASE_URL` from `.env` | DB running | `./scripts/backup-db.sh` |
-| `setup-and-run-backend.sh` | Ensure build deps, then `cargo run` in `backend-rust` | Rust | `./scripts/setup-and-run-backend.sh` |
+| `setup-and-run-backend.sh` | Ensure build deps, then `cargo run` in `backend` | Rust | `./scripts/setup-and-run-backend.sh` |
 | `run-backend.js` | Start backend with repo-root `.env` loaded (used by `npm run backend`) | `.env`, Postgres | `npm run backend` |
 | `syncCreAbi.js` | Copy OracleConsumer ABI from Hardhat artifacts into CRE (`npm run sync:cre-abi`) | After `npm run compile` | `npm run sync:cre-abi` |
 | `stress-api.js` | Load test `/health` and `/api/markets` on the API | Backend up | `node scripts/stress-api.js [baseUrl]` |

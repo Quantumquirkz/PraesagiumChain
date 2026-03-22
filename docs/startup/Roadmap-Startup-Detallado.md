@@ -274,7 +274,7 @@ test/
 cargo add proptest --dev
 
 # Estructura de tests
-backend-rust/tests/
+backend/tests/
 ├── api/
 │   ├── markets_test.rs
 │   ├── predictions_test.rs
@@ -460,17 +460,17 @@ contract PositionToken is ERC1155, AccessControl {
 |---------|-------------|---------------------|
 | AMM Pool | Constant product market maker | `contracts/LiquidityPool.sol` (nuevo) |
 | Position Tokens | ERC-1155 transferibles | `contracts/PositionToken.sol` (nuevo) |
-| Price Oracle | Precio desde AMM | `backend-rust/src/services/price.rs` |
+| Price Oracle | Precio desde AMM | `backend/src/services/price.rs` |
 | UI Trading | Swap interface | `frontend/components/swap-form.tsx` |
 
 #### Semanas 9-12: UX Competitiva
 
 | Feature | Descripción | Archivos a modificar |
 |---------|-------------|---------------------|
-| Categorías | Crypto, Política, Deportes, etc. | `frontend/app/markets/page.tsx`, `backend-rust/src/api/markets.rs` |
+| Categorías | Crypto, Política, Deportes, etc. | `frontend/app/markets/page.tsx`, `backend/src/api/markets.rs` |
 | Activity Feed | Apuestas recientes | `frontend/components/activity-feed.tsx` (nuevo) |
-| Leaderboards | Top traders | `backend-rust/src/api/leaderboard.rs` (nuevo) |
-| Notificaciones | Push + Email | `backend-rust/src/services/notifications.rs` (nuevo) |
+| Leaderboards | Top traders | `backend/src/api/leaderboard.rs` (nuevo) |
+| Notificaciones | Push + Email | `backend/src/services/notifications.rs` (nuevo) |
 | Search | Filtros avanzados | `frontend/components/search-filters.tsx` |
 
 #### Semanas 13-16: Diferenciación
@@ -478,7 +478,7 @@ contract PositionToken is ERC1155, AccessControl {
 | Feature | Descripción | Archivos a modificar |
 |---------|-------------|---------------------|
 | PHPE Dashboard | Visualización incertidumbre | `frontend/app/signals/page.tsx` |
-| API Pública | OpenAPI/Swagger | `backend-rust/src/api/openapi.rs` (nuevo) |
+| API Pública | OpenAPI/Swagger | `backend/src/api/openapi.rs` (nuevo) |
 | Embeds | Widgets para terceros | `frontend/components/embed/` (nuevo) |
 
 ### 2.2 Sistema de Categorías

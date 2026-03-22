@@ -25,7 +25,7 @@ For the full template, see [env.example](../env.example) at the repo root.
 | `PREDICTION_MARKET_ADDRESS` | Yes (indexer) | Deployed PredictionMarket address. Same as `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS`. |
 | `PORT` | No | Backend HTTP port (default `4000`). |
 | `REDIS_URL` | No | When backend runs on host and Docker maps Redis to 6380: `redis://localhost:6380`. |
-| `CLICKHOUSE_URL` | No | Optional analytics (e.g. `http://localhost:8123`). Leave unset for normal local dev; the API and PostgreSQL stack run fully without ClickHouse. When set, market events are mirrored from the in-process event bus for analytics ([`backend-rust/src/clickhouse.rs`](../backend-rust/src/clickhouse.rs)). |
+| `CLICKHOUSE_URL` | No | Optional analytics (e.g. `http://localhost:8123`). Leave unset for normal local dev; the API and PostgreSQL stack run fully without ClickHouse. When set, market events are mirrored from the in-process event bus for analytics ([`backend/src/clickhouse.rs`](../backend/src/clickhouse.rs)). |
 | `AI_PROVIDER` | No | `mock` (default if unset), `gemini`, or `huggingface`. Any other value (including legacy `groq`) falls back to **mock** — there is no Groq provider wired in the backend yet. |
 | `GEMINI_API_KEY` | No* | Used when `AI_PROVIDER=gemini`. If missing, backend uses mock AI. |
 | `GEMINI_MODEL` | No | Gemini model (default `gemini-2.0-flash`). |

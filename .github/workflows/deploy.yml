@@ -86,12 +86,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Clippy (backend)
-        run: cd backend-rust && cargo clippy -- -D warnings
+        run: cd backend && cargo clippy -- -D warnings
       - name: Run backend tests
         run: npm run test:backend
       # Advisory DB may report transitive issues (ethers, sqlx); run `cargo audit` locally and track upgrades
       - name: Security audit (cargo)
         run: |
           cargo install cargo-audit 2>/dev/null || true
-          cd backend-rust && cargo audit || true
+          cd backend && cargo audit || true
 

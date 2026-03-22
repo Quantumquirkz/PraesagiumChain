@@ -19,13 +19,13 @@
     "verify:polygon": "npx hardhat run scripts/verify/verify.js --network polygonAmoy",
     "backend": "node scripts/run-backend.js",
     "demo": "npx hardhat run scripts/demo/demoE2E.js --network localhost",
-    "test:backend": "cd backend-rust && cargo test",
+    "test:backend": "cd backend && cargo test",
     "test:frontend": "npm run test -w frontend",
     "test:all": "npm test && npm run test:backend && npm run test:frontend",
     "sync:cre-abi": "node scripts/syncCreAbi.js",
     "sync:market": "npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia",
     "register:upkeep": "npx hardhat run scripts/registerUpkeep.js --network sepolia",
-    "audit": "npm audit --audit-level=critical && (cd backend-rust && cargo audit || true)"
+    "audit": "npm audit --audit-level=critical && (cd backend && cargo audit || true)"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

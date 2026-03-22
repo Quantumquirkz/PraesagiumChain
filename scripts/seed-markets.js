@@ -244,7 +244,7 @@ async function main() {
     console.log("✓ Backend healthy\n");
   } catch {
     console.error("✗ Backend not reachable at", BASE_URL);
-    console.error("  Make sure to run: cd backend-rust && cargo run\n");
+    console.error("  Make sure to run: cd backend && cargo run\n");
     process.exit(1);
   }
 

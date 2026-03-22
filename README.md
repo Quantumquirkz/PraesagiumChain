@@ -479,7 +479,7 @@ cd cre && cre workflow simulate praesagium-resolver --target production-settings
 ### Rust (direct)
 
 ```bash
-cd backend-rust
+cd backend
 cargo build --release        # Build optimized binary
 cargo run --release          # Run backend directly
 cargo test                   # Run backend tests
@@ -671,7 +671,7 @@ PraesagiumChain/
 │   ├── ConditionalMarket.sol     # Markets chained on other markets
 │   ├── ReputationSystem.sol      # On-chain creator reputation
 │   └── interfaces/               # IPredictionMarket, IReputationSystem
-├── backend-rust/
+├── backend/
 │   ├── src/
 │   │   ├── api/                  # Route handlers (markets, ai, hybrid, report, reputation, sources, metrics)
 │   │   ├── services/             # Business logic + data sources (7 sources) + AI providers
@@ -929,7 +929,7 @@ This project follows the [Chainlink Prediction Markets Hackathon](https://chain.
 ## Contributing
 
 1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
-2. Install dependencies: `npm install` (includes frontend workspace) and `cd backend-rust && cargo build`
+2. Install dependencies: `npm install` (includes frontend workspace) and `cd backend && cargo build`
 3. Copy `env.example` to `.env`; configure (single file for backend + frontend)
 4. Make your changes; ensure tests pass: `npm run test:all`
 5. Follow code style: Solidity (OpenZeppelin conventions), Rust (`cargo fmt && cargo clippy`), TypeScript (`npm run lint` in `frontend/`)

@@ -43,7 +43,7 @@ npm install --ignore-scripts
 echo ""
 echo "==> Backend Rust: cargo build"
 if command -v cargo &>/dev/null; then
-  cd "$ROOT/backend-rust"
+  cd "$ROOT/backend"
   cargo build
 else
   echo "    (cargo not installed; to install: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh)"

@@ -23,7 +23,7 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 
 ### Development Setup
 
-1. Clone the repository and run `npm install` and `cd backend-rust && cargo build`.
+1. Clone the repository and run `npm install` and `cd backend && cargo build`.
 2. Copy `env.example` to `.env` and fill required values.
 3. See [docs/setup.md](docs/setup.md) for the full setup guide.
 
@@ -32,7 +32,7 @@ Be respectful and collaborative. We aim to maintain a welcoming environment for 
 1. Create a branch from `main` (e.g. `feature/your-feature` or `fix/your-fix`).
 2. Keep changes focused and reasonably scoped.
 3. Run tests: `npm run test:all` (contracts, Rust backend, and frontend Vitest), or individually `npm test`, `npm run test:backend`, `npm run test:frontend`.
-4. Ensure the code compiles and passes linting (`cd frontend && npm run lint` after `npm install` at repo root; `cd backend-rust && cargo clippy -- -D warnings`). Prefer small, focused PRs for removing unused code or tightening imports.
+4. Ensure the code compiles and passes linting (`cd frontend && npm run lint` after `npm install` at repo root; `cd backend && cargo clippy -- -D warnings`). Prefer small, focused PRs for removing unused code or tightening imports.
 5. Never commit `.env` or secrets; use `env.example` as reference.
 6. Update documentation if you change behavior or add features.
 
@@ -49,7 +49,7 @@ The root `package.json` declares `"workspaces": ["frontend"]`. Install once from
 ### Cursor: rules, skills, and agents
 
 - **Workspace rules** (`.cursorrules`) define architecture and quality bars; large or risky changes should have an [ADR](docs/adr/) when they introduce new patterns or dependencies.
-- **Skills** in Cursor are optional checklists—use them for the area you touch (e.g. Postgres when editing `backend-rust/migrations_pg/`, React/Next for `frontend/`), not as a reason to add scope.
+- **Skills** in Cursor are optional checklists—use them for the area you touch (e.g. Postgres when editing `backend/migrations_pg/`, React/Next for `frontend/`), not as a reason to add scope.
 - **Subagents / Task tool:** useful for exploring unfamiliar parts of the repo or fixing CI; human review remains required for architecture and security decisions.
 
 ### Repository layout

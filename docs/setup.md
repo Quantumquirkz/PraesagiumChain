@@ -253,7 +253,7 @@ npm run test:backend
 Or directly:
 
 ```bash
-cd backend-rust && cargo test
+cd backend && cargo test
 ```
 
 ### Run all tests
@@ -265,7 +265,7 @@ npm run test:all
 ### Backend Clippy (lint)
 
 ```bash
-cd backend-rust && cargo clippy -- -D warnings
+cd backend && cargo clippy -- -D warnings
 ```
 
 ### Frontend lint
@@ -281,7 +281,7 @@ cd frontend && npm run lint
 npm run audit
 
 # Rust (requires: cargo install cargo-audit)
-cd backend-rust && cargo audit
+cd backend && cargo audit
 ```
 
 ---

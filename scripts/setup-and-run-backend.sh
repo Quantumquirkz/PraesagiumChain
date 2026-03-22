@@ -16,5 +16,5 @@ if ! command -v pkg-config &>/dev/null; then
 fi
 
 . "$HOME/.cargo/env" 2>/dev/null || true
-cd "$ROOT/backend-rust"
+cd "$ROOT/backend"
 exec cargo run

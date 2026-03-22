@@ -65,14 +65,14 @@ async function simulate() {
     console.log(`Simulated outcome: ${outcome} (${outcome ? "Yes" : "No"})`);
     console.log("\nIn production: Chainlink sends this outcome to OracleConsumer.");
   } catch (e) {
-    console.log("(Backend not available - run: cd backend-rust && cargo run)");
+    console.log("(Backend not available - run: cd backend && cargo run)");
   }
 
   console.log("\n--- Chainlink files ---");
   console.log("- contracts/CREWorkflow.sol");
   console.log("- contracts/OracleConsumer.sol");
   console.log("- contracts/PredictionMarket.sol");
-  console.log("- backend-rust/scripts/ai/sentiment-analysis.js (Chainlink Functions)");
+  console.log("- backend/scripts/ai/sentiment-analysis.js (Chainlink Functions)");
 }
 
 simulate().catch(console.error);

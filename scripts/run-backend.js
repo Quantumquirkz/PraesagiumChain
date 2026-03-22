@@ -32,7 +32,7 @@ if (kill.status === 0 && kill.stdout) {
 }
 
 const isProd = process.env.NODE_ENV === 'production';
-const manifestPath = path.join(__dirname, '..', 'backend-rust', 'Cargo.toml');
+const manifestPath = path.join(__dirname, '..', 'backend', 'Cargo.toml');
 const args = ['run', '--manifest-path', manifestPath];
 if (isProd) args.splice(1, 0, '--release');
 const proc = spawn('cargo', args, {

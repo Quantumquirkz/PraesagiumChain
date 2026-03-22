@@ -4,7 +4,7 @@ Single reference for audits, GitHub settings, pre-mainnet checks, and scaling no
 
 **Audits:** CI runs `npm audit --audit-level=critical` (root + `frontend/`). `cargo audit` runs but does not fail the job while transitive advisories (ethers/sqlx) are tracked; run locally before releases. Local: `npm run audit`.
 
-The root `audit` script ends with `cd backend-rust && cargo audit || true` so a non-zero exit from `cargo audit` does not block the rest of the chain; treat advisories as triage, not necessarily ship-blockers.
+The root `audit` script ends with `cd backend && cargo audit || true` so a non-zero exit from `cargo audit` does not block the rest of the chain; treat advisories as triage, not necessarily ship-blockers.
 
 **GitHub:** Enable Dependabot alerts, secret scanning, and optional dependency review on PRs.
 

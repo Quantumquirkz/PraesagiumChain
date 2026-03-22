@@ -26,7 +26,7 @@ REST API with PHPE prediction engine, AI (Gemini / Hugging Face / mock), reputat
 
 ## 2. Configuration (`.env`)
 
-The backend loads `.env` from the **repository root** (parent of `backend-rust`). You can also place a `.env` inside `backend-rust/` for local overrides.
+The backend loads `.env` from the **repository root** (parent of `backend`). You can also place a `.env` inside `backend/` for local overrides.
 
 1. Copy the template (from repo root):
    ```bash
@@ -52,7 +52,7 @@ The backend can run an **event indexer** that syncs on-chain market events to th
 
 ## 3. Build
 
-From this directory (`backend-rust`):
+From this directory (`backend`):
 
 ```bash
 cargo build
@@ -84,7 +84,7 @@ cargo test
 From the repo root (where `.env` lives):
 
 ```bash
-cd backend-rust
+cd backend
 cargo run --release
 ```
 
@@ -118,9 +118,9 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 | Action        | Command (from repo root) |
 |---------------|---------------------------|
 | Create `.env` | `cp env.example .env` |
-| Build        | `cd backend-rust && cargo build --release` |
-| Test         | `cd backend-rust && cargo test` |
-| Run API      | `cd backend-rust && cargo run --release` |
+| Build        | `cd backend && cargo build --release` |
+| Test         | `cd backend && cargo test` |
+| Run API      | `cd backend && cargo run --release` |
 
 ---
 
