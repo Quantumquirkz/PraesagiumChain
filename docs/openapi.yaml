@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: PraesagiumChain Backend API
+  version: 0.1.0
+  description: |
+    REST API (Axum) for prediction markets, PHPE/hybrid predictions, and CRE resolution helpers.
+    Base URL is typically `http://localhost:4000` in development (Next.js may proxy `/api/*`).
+
+servers:
+  - url: http://localhost:4000
+    description: Local backend
+  - url: https://api.example.com
+    description: Production (replace with your host)
+
+paths:
+  /health:
+    get:
+      summary: Liveness / readiness with database check
+      responses:
+        "200":
+          description: JSON status and DB connectivity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  status: { type: string }
+                  version: { type: string }
+                  service: { type: string }
+                  db: { type: string }
+  /metrics:
+    get:
+      summary: Prometheus text metrics (gauges)
+      responses:
+        "200":
+          description: OpenMetrics text format
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/metrics:
+    get:
+      summary: JSON metrics (cache, markets, indexer snapshot)
+      responses:
+        "200":
+          description: Detailed JSON metrics for dashboards
+  /api/markets:
+    get:
+      summary: List markets (paginated)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+    post:
+      summary: Create market (off-chain record; on-chain flow uses contracts + indexer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question: { type: string }
+                close_time: { type: integer }
+                resolve_time: { type: integer }
+                market_type: { type: string }
+  /api/predict/hybrid:
+    post:
+      summary: Hybrid probability (PHPE + AI + price sources)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+  /api/ai/sentiment:
+    post:
+      summary: AI sentiment probability (used by CRE workflows)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text_to_analyze: { type: string }

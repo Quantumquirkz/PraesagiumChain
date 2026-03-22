@@ -12,6 +12,7 @@ Canonical guides for PraesagiumChain.
 | [operations.md](operations.md) | Security, CI, scaling notes |
 | [contracts.md](contracts.md) | Contract overview |
 | [audit.md](audit.md) | Where to verify API flows in source |
+| [openapi.yaml](openapi.yaml) | Machine-readable API sketch (subset of routes; source of truth is Rust handlers) |
 | [adr/](adr/) | Architecture decision records |
 
 ## Non-runtime material

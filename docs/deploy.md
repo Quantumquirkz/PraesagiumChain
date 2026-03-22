@@ -139,6 +139,29 @@ npm run verify:sepolia
 
 ---
 
+## Go-live checklist (staging / production)
+
+Use this before promoting a release or pointing real users at an environment.
+
+1. **Configuration**
+   - `ENVIRONMENT=production`, `JWT_SECRET` set (long random), `CORS_ORIGINS` lists only trusted web origins.
+   - `DATABASE_URL` points to managed PostgreSQL (not `localhost`).
+   - `PREDICTION_MARKET_ADDRESS` and `NEXT_PUBLIC_*` match the same network and deployment.
+2. **Data**
+   - Run migrations via backend startup (SQLx) or verify migration job completed.
+   - Backups enabled for Postgres; retention documented.
+3. **Smoke tests**
+   - `GET /health` returns `ok: true` with DB `ok`.
+   - `GET /metrics` (Prometheus) and `GET /api/metrics` (JSON) respond.
+   - Create a test market flow in UI or API on the target network.
+4. **Rollback**
+   - Previous container image tags (or Git SHA) recorded; know how to revert Deployments (`kubectl rollout undo` or platform equivalent).
+5. **Security**
+   - No private keys or API keys in git; secrets from a manager (K8s External Secrets, Sealed Secrets, or host env).
+   - Review `docs/operations.md` for audit and Slither policy.
+
+---
+
 ## Troubleshooting
 
 - **"Cannot read properties of undefined (reading 'address')"**  

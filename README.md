@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/quantumquirkz/PraesagiumChain/actions"><img src="https://img.shields.io/github/actions/workflow/status/quantumquirkz/PraesagiumChain/deploy.yml?branch=main&label=CI&style=flat-square" alt="CI" /></a>
+  <a href="https://github.com/quantumquirkz/PraesagiumChain/actions/workflows/deploy.yml"><img src="https://img.shields.io/github/actions/workflow/status/quantumquirkz/PraesagiumChain/deploy.yml?label=CI&style=flat-square" alt="CI" /></a>
   <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity" alt="Solidity" />
   <img src="https://img.shields.io/badge/Rust-1.70+-DEA584?style=flat-square&logo=rust" alt="Rust" />
   <img src="https://img.shields.io/badge/Chainlink-CRE-375BD2?style=flat-square&logo=chainlink" alt="Chainlink CRE" />
@@ -794,7 +794,7 @@ npm run audit
 |-------|-------|
 | Contract (Hardhat) | Market creation, bet placement, resolution, payout claiming, access control |
 | Backend (Rust) | API endpoint responses, PHPE engine output validation |
-| Frontend (Vitest) | API response helpers (e.g. paginated markets parsing) |
+| Frontend (Vitest) | API response helpers, `lib/utils` formatting helpers; run `npm run test:coverage -w frontend` for coverage |
 
 ---
 

@@ -133,7 +133,7 @@ Fuses three signals:
 
 Formula: weighted average with graceful degradation if a source fails.
 
-**API:** `POST /api/predict` (PHPE only), `POST /api/predict/hybrid` (fused)
+**API:** `POST /api/predict` (PHPE only), `POST /api/predict/hybrid` (fused). Observability: `GET /health`, JSON `GET /api/metrics`, Prometheus text `GET /metrics`. OpenAPI sketch: [`docs/openapi.yaml`](openapi.yaml).
 
 ---
 
