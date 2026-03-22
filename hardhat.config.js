@@ -37,10 +37,10 @@ const config = {
   },
   paths: {
     sources: "./contracts",
-    tests: "./test",
+    tests: "./tests/contracts",
     scripts: "./scripts",
-    cache: "./cache",
-    artifacts: "./artifacts"
+    cache: "./build/hardhat-cache",
+    artifacts: "./build/hardhat-artifacts"
   }
 };
 
