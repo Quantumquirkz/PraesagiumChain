@@ -9,8 +9,8 @@ For production or multi-replica deployment. Prerequisites: PostgreSQL, Redis, an
 Create the namespace, then apply the rest into that namespace:
 
 ```bash
-kubectl apply -f deploy/k8s/namespace.yaml
-kubectl apply -f deploy/k8s/configmap.yaml -f deploy/k8s/secrets.yaml -f deploy/k8s/backend-deployment.yaml -f deploy/k8s/frontend-deployment.yaml -n praesagium
+kubectl apply -f infrastructure/kubernetes/namespace.yaml
+kubectl apply -f infrastructure/kubernetes/configmap.yaml -f infrastructure/kubernetes/secrets.yaml -f infrastructure/kubernetes/backend-deployment.yaml -f infrastructure/kubernetes/frontend-deployment.yaml -n praesagium
 ```
 
 Build and push images to your registry. **Production:** tag images with a version (for example `praesagium-backend:1.2.3`) and update the Deployment manifests; avoid relying on `:latest`. Manifests set `imagePullPolicy: IfNotPresent` and HTTP **liveness/readiness** probes on `/health` (backend) and `/` (frontend).
