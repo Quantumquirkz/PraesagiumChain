@@ -377,8 +377,12 @@ impl MarketService {
 
         match self.get_by_id(id).await {
             Ok(m) => Ok(m),
-            Err(AppError::NotFound) if req.on_chain_market_id.is_some() => {
-                self.get_by_on_chain_market_id(req.on_chain_market_id.unwrap()).await
+            Err(AppError::NotFound) => {
+                if let Some(oid) = req.on_chain_market_id {
+                    self.get_by_on_chain_market_id(oid).await
+                } else {
+                    Err(AppError::NotFound)
+                }
             }
             other => other,
         }

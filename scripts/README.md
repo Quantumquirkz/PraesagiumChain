@@ -2,7 +2,7 @@
 
 Most **npm** workflows are defined in the root [package.json](../package.json). This table lists **every script** in this folder for quick discovery.
 
-Shared helpers: [`lib/load-env.js`](lib/load-env.js) loads the repo-root `.env` (used by scripts that must resolve env consistently).
+Shared helpers: [`lib/load-env.js`](lib/load-env.js) (`loadRootEnv()`) loads the repo-root `.env` regardless of current working directory. Most Node entrypoints in this folder call it at startup; keep that pattern when adding new scripts.
 
 | Script | Purpose | Network / prereqs | Typical command |
 |--------|---------|-------------------|-------------------|

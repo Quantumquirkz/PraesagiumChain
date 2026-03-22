@@ -94,6 +94,7 @@ export function CustomToaster() {
 
   return (
     <>
+      {/* Static CSS string from source only — not user input (safe for innerHTML). */}
       <style dangerouslySetInnerHTML={{ __html: TOAST_STYLES }} />
       <SonnerToaster
         position="top-right"

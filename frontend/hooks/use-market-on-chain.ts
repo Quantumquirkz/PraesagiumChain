@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReadContract } from 'wagmi'
 import { predictionMarketContract } from '@/lib/constants'
 
@@ -14,14 +14,15 @@ export function useMarketOnChain(marketId: number) {
     query: { enabled },
   })
 
-  // Refetch on interval; omit refetch fn to avoid restarting timer every render.
+  const refetchRef = useRef(result.refetch)
+  refetchRef.current = result.refetch
+
   useEffect(() => {
     if (!enabled) return
     const id = setInterval(() => {
-      result.refetch()
+      void refetchRef.current()
     }, REFETCH_INTERVAL_MS)
     return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, marketId])
 
   return result
@@ -40,14 +41,15 @@ export function useUserStakeOnChain(marketId: number, address: `0x${string}` | u
     query: { enabled },
   })
 
+  const refetchRef = useRef(result.refetch)
+  refetchRef.current = result.refetch
+
   useEffect(() => {
     if (!enabled) return
     const id = setInterval(() => {
-      result.refetch()
+      void refetchRef.current()
     }, REFETCH_INTERVAL_MS)
     return () => clearInterval(id)
-  // Refetch on interval; omit refetch fn to avoid restarting timer every render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, marketId, address])
 
   return result

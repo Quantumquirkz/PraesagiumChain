@@ -7,7 +7,7 @@
  * Requiere que el backend esté corriendo. Por defecto usa API_BASE_URL o localhost:4000.
  */
 
-require("dotenv").config();
+require("./lib/load-env").loadRootEnv();
 const BASE_URL = process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:4000";
 
 // ─── Helpers de tiempo ────────────────────────────────────────────────────────

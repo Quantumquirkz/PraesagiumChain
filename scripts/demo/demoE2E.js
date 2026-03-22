@@ -11,7 +11,7 @@
  *
  * Env: PREDICTION_MARKET_ADDRESS, ORACLE_CONSUMER_ADDRESS (from deploy). Uses same signer as deploy (localhost).
  */
-require("dotenv").config();
+require("../lib/load-env").loadRootEnv();
 const hre = require("hardhat");
 
 const PM_ABI = [

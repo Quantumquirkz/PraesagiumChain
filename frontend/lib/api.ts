@@ -110,23 +110,18 @@ export async function updateMarket(
   });
 }
 
-/** DELETE /api/admin/markets/:id — dev only (backend returns 403 in production). */
+/** DELETE /api/admin/markets/:id — non-production only; requires X-Admin-Token when backend has ADMIN_API_KEY (use NEXT_PUBLIC_ADMIN_API_KEY in dev for the browser). */
 export async function deleteMarket(id: number): Promise<{ deleted: number }> {
-  const base = getBaseUrl();
-  const url = `${base}/api/admin/markets/${id}`;
-  const res = await fetch(url, { method: "DELETE" });
-  if (!res.ok) {
-    const text = await res.text();
-    let message: string;
-    try {
-      const json = JSON.parse(text) as { error?: string };
-      message = json.error ?? text;
-    } catch {
-      message = text || `Error ${res.status}`;
-    }
-    throw new Error(message);
-  }
-  return res.json() as Promise<{ deleted: number }>;
+  const headers: Record<string, string> = {};
+  const token =
+    typeof process.env.NEXT_PUBLIC_ADMIN_API_KEY === "string"
+      ? process.env.NEXT_PUBLIC_ADMIN_API_KEY
+      : undefined;
+  if (token) headers["X-Admin-Token"] = token;
+  return fetchApi<{ deleted: number }>(`/api/admin/markets/${id}`, {
+    method: "DELETE",
+    headers,
+  });
 }
 
 export async function getMarketPredictions(id: number): Promise<PredictionView[]> {

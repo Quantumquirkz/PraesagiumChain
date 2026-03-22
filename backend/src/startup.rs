@@ -77,6 +77,56 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     ));
     let reputation_service = Arc::new(ReputationService::new(db.clone()));
 
+    if config.is_production() {
+        match config.ai_provider.as_str() {
+            "gemini" => {
+                if config
+                    .gemini_api_key
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .is_none()
+                {
+                    return Err(anyhow::anyhow!(
+                        "GEMINI_API_KEY is required when AI_PROVIDER=gemini and ENVIRONMENT=production"
+                    ));
+                }
+            }
+            "huggingface" => {
+                if config.hf_api_key.as_deref().map(str::trim).filter(|s| !s.is_empty()).is_none()
+                    || config
+                        .hf_model
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty())
+                        .is_none()
+                {
+                    return Err(anyhow::anyhow!(
+                        "HF_API_KEY and HF_MODEL are required when AI_PROVIDER=huggingface and ENVIRONMENT=production"
+                    ));
+                }
+            }
+            _ => {}
+        }
+    } else {
+        match config.ai_provider.as_str() {
+            "gemini" if config.gemini_api_key.as_deref().map(str::trim).filter(|s| !s.is_empty()).is_none() => {
+                tracing::warn!(
+                    "AI_PROVIDER=gemini but GEMINI_API_KEY is unset or empty; using MockAiProvider"
+                );
+            }
+            "huggingface"
+                if config.hf_api_key.is_none()
+                    || config.hf_model.as_deref().map(str::trim).filter(|s| !s.is_empty()).is_none() =>
+            {
+                tracing::warn!(
+                    "AI_PROVIDER=huggingface but HF_API_KEY or HF_MODEL is missing; using MockAiProvider"
+                );
+            }
+            _ => {}
+        }
+    }
+
     let ai_provider: Arc<dyn crate::services::ai::AiProvider> = match config.ai_provider.as_str() {
         "gemini" => {
             if let Some(key) = config.gemini_api_key.clone() {

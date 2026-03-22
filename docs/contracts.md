@@ -62,7 +62,19 @@ Resolution is driven by Chainlink CRE:
 
 ---
 
-### 3. NatSpec guidelines
+### 3. Time and MEV
+
+- **Closing and resolution** use `block.timestamp` (and related patterns). Validators can move timestamps slightly within protocol rules; for very short windows this can affect ordering or frontrunning. This is a common trade-off in on-chain markets; design markets with **reasonable `closeTime` / `resolveTime` spacing** and document expectations for users.
+- **External resolution** (CRE / oracle) ultimately writes outcomes via the contracts; treat oracle trust and liveness as part of the security model.
+
+---
+
+### 4. ETH transfers and low-level calls
+
+- Prefer **Checks-Effects-Interactions** and `ReentrancyGuard` on functions that send ETH or call external contracts.
+- When using `call`/`send`, check success or use OpenZeppelin `Address.sendValue` patterns; ignoring failure can leave accounting inconsistent. Run Slither locally when changing payout paths ([operations.md](operations.md)).
+
+### 5. NatSpec guidelines
 
 Public and external functions in the contracts use (or should use) Solidity NatSpec to document:
 

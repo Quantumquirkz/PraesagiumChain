@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWaitForTransactionReceipt, useBlockNumber } from "wagmi";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,8 @@ export function TxStatus({
 
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
+  const onConfirmedRef = useRef(onConfirmed);
+  onConfirmedRef.current = onConfirmed;
 
   // Show the widget as soon as there is a hash
   useEffect(() => {
@@ -48,14 +50,13 @@ export function TxStatus({
   // omit receipt ref to avoid re-running on receipt object identity.
   useEffect(() => {
     if (receipt?.status !== "success") return;
-    onConfirmed?.();
+    onConfirmedRef.current?.();
     const fadeTimer = setTimeout(() => setFading(true), dismissAfterMs);
     const hideTimer = setTimeout(() => setVisible(false), dismissAfterMs + 500);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipt?.status, dismissAfterMs]);
 
   if (!hash || !visible) return null;

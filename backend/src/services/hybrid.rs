@@ -66,7 +66,7 @@ impl HybridPredictor {
         if write.is_none() {
             *write = Some(ctx.clone());
         }
-        write.as_ref().unwrap().clone()
+        write.as_ref().map(|c| c.clone()).unwrap_or_else(|| ctx.clone())
     }
 
     /// Prediction from time series only (PHPE engine). Returns (probability, uncertainty).

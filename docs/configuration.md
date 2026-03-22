@@ -27,9 +27,12 @@ For the full template, see [env.example](../env.example) at the repo root.
 | `REDIS_URL` | No | When backend runs on host and Docker maps Redis to 6380: `redis://localhost:6380`. |
 | `CLICKHOUSE_URL` | No | Optional analytics (e.g. `http://localhost:8123`). Leave unset for normal local dev; the API and PostgreSQL stack run fully without ClickHouse. When set, market events are mirrored from the in-process event bus for analytics ([`backend/src/clickhouse.rs`](../backend/src/clickhouse.rs)). |
 | `AI_PROVIDER` | No | `mock` (default if unset), `gemini`, or `huggingface`. Any other value (including legacy `groq`) falls back to **mock** — there is no Groq provider wired in the backend yet. |
-| `GEMINI_API_KEY` | No* | Used when `AI_PROVIDER=gemini`. If missing, backend uses mock AI. |
+| `GEMINI_API_KEY` | No* | Used when `AI_PROVIDER=gemini`. If missing, backend uses mock AI in **non-production**. When `ENVIRONMENT=production`, `GEMINI_API_KEY` is **required** if `AI_PROVIDER=gemini`. |
 | `GEMINI_MODEL` | No | Gemini model (default `gemini-2.0-flash`). |
-| `HF_API_KEY` / `HF_MODEL` | No* | Used when `AI_PROVIDER=huggingface`. Both required for the real HF provider; otherwise mock. |
+| `HF_API_KEY` / `HF_MODEL` | No* | Used when `AI_PROVIDER=huggingface`. In **non-production**, if either is missing, backend uses mock. In **production**, both are **required** when `AI_PROVIDER=huggingface`. |
+| `ADMIN_API_KEY` | No* | When `ENVIRONMENT` is not `production`, destructive `DELETE /api/admin/*` routes require header `X-Admin-Token` equal to this value. If unset, those routes return 403. |
+| `ENVIRONMENT` | No | Set to `production` for strict checks (`JWT_SECRET`, AI keys for non-mock providers, and admin delete routes disabled). |
+| `JWT_SECRET` | Yes (production) | Required when `ENVIRONMENT=production` for SIWE/session signing. |
 | `PRIVATE_KEY` | Yes (deploy) | Wallet private key (no `0x` prefix) for deploying contracts. **Never commit.** |
 | `API_BASE_URL` | No | Backend URL for scripts (default `http://localhost:4000`). |
 | `ORACLE_CONSUMER_ADDRESS` | Yes (resolveFromBackend) | OracleConsumer contract address. Required for `scripts/resolveFromBackend.js` to call `oracleCallback`. Set after deploy. |
@@ -53,6 +56,7 @@ All frontend variables live in the same root `.env`. Next.js loads them via `loa
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | No | For WalletConnect mobile support. Get from [cloud.walletconnect.com](https://cloud.walletconnect.com). |
 | `NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS` | No | For commit-reveal private markets. |
 | `NEXT_PUBLIC_API_BASE_URL` | No | Leave unset in local dev so Next.js proxy forwards `/api/*` to backend. |
+| `NEXT_PUBLIC_ADMIN_API_KEY` | No | Optional dev-only: same value as `ADMIN_API_KEY` so client-side calls to `DELETE /api/admin/*` work. **Do not set in production** (exposes the key). |
 
 ---
 

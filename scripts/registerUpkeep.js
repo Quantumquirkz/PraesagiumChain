@@ -6,7 +6,7 @@
  * Usage:
  *   npx hardhat run scripts/registerUpkeep.js --network sepolia
  */
-require("dotenv").config();
+require("./lib/load-env").loadRootEnv();
 const hre = require("hardhat");
 
 // Sepolia addresses

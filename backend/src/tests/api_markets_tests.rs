@@ -65,6 +65,7 @@ async fn build_test_app() -> Option<(axum::Router, std::sync::Arc<crate::state::
         environment: None,
         chainlink_eth_usd_feed: None,
         chainlink_btc_usd_feed: None,
+        admin_api_key: Some("test-admin".to_string()),
     });
 
     let state = std::sync::Arc::new(crate::state::AppState {

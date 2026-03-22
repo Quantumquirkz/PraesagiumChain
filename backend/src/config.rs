@@ -55,6 +55,8 @@ pub struct Config {
     pub chainlink_btc_usd_feed: Option<String>,
     /// Environment: "production" enables strict checks (e.g. JWT_SECRET required). Unset or other = development.
     pub environment: Option<String>,
+    /// Secret for `X-Admin-Token` on non-production `DELETE /api/admin/*` routes. Required when calling those endpoints outside production.
+    pub admin_api_key: Option<String>,
 }
 
 impl Config {
@@ -139,6 +141,7 @@ impl Config {
             environment: std::env::var("ENVIRONMENT").ok(),
             chainlink_eth_usd_feed: std::env::var("CHAINLINK_ETH_USD_FEED").ok(),
             chainlink_btc_usd_feed: std::env::var("CHAINLINK_BTC_USD_FEED").ok(),
+            admin_api_key: std::env::var("ADMIN_API_KEY").ok(),
         })
     }
 }

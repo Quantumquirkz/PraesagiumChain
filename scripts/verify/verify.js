@@ -10,7 +10,7 @@
  *   PREDICTION_MARKET_ADDRESS, CRE_WORKFLOW_ADDRESS, ORACLE_CONSUMER_ADDRESS
  *   DEPLOYER_ADDRESS (or we derive from PRIVATE_KEY)
  */
-require("dotenv").config();
+require("../lib/load-env").loadRootEnv();
 const hre = require("hardhat");
 
 async function main() {

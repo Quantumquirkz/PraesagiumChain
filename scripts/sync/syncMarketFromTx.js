@@ -7,7 +7,7 @@
  *
  * Env: RPC_URL (or use --network sepolia), PREDICTION_MARKET_ADDRESS, API_BASE_URL
  */
-require("dotenv").config();
+require("../lib/load-env").loadRootEnv();
 const hre = require("hardhat");
 
 const MARKET_CREATED = "MarketCreated(uint256,string,uint256,uint256,address)";

@@ -174,7 +174,6 @@ export function TVChart({
     return source
       .map((d) => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume }))
       .sort((a, b) => a.time - b.time);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingLive, liveData, timeframe]);
 
   // ── Create chart once ─────────────────────────────────────────────────────────

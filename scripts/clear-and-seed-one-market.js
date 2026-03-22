@@ -14,7 +14,7 @@
  *   npx hardhat run scripts/clear-and-seed-one-market.js --network sepolia
  */
 
-require("dotenv").config();
+require("./lib/load-env").loadRootEnv();
 const { ethers } = require("hardhat");
 
 const BACKEND_URL = process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:4000";

@@ -815,7 +815,8 @@ npm run audit
 | Wrong network in MetaMask | Wallet on Mainnet or wrong chain | The app auto-detects and prompts to switch to Sepolia (chain ID 11155111) |
 | **ChunkLoadError** / "Loading chunk ... failed" | Stale build cache or load timeout | Delete `frontend/.next`, then restart `npm run dev` from `frontend/` |
 | **Markets not loading** / "Backend unreachable" | Backend not running or proxy not used | Start `npm run backend` from repo root. For local dev, leave `NEXT_PUBLIC_API_BASE_URL` unset to use the Next.js proxy. |
-| `Cannot find module 'dotenv'` | Root dependencies not installed | Run `npm install` at the **repo root**. `run-backend.js` does not use dotenv; other scripts (demo, verify, hardhat) do and rely on root `node_modules`. |
+| `Cannot find module 'dotenv'` | Root dependencies not installed | Run `npm install` at the **repo root**. Scripts load the root `.env` via [`scripts/lib/load-env.js`](scripts/lib/load-env.js) (uses `dotenv`). |
+| `Invalid or missing X-Admin-Token` / `Set ADMIN_API_KEY` | Admin `DELETE /api/admin/*` without token or env | Outside production, set `ADMIN_API_KEY` in `.env` and send header `X-Admin-Token: <same value>`. For browser dev UI, optionally set `NEXT_PUBLIC_ADMIN_API_KEY` (never in production). |
 
 Enable verbose backend logging:
 
