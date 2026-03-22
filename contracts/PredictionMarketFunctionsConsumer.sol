@@ -17,6 +17,8 @@ contract PredictionMarketFunctionsConsumer is FunctionsClient {
     uint32 public constant MAX_CALLBACK_GAS = 300_000;
 
     /// requestId => marketId (to resolve in fulfillRequest)
+    // Chainlink-style `s_` prefix; getter name must stay stable for integrations.
+    // slither-disable-next-line naming-convention
     mapping(bytes32 => uint256) public s_pendingMarketId;
 
     event ResolutionRequestSent(bytes32 indexed requestId, uint256 indexed marketId);
@@ -38,8 +40,8 @@ contract PredictionMarketFunctionsConsumer is FunctionsClient {
         owner = msg.sender;
     }
 
-    function setOwner(address _owner) external onlyOwner {
-        owner = _owner;
+    function setOwner(address newOwner) external onlyOwner {
+        owner = newOwner;
     }
 
     /// @notice Sends a request to Chainlink Functions to resolve a market.

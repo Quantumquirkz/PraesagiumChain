@@ -37,8 +37,8 @@ contract PredictionMarket is IPredictionMarket, ReentrancyGuard {
     /// @notice Address authorized to resolve markets (e.g. CREWorkflow or oracle).
     address public resolver;
 
-    /// @notice Owner/admin address.
-    address public owner;
+    /// @notice Owner/admin address (fixed at deploy; no ownership transfer in this version).
+    address public immutable owner;
 
     /// @notice Optional reputation system contract.
     IReputationSystem public reputationSystem;
@@ -62,8 +62,8 @@ contract PredictionMarket is IPredictionMarket, ReentrancyGuard {
 
     // ====== Admin functions ======
 
-    function setResolver(address _resolver) external onlyOwner {
-        resolver = _resolver;
+    function setResolver(address newResolver) external onlyOwner {
+        resolver = newResolver;
     }
 
     function setReputationSystem(address rep) external onlyOwner {

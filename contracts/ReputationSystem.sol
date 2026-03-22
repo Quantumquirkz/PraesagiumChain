@@ -7,7 +7,7 @@ import "./interfaces/IReputationSystem.sol";
 /// @notice Minimal, extensible reputation system for market creators.
 /// @dev This is deliberately simple: it tracks counts and a score that can be evolved later.
 contract ReputationSystem is IReputationSystem {
-    address public owner;
+    address public immutable owner;
 
     /// @notice Authorized caller (typically a market contract).
     mapping(address => bool) public authorizedCallers;

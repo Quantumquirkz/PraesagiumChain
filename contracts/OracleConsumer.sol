@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
 /// @dev In production, set authorizedCallback to the Chainlink Functions Router or CRE executor address.
 ///      Set authorizedAutomation to AutomationResolver for Chainlink Automation + Data Feeds resolution.
 contract OracleConsumer {
-    address public owner;
+    address public immutable owner;
     address public creWorkflow;
     /// @notice Authorized address that may call oracleCallback (Chainlink Functions Router, CRE executor, etc.)
     address public authorizedCallback;
@@ -31,18 +31,18 @@ contract OracleConsumer {
         creWorkflow = _creWorkflow;
     }
 
-    function setCreWorkflow(address _creWorkflow) external onlyOwner {
-        creWorkflow = _creWorkflow;
+    function setCreWorkflow(address newCreWorkflow) external onlyOwner {
+        creWorkflow = newCreWorkflow;
     }
 
     /// @notice Set the address authorized to invoke oracleCallback (e.g. Chainlink Functions Router).
-    function setAuthorizedCallback(address _callback) external onlyOwner {
-        authorizedCallback = _callback;
+    function setAuthorizedCallback(address newCallback) external onlyOwner {
+        authorizedCallback = newCallback;
     }
 
     /// @notice Set the AutomationResolver address (Chainlink Automation + Data Feeds).
-    function setAuthorizedAutomation(address _automation) external onlyOwner {
-        authorizedAutomation = _automation;
+    function setAuthorizedAutomation(address newAutomation) external onlyOwner {
+        authorizedAutomation = newAutomation;
     }
 
     /// @notice Callback that receives the off-chain result (Chainlink Evaluate).

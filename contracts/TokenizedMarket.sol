@@ -56,8 +56,8 @@ contract TokenizedMarket is ERC721, Ownable {
         resolver = _resolver;
     }
 
-    function setResolver(address _resolver) external onlyOwner {
-        resolver = _resolver;
+    function setResolver(address newResolver) external onlyOwner {
+        resolver = newResolver;
     }
 
     function createMarket(

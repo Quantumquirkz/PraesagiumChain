@@ -38,7 +38,7 @@ contract ConditionalMarket {
         Condition[] conditions;
     }
 
-    address public owner;
+    address public immutable owner;
     address public resolver;
 
     uint256 private _nextMarketId = 1;
@@ -69,8 +69,8 @@ contract ConditionalMarket {
         resolver = _resolver;
     }
 
-    function setResolver(address _resolver) external onlyOwner {
-        resolver = _resolver;
+    function setResolver(address newResolver) external onlyOwner {
+        resolver = newResolver;
     }
 
     function createConditionalMarket(

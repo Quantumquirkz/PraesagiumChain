@@ -17,7 +17,7 @@ contract AutomationResolver is AutomationCompatibleInterface {
 
     IPredictionMarket public immutable predictionMarket;
     address public oracleConsumer;
-    address public owner;
+    address public immutable owner;
     address public registry; // Chainlink Automation Registry - only this can call performUpkeep
 
     mapping(uint256 => PriceConfig) public priceMarkets;
@@ -50,14 +50,14 @@ contract AutomationResolver is AutomationCompatibleInterface {
         owner = msg.sender;
     }
 
-    function setRegistry(address _registry) external onlyOwner {
-        registry = _registry;
-        emit RegistrySet(_registry);
+    function setRegistry(address newRegistry) external onlyOwner {
+        registry = newRegistry;
+        emit RegistrySet(newRegistry);
     }
 
-    function setOracleConsumer(address _oracleConsumer) external onlyOwner {
-        oracleConsumer = _oracleConsumer;
-        emit OracleConsumerSet(_oracleConsumer);
+    function setOracleConsumer(address newOracleConsumer) external onlyOwner {
+        oracleConsumer = newOracleConsumer;
+        emit OracleConsumerSet(newOracleConsumer);
     }
 
     /// @notice Register a price-based market for automatic resolution.

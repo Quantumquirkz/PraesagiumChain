@@ -34,10 +34,9 @@ contract PrivatePredictionMarket is ReentrancyGuard {
     mapping(uint256 => MarketInternal) private _markets;
     mapping(uint256 => mapping(address => Commitment[])) private _commitments;
     mapping(uint256 => mapping(address => mapping(uint256 => RevealedStake))) private _revealed; // marketId => user => outcome (1=Yes,2=No) => amount
-    mapping(uint256 => mapping(address => bool)) private _claimed;
 
     address public resolver;
-    address public owner;
+    address public immutable owner;
 
     event MarketCreated(
         uint256 indexed marketId,
@@ -65,8 +64,8 @@ contract PrivatePredictionMarket is ReentrancyGuard {
         resolver = _resolver;
     }
 
-    function setResolver(address _resolver) external onlyOwner {
-        resolver = _resolver;
+    function setResolver(address newResolver) external onlyOwner {
+        resolver = newResolver;
     }
 
     function createMarket(
