@@ -5,13 +5,14 @@ const { loadEnvConfig } = require("@next/env");
 // Single .env at repo root (backend + frontend)
 loadEnvConfig(path.join(__dirname, ".."));
 
-const withPWA = require("next-pwa")({
+const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
-  // Excluye rutas de API del service worker
-  buildExcludes: [/middleware-manifest\.json$/],
+  workboxOptions: {
+    exclude: [/middleware-manifest\.json$/],
+  },
 });
 
 const nextConfig = {

@@ -48,10 +48,9 @@ jobs:
       - name: Security audit (npm)
         run: npm audit --audit-level=critical
 
-  # High / moderate CVE visibility (transitive deps e.g. next-pwa/workbox may remain; triage before release)
+  # Frontend: 0 high-severity npm advisories (blocking). Root: visibility only until Chainlink/Hardhat transitive highs are cleared.
   dependency-audit-high:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,10 +58,11 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: npm audit (root, high)
+      - name: npm audit (frontend workspace, high) — blocking
+        run: cd frontend && npm audit --audit-level=high
+      - name: npm audit (repo root, high) — visibility
+        continue-on-error: true
         run: npm audit --audit-level=high
-      - name: npm audit (frontend, high)
-        run: cd frontend && npm ci && npm audit --audit-level=high
 
   # Static analysis — fails the job on Slither high-or-critical findings
   slither:

@@ -2,7 +2,7 @@
 
 Single reference for audits, GitHub settings, pre-mainnet checks, and scaling notes.
 
-**Audits:** CI runs `npm audit --audit-level=critical` on the main build. A job `dependency-audit-high` runs `npm audit --audit-level=high` (with `continue-on-error: true`) for visibility until transitive issues are resolved. The backend job runs `cargo audit` and **fails** on reported advisories. Local: `npm run audit` (the root script may still use `cargo audit || true` for convenience).
+**Audits:** CI runs `npm audit --audit-level=critical` on the main build. A job `dependency-audit-high` runs `npm audit --audit-level=high` in the **frontend workspace** and **fails** the job if any high-severity advisories remain there; the same job runs `npm audit --audit-level=high` at the **repo root** with `continue-on-error: true` until transitive highs (e.g. Chainlink/OpenZeppelin, Hardhat) are remediated upstream—see [`docs/npm-audit-high.md`](npm-audit-high.md). The backend job runs `cargo audit` and **fails** on reported advisories. Local: `npm run audit` (the root script may still use `cargo audit || true` for convenience).
 
 **GitHub:** Enable Dependabot alerts (see [`.github/dependabot.yml`](../.github/dependabot.yml)), secret scanning, and optional dependency review on PRs.
 

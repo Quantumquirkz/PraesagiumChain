@@ -60,7 +60,8 @@
     "react-dom": "^19.2.4"
   },
   "overrides": {
-    "serialize-javascript": ">=6.0.4",
+    "@rollup/plugin-terser": "1.0.0",
+    "serialize-javascript": "7.0.4",
     "cookie": ">=0.7.0",
     "lodash": ">=4.17.21",
     "bn.js": ">=4.12.3",
