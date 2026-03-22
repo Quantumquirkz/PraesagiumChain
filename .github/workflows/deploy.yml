@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+      - startup
   pull_request:
     branches:
       - main
+      - startup
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -32,8 +35,8 @@ jobs:
         run: npm test
       - name: Lint frontend
         run: cd frontend && npm run lint
-      - name: Run frontend unit tests
-        run: cd frontend && npm run test
+      - name: Run frontend unit tests (with coverage)
+        run: cd frontend && npm run test:coverage
       - name: Build frontend
         run: cd frontend && npm run build
         env:
@@ -41,11 +44,27 @@ jobs:
           NEXT_PUBLIC_RPC_URL: "https://rpc.sepolia.org"
           NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_BLOCK_EXPLORER_URL: "https://sepolia.etherscan.io"
-      # Blocks on critical CVEs only; triage high locally (see docs/operations.md)
+      # Blocks on critical CVEs only; see dependency-audit-high for high-severity triage
       - name: Security audit (npm)
         run: npm audit --audit-level=critical
 
-  # Static analysis (informational; triage findings before tightening to required check)
+  # High / moderate CVE visibility (transitive deps e.g. next-pwa/workbox may remain; triage before release)
+  dependency-audit-high:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: npm audit (root, high)
+        run: npm audit --audit-level=high
+      - name: npm audit (frontend, high)
+        run: cd frontend && npm ci && npm audit --audit-level=high
+
+  # Static analysis — fails the job on Slither high-or-critical findings
   slither:
     runs-on: ubuntu-latest
     steps:
@@ -62,8 +81,7 @@ jobs:
       - name: Install Slither
         run: pip install slither-analyzer
       - name: Run Slither
-        run: slither . --hardhat-ignore-compile --exclude-dependencies
-        continue-on-error: true
+        run: slither . --hardhat-ignore-compile --exclude-dependencies --fail-high
 
   test-backend:
     runs-on: ubuntu-latest
@@ -89,9 +107,57 @@ jobs:
         run: cd backend && cargo clippy -- -D warnings
       - name: Run backend tests
         run: npm run test:backend
-      # Advisory DB may report transitive issues (ethers, sqlx); run `cargo audit` locally and track upgrades
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.1
       - name: Security audit (cargo)
+        run: cd backend && cargo audit
+
+  cre-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install CRE workflow deps (standard resolver)
         run: |
-          cargo install cargo-audit 2>/dev/null || true
-          cd backend && cargo audit || true
+          cd cre/praesagium-resolver && npm ci --ignore-scripts
+      - name: Typecheck CRE workflow (standard)
+        run: cd cre/praesagium-resolver && npx --yes typescript@5.6.3 tsc --noEmit -p tsconfig.json
+      - name: Install CRE workflow deps (confidential)
+        run: |
+          cd cre/praesagium-resolver-confidential && npm ci --ignore-scripts
+      - name: Typecheck CRE workflow (confidential)
+        run: cd cre/praesagium-resolver-confidential && npx --yes typescript@5.6.3 tsc --noEmit -p tsconfig.json
+
+  backend-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PORT: "4000"
+      AI_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build backend
+        run: cd backend && cargo build
+      - name: Start backend and smoke /health
+        run: |
+          cd backend && cargo run &
+          sleep 20
+          curl -fsS --retry 5 --retry-delay 3 --retry-connrefused "http://127.0.0.1:${PORT}/health" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok') is True, d"
 
