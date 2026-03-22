@@ -1,25 +1,21 @@
-# CRE Workflow — Confidential (Private Prediction Markets)
+# CRE workflow: confidential (private) markets
 
-Workflow for resolving **Private Prediction Markets** via Chainlink CRE, designed for **Confidential Compute** (TEE-based execution).
+Workflow for **commit–reveal** / private prediction markets (TEE-oriented resolution path). Behavior mirrors the standard resolver pattern but targets the private market flow documented in [`docs/architecture.md`](../../docs/architecture.md).
 
-## Purpose
+## Inputs / outputs
 
-- Same resolution logic as `praesagium-resolver` (HTTP → sentiment API → outcome 0/1).
-- Structured for **Chainlink Confidential Compute**: when run in a TEE, resolution inputs (e.g. `text_to_analyze`) remain private; only the outcome is emitted.
-- Config flag `is_private_market: true` indicates resolution targets a `PrivatePredictionMarket` contract.
+| Item | Description |
+|------|-------------|
+| **Purpose** | Scheduled resolution aligned with private market lifecycle |
+| **Secrets** | Never commit `cre/secrets.yaml` (gitignored). Use Chainlink / CRE secret management in production |
+| **Backend** | Same stack as standard markets: ensure Rust API is up for any HTTP steps |
 
-## Simulate
+## Environment
 
-```bash
-cd cre
-cre workflow simulate praesagium-resolver-confidential --target staging-settings
-```
+- Copy `cre/.env.example` to `cre/.env` and set `CRE_ETH_PRIVATE_KEY` when running CRE CLI locally.
+- Root `.env` drives backend and deploy scripts; keep contract addresses in sync with `NEXT_PUBLIC_*` for the frontend.
 
-Ensure the backend is running (`npm run backend`). At the prompt, choose **cron-trigger**.
+## Local verification
 
-## Files
-
-| File | Purpose |
-|------|---------|
-| `main.ts` | CRE workflow (CRON → HTTP → outcome) |
-| `config.staging.json` | Staging config |
+1. Deploy private market contract: `npm run deploy:private` (localhost) or your Sepolia flow.
+2. Run backend and use private market API routes as documented in the main [cre/README.md](../README.md).

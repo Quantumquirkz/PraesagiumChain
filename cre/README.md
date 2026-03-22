@@ -10,13 +10,11 @@ cre/
 ├── secrets.yaml                    # Secret declarations (optional)
 ├── .env.example                    # Copy to .env, add CRE_ETH_PRIVATE_KEY
 ├── contracts/evm/src/abi/          # ABI for workflow (synced via npm run compile)
-├── praesagium-resolver/            # Workflow directory (TypeScript)
+├── praesagium-resolver/            # Standard markets — see [praesagium-resolver/README.md](praesagium-resolver/README.md)
 │   ├── main.ts                     # Workflow code (CRON → HTTP API → outcome)
-│   ├── package.json                # Dependencies (@chainlink/cre-sdk, zod)
-│   ├── tsconfig.json
-│   ├── workflow.yaml               # Workflow config per target
-│   ├── config.staging.json         # Staging params
-│   └── config.production.json      # Production params
+│   ├── README.md
+│   └── ...
+├── praesagium-resolver-confidential/  # Private markets — see [praesagium-resolver-confidential/README.md](praesagium-resolver-confidential/README.md)
 └── README.md
 ```
 
