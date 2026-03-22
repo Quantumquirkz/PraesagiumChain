@@ -1,31 +1,24 @@
 /**
  * End-to-end demo for hackathon video (no UI).
- * Flow: create market → place bet → resolve (via backend + oracleCallback) → claim.
- *
- * Prerequisites:
- * - Terminal 1: npm run node (Hardhat local node)
- * - Terminal 2: npm run deploy (then add addresses to .env)
- * - Terminal 3: npm run backend (for AI sentiment; optional: use AI_PROVIDER=mock)
- *
  * Usage: node scripts/demo/demoE2E.js
- *
- * Env: PREDICTION_MARKET_ADDRESS, ORACLE_CONSUMER_ADDRESS (from deploy). Uses same signer as deploy (localhost).
  */
-require("../lib/load-env").loadRootEnv();
-const hre = require("hardhat");
+import http from "node:http";
+import https from "node:https";
+import { loadRootEnv } from "../lib/loadRootEnv.mjs";
+import { network } from "hardhat";
+
+loadRootEnv();
 
 const PM_ABI = [
   "function createMarket(string question, uint256 closeTime, uint256 resolveTime) returns (uint256)",
   "function placeBet(uint256 marketId, uint8 outcome) payable",
   "function claimPayout(uint256 marketId)",
-  "event MarketCreated(uint256 indexed marketId, string question, uint256 closeTime, uint256 resolveTime, address creator)"
+  "event MarketCreated(uint256 indexed marketId, string question, uint256 closeTime, uint256 resolveTime, address creator)",
 ];
 
 const ORACLE_ABI = ["function oracleCallback(uint256 marketId, uint8 rawOutcome) external"];
 
 async function fetchOutcome(apiBase, text) {
-  const http = require("http");
-  const https = require("https");
   const lib = apiBase.startsWith("https") ? https : http;
   const url = new URL(apiBase);
   const body = JSON.stringify({ text: text || "Bitcoin will reach 100k this year" });
@@ -36,7 +29,10 @@ async function fetchOutcome(apiBase, text) {
         port: url.port || (url.protocol === "https:" ? 443 : 80),
         path: "/api/ai/sentiment",
         method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) }
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
       },
       (res) => {
         let d = "";
@@ -50,7 +46,7 @@ async function fetchOutcome(apiBase, text) {
             reject(new Error("Invalid API response: " + d));
           }
         });
-      }
+      },
     );
     req.on("error", reject);
     req.write(body);
@@ -59,9 +55,9 @@ async function fetchOutcome(apiBase, text) {
 }
 
 async function main() {
+  const { ethers, networkHelpers } = await network.connect();
   const pmAddr = process.env.PREDICTION_MARKET_ADDRESS;
   const oracleAddr = process.env.ORACLE_CONSUMER_ADDRESS;
-  const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
   const apiBase = process.env.API_BASE_URL || "http://localhost:4000";
 
   if (!pmAddr || !oracleAddr) {
@@ -69,9 +65,9 @@ async function main() {
     process.exit(1);
   }
 
-  const [signer] = await hre.ethers.getSigners();
-  const pm = new hre.ethers.Contract(pmAddr, PM_ABI, signer);
-  const oracle = new hre.ethers.Contract(oracleAddr, ORACLE_ABI, signer);
+  const [signer] = await ethers.getSigners();
+  const pm = new ethers.Contract(pmAddr, PM_ABI, signer);
+  const oracle = new ethers.Contract(oracleAddr, ORACLE_ABI, signer);
 
   const now = Math.floor(Date.now() / 1000);
   const closeTime = now + 3600;
@@ -85,7 +81,7 @@ async function main() {
   const tx1 = await pm.createMarket(question, closeTime, resolveTime);
   const receipt1 = await tx1.wait();
   let marketId = 1;
-  const iface = new hre.ethers.Interface(PM_ABI);
+  const iface = new ethers.Interface(PM_ABI);
   for (const log of receipt1.logs) {
     try {
       const parsed = iface.parseLog({ topics: log.topics, data: log.data });
@@ -98,12 +94,12 @@ async function main() {
   console.log("   Market created, ID:", marketId);
 
   console.log("2. Placing bet (Yes, 0.001 ETH)...");
-  await (await pm.placeBet(marketId, 1, { value: hre.ethers.parseEther("0.001") })).wait();
+  await (await pm.placeBet(marketId, 1, { value: ethers.parseEther("0.001") })).wait();
   console.log("   Bet placed.");
 
   console.log("3. Advancing time to resolveTime and resolving...");
-  await hre.network.provider.send("evm_increaseTime", [resolveTime - now + 1]);
-  await hre.network.provider.send("evm_mine");
+  await networkHelpers.time.increase(resolveTime - now + 1);
+  await networkHelpers.mine();
 
   let outcome;
   try {

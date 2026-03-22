@@ -1,23 +1,24 @@
 /**
  * Sync a market from an on-chain transaction into the backend database.
- * Use when createMarketBackend failed or the indexer hasn't synced yet.
- *
- * Usage:
- *   npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia 0x40d05a23550cf38892be5dff015eaeac17c71a31832186d996f65a08515cacf4
- *
- * Env: RPC_URL (or use --network sepolia), PREDICTION_MARKET_ADDRESS, API_BASE_URL
  */
-require("../lib/load-env").loadRootEnv();
-const hre = require("hardhat");
+import { loadRootEnv } from "../lib/loadRootEnv.mjs";
+import { network } from "hardhat";
+
+loadRootEnv();
 
 const MARKET_CREATED = "MarketCreated(uint256,string,uint256,uint256,address)";
-const MARKET_CREATED_TOPIC = hre.ethers.id(MARKET_CREATED);
 
 async function main() {
-  const txHash = process.env.SYNC_TX_HASH || process.argv.find((a) => a.startsWith("0x") && a.length === 66);
+  const { ethers } = await network.connect();
+  const MARKET_CREATED_TOPIC = ethers.id(MARKET_CREATED);
+
+  const txHash =
+    process.env.SYNC_TX_HASH ||
+    process.argv.find((a) => a.startsWith("0x") && a.length === 66);
   if (!txHash) {
-    console.error("Usage: SYNC_TX_HASH=0x... npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia");
-    console.error("   or: npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia 0x40d05a...");
+    console.error(
+      "Usage: SYNC_TX_HASH=0x... npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia",
+    );
     process.exit(1);
   }
 
@@ -29,7 +30,7 @@ async function main() {
     process.exit(1);
   }
 
-  const receipt = await hre.ethers.provider.getTransactionReceipt(txHash);
+  const receipt = await ethers.provider.getTransactionReceipt(txHash);
   if (!receipt) {
     console.error("Transaction not found. Check the tx hash and RPC.");
     process.exit(1);
@@ -38,18 +39,20 @@ async function main() {
   const log = receipt.logs.find(
     (l) =>
       l.topics[0] === MARKET_CREATED_TOPIC &&
-      l.address.toLowerCase() === pmAddr.toLowerCase()
+      l.address.toLowerCase() === pmAddr.toLowerCase(),
   );
   if (!log) {
-    console.error("MarketCreated event not found. Ensure the tx created a market on the configured contract.");
+    console.error(
+      "MarketCreated event not found. Ensure the tx created a market on the configured contract.",
+    );
     process.exit(1);
   }
 
   const marketId = BigInt(log.topics[1]);
   const creator = "0x" + log.topics[2].slice(26);
-  const decoded = hre.ethers.AbiCoder.defaultAbiCoder().decode(
+  const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
     ["string", "uint256", "uint256"],
-    log.data
+    log.data,
   );
   const [question, closeTime, resolveTime] = decoded;
 

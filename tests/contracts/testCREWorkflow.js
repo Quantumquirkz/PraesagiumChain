@@ -1,5 +1,5 @@
-const { expect } = require("chai");
-const hre = require("hardhat");
+import { expect } from "chai";
+import { network } from "hardhat";
 
 describe("CREWorkflow", function () {
   this.timeout(120000);
@@ -7,18 +7,24 @@ describe("CREWorkflow", function () {
   let predictionMarket, creWorkflow, oracleConsumer;
   let owner, user1, user2;
   let marketId;
+  let ethers;
+  let networkHelpers;
 
   before(async function () {
-    [owner, user1, user2] = await hre.ethers.getSigners();
+    ({ ethers, networkHelpers } = await network.connect());
+    [owner, user1, user2] = await ethers.getSigners();
 
-    const PredictionMarket = await hre.ethers.getContractFactory("PredictionMarket");
-    const CREWorkflow = await hre.ethers.getContractFactory("CREWorkflow");
-    const OracleConsumer = await hre.ethers.getContractFactory("OracleConsumer");
+    const PredictionMarket = await ethers.getContractFactory("PredictionMarket");
+    const CREWorkflow = await ethers.getContractFactory("CREWorkflow");
+    const OracleConsumer = await ethers.getContractFactory("OracleConsumer");
 
     predictionMarket = await PredictionMarket.deploy(owner.address);
     await predictionMarket.waitForDeployment();
 
-    creWorkflow = await CREWorkflow.deploy(await predictionMarket.getAddress(), owner.address);
+    creWorkflow = await CREWorkflow.deploy(
+      await predictionMarket.getAddress(),
+      owner.address,
+    );
     await creWorkflow.waitForDeployment();
 
     oracleConsumer = await OracleConsumer.deploy(await creWorkflow.getAddress());
@@ -36,7 +42,7 @@ describe("CREWorkflow", function () {
     const tx = await predictionMarket.connect(owner).createMarket(
       "Will Bitcoin exceed $50,000?",
       closeTime,
-      resolveTime
+      resolveTime,
     );
     const receipt = await tx.wait();
     const created = receipt.logs.find((l) => l.fragment?.name === "MarketCreated");
@@ -45,35 +51,39 @@ describe("CREWorkflow", function () {
     expect(marketId).to.equal(1n);
 
     await expect(
-      predictionMarket.connect(user1).placeBet(marketId, 1, { value: hre.ethers.parseEther("0.1") })
-    ).to.not.be.reverted;
+      predictionMarket.connect(user1).placeBet(marketId, 1, {
+        value: ethers.parseEther("0.1"),
+      }),
+    ).not.to.revert(ethers);
     await expect(
-      predictionMarket.connect(user2).placeBet(marketId, 2, { value: hre.ethers.parseEther("0.2") })
-    ).to.not.be.reverted;
+      predictionMarket.connect(user2).placeBet(marketId, 2, {
+        value: ethers.parseEther("0.2"),
+      }),
+    ).not.to.revert(ethers);
 
     const market = await predictionMarket.getMarket(marketId);
-    expect(market.totalYesStake).to.equal(hre.ethers.parseEther("0.1"));
-    expect(market.totalNoStake).to.equal(hre.ethers.parseEther("0.2"));
+    expect(market.totalYesStake).to.equal(ethers.parseEther("0.1"));
+    expect(market.totalNoStake).to.equal(ethers.parseEther("0.2"));
   });
 
   it("should not allow resolve from a non-oracle address", async function () {
     await expect(
-      creWorkflow.connect(user1).resolveFromOracle(marketId, 1)
+      creWorkflow.connect(user1).resolveFromOracle(marketId, 1),
     ).to.be.revertedWith("Only oracle");
   });
 
   it("should resolve the market when the oracle calls oracleCallback", async function () {
-    // oracleCallback restricted to authorizedCallback (set to owner in setup).
-    // In production, set to Chainlink Functions Router.
-    await expect(
-      oracleConsumer.connect(owner).oracleCallback(marketId, 1)
-    ).to.be.reverted; // fails because resolveTime has not been reached yet
+    await expect(oracleConsumer.connect(owner).oracleCallback(marketId, 1)).to.revert(
+      ethers,
+    );
 
-    // Advance time (Hardhat)
-    await hre.network.provider.send("evm_increaseTime", [7200]);
-    await hre.network.provider.send("evm_mine", []);
+    const m0 = await predictionMarket.getMarket(marketId);
+    await networkHelpers.time.setNextBlockTimestamp(Number(m0.resolveTime) + 1);
+    await networkHelpers.mine();
 
-    await expect(oracleConsumer.connect(owner).oracleCallback(marketId, 1)).to.not.be.reverted;
+    await expect(oracleConsumer.connect(owner).oracleCallback(marketId, 1)).not.to.revert(
+      ethers,
+    );
 
     const market = await predictionMarket.getMarket(marketId);
     expect(market.status).to.equal(2); // Resolved
@@ -81,13 +91,15 @@ describe("CREWorkflow", function () {
   });
 
   it("should allow winners to claim payout", async function () {
-    const balanceBefore = await hre.ethers.provider.getBalance(user1.address);
+    const balanceBefore = await ethers.provider.getBalance(user1.address);
     const tx = await predictionMarket.connect(user1).claimPayout(marketId);
     const receipt = await tx.wait();
-    const gasUsed = receipt.gasUsed * receipt.gasPrice;
-    const balanceAfter = await hre.ethers.provider.getBalance(user1.address);
+    const gasPrice = receipt.gasPrice ?? receipt.effectiveGasPrice ?? 0n;
+    const gasUsed = receipt.gasUsed * gasPrice;
+    const balanceAfter = await ethers.provider.getBalance(user1.address);
 
-    // user1 staked 0.1 ETH on Yes; pool total 0.3; Yes wins -> receives (0.1/0.1)*0.3 = 0.3
-    expect(balanceAfter).to.equal(balanceBefore + hre.ethers.parseEther("0.3") - gasUsed);
+    expect(balanceAfter).to.equal(
+      balanceBefore + ethers.parseEther("0.3") - gasUsed,
+    );
   });
 });

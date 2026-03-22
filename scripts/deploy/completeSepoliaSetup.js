@@ -1,29 +1,26 @@
 /**
  * Completa la configuración de contratos ya desplegados en Sepolia
- * (setResolver en PM, setOracle en CRE, setAuthorizedCallback en Oracle).
- *
- * Uso: PREDICTION_MARKET_ADDRESS, CRE_WORKFLOW_ADDRESS, ORACLE_CONSUMER_ADDRESS en .env
- *   npx hardhat run scripts/deploy/completeSepoliaSetup.js --network sepolia
  */
-const hre = require("hardhat");
+import { network } from "hardhat";
 
 async function main() {
+  const { ethers } = await network.connect();
   const pmAddr = process.env.PREDICTION_MARKET_ADDRESS;
   const creAddr = process.env.CRE_WORKFLOW_ADDRESS;
   const oracleAddr = process.env.ORACLE_CONSUMER_ADDRESS;
 
   if (!pmAddr || !creAddr || !oracleAddr) {
     throw new Error(
-      "Set PREDICTION_MARKET_ADDRESS, CRE_WORKFLOW_ADDRESS, ORACLE_CONSUMER_ADDRESS in .env"
+      "Set PREDICTION_MARKET_ADDRESS, CRE_WORKFLOW_ADDRESS, ORACLE_CONSUMER_ADDRESS in .env",
     );
   }
 
-  const [deployer] = await hre.ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const pm = await hre.ethers.getContractAt("PredictionMarket", pmAddr);
-  const cre = await hre.ethers.getContractAt("CREWorkflow", creAddr);
-  const oracle = await hre.ethers.getContractAt("OracleConsumer", oracleAddr);
+  const pm = await ethers.getContractAt("PredictionMarket", pmAddr);
+  const cre = await ethers.getContractAt("CREWorkflow", creAddr);
+  const oracle = await ethers.getContractAt("OracleConsumer", oracleAddr);
 
   console.log("Completing setup for:", pmAddr, creAddr, oracleAddr);
 

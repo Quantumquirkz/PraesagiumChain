@@ -15,8 +15,10 @@
  *   npx hardhat run scripts/deploy-markets-onchain.js --network sepolia
  */
 
-require("./lib/load-env").loadRootEnv();
-const { ethers } = require("hardhat");
+import { loadRootEnv } from "./lib/loadRootEnv.mjs";
+import { network } from "hardhat";
+
+loadRootEnv();
 
 const BACKEND_URL = process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:4000";
 const CONTRACT_ADDRESS =
@@ -80,6 +82,7 @@ async function registerInBackend(market, onChainId, creatorAddress) {
 }
 
 async function main() {
+  const { ethers } = await network.connect();
   console.log("╔══════════════════════════════════════════════════════════════╗");
   console.log("║   PraesagiumChain — Deploy Markets On-Chain (Sepolia)        ║");
   console.log("╚══════════════════════════════════════════════════════════════╝\n");

@@ -2,41 +2,37 @@
  * Deployment with Chainlink Functions Consumer (for testnets/mainnet).
  * Requires: FUNCTIONS_ROUTER in .env (Router address on the chosen network).
  * Chainlink Automation: AUTOMATION_REGISTRY for Sepolia (0x86EFBD0b6736Bed994962f9797049422A3A8E8Ad).
- *
- * Usage:
- *   npx hardhat run scripts/deploy/deployWithFunctions.js --network polygon
- *   npx hardhat run scripts/deploy/deployWithFunctions.js --network sepolia
  */
-const hre = require("hardhat");
+import { network } from "hardhat";
 
-// Sepolia Chainlink Automation Registry
 const SEPOLIA_AUTOMATION_REGISTRY = "0x86EFBD0b6736Bed994962f9797049422A3A8E8Ad";
 
 async function main() {
+  const { ethers } = await network.connect();
   const functionsRouter = process.env.FUNCTIONS_ROUTER;
   if (!functionsRouter) {
     console.warn("FUNCTIONS_ROUTER not set. Deploying only PM + CRE + OracleConsumer + AutomationResolver.");
   }
 
-  const [deployer] = await hre.ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   if (!deployer) {
     throw new Error(
       "No deployer account. Set PRIVATE_KEY in .env (wallet with testnet ETH). " +
-      "For Sepolia: get ETH from https://sepoliafaucet.com"
+        "For Sepolia: get ETH from https://sepoliafaucet.com",
     );
   }
   console.log("Deployer:", deployer.address);
 
-  const network = await hre.ethers.provider.getNetwork();
-  const isSepolia = network.chainId === 11155111n;
+  const net = await ethers.provider.getNetwork();
+  const isSepolia = net.chainId === 11155111n;
   const automationRegistry =
     process.env.AUTOMATION_REGISTRY ||
     (isSepolia ? SEPOLIA_AUTOMATION_REGISTRY : deployer.address);
 
-  const PredictionMarket = await hre.ethers.getContractFactory("PredictionMarket");
-  const CREWorkflow = await hre.ethers.getContractFactory("CREWorkflow");
-  const OracleConsumer = await hre.ethers.getContractFactory("OracleConsumer");
-  const AutomationResolver = await hre.ethers.getContractFactory("AutomationResolver");
+  const PredictionMarket = await ethers.getContractFactory("PredictionMarket");
+  const CREWorkflow = await ethers.getContractFactory("CREWorkflow");
+  const OracleConsumer = await ethers.getContractFactory("OracleConsumer");
+  const AutomationResolver = await ethers.getContractFactory("AutomationResolver");
 
   const pm = await PredictionMarket.deploy(deployer.address);
   await pm.waitForDeployment();
@@ -56,7 +52,7 @@ async function main() {
   const automationResolver = await AutomationResolver.deploy(
     pmAddr,
     oracleAddr,
-    automationRegistry
+    automationRegistry,
   );
   await automationResolver.waitForDeployment();
   const automationResolverAddr = await automationResolver.getAddress();
@@ -69,17 +65,21 @@ async function main() {
   await sleep(2000);
 
   if (functionsRouter) {
-    const FunctionsConsumer = await hre.ethers.getContractFactory("PredictionMarketFunctionsConsumer");
+    const FunctionsConsumer = await ethers.getContractFactory(
+      "PredictionMarketFunctionsConsumer",
+    );
     const functionsConsumer = await FunctionsConsumer.deploy(functionsRouter, creAddr);
     await functionsConsumer.waitForDeployment();
     const functionsConsumerAddr = await functionsConsumer.getAddress();
     console.log("PredictionMarketFunctionsConsumer:", functionsConsumerAddr);
 
     await cre.setOracle(functionsConsumerAddr);
-    await cre.setAuthorizedAutomation(oracleAddr); // OracleConsumer for Automation + Data Feeds
+    await cre.setAuthorizedAutomation(oracleAddr);
     await oracle.setAuthorizedCallback(deployer.address);
     await oracle.setAuthorizedAutomation(automationResolverAddr);
-    console.log("CREWorkflow oracle set to Functions Consumer; authorizedAutomation set to OracleConsumer.");
+    console.log(
+      "CREWorkflow oracle set to Functions Consumer; authorizedAutomation set to OracleConsumer.",
+    );
   } else {
     tx = await cre.setOracle(oracleAddr);
     await tx.wait();

@@ -1,23 +1,23 @@
 /**
  * Deploy Private Prediction Market (Chainlink Confidential Compute use case)
- * Deploys: PrivatePredictionMarket, CREWorkflow, OracleConsumer
  */
-const hre = require("hardhat");
+import { network } from "hardhat";
 
 async function main() {
-  const [deployer] = await hre.ethers.getSigners();
+  const { ethers } = await network.connect();
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer:", deployer.address);
 
-  const PrivatePredictionMarket = await hre.ethers.getContractFactory("PrivatePredictionMarket");
-  const CREWorkflow = await hre.ethers.getContractFactory("CREWorkflow");
-  const OracleConsumer = await hre.ethers.getContractFactory("OracleConsumer");
+  const PrivatePredictionMarket = await ethers.getContractFactory("PrivatePredictionMarket");
+  const CREWorkflow = await ethers.getContractFactory("CREWorkflow");
+  const OracleConsumer = await ethers.getContractFactory("OracleConsumer");
 
   const ppm = await PrivatePredictionMarket.deploy(deployer.address);
   await ppm.waitForDeployment();
   const ppmAddr = await ppm.getAddress();
   console.log("PrivatePredictionMarket:", ppmAddr);
 
-  const cre = await CREWorkflow.deploy(ppmAddr, hre.ethers.ZeroAddress);
+  const cre = await CREWorkflow.deploy(ppmAddr, ethers.ZeroAddress);
   await cre.waitForDeployment();
   const creAddr = await cre.getAddress();
   console.log("CREWorkflow (Private):", creAddr);

@@ -1,13 +1,14 @@
-const hre = require("hardhat");
+import { network } from "hardhat";
 
 async function main() {
-  const [deployer] = await hre.ethers.getSigners();
+  const { ethers } = await network.connect();
+  const [deployer] = await ethers.getSigners();
   console.log("Deployer:", deployer.address);
 
-  const PredictionMarket = await hre.ethers.getContractFactory("PredictionMarket");
-  const CREWorkflow = await hre.ethers.getContractFactory("CREWorkflow");
-  const OracleConsumer = await hre.ethers.getContractFactory("OracleConsumer");
-  const AutomationResolver = await hre.ethers.getContractFactory("AutomationResolver");
+  const PredictionMarket = await ethers.getContractFactory("PredictionMarket");
+  const CREWorkflow = await ethers.getContractFactory("CREWorkflow");
+  const OracleConsumer = await ethers.getContractFactory("OracleConsumer");
+  const AutomationResolver = await ethers.getContractFactory("AutomationResolver");
 
   const pm = await PredictionMarket.deploy(deployer.address);
   await pm.waitForDeployment();
@@ -24,11 +25,10 @@ async function main() {
   const oracleAddr = await oracle.getAddress();
   console.log("OracleConsumer:", oracleAddr);
 
-  // AutomationResolver: registry = deployer on localhost so manual performUpkeep works for demos
   const automationResolver = await AutomationResolver.deploy(
     pmAddr,
     oracleAddr,
-    deployer.address // localhost: deployer acts as "registry" for manual testing
+    deployer.address,
   );
   await automationResolver.waitForDeployment();
   const automationResolverAddr = await automationResolver.getAddress();

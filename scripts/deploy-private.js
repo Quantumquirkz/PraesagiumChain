@@ -1,21 +1,15 @@
 /**
  * Deploy PrivatePredictionMarket to Sepolia (or any Hardhat network).
- *
- * Usage:
- *   npx hardhat run scripts/deploy-private.js --network sepolia
- *   npx hardhat run scripts/deploy-private.js --network localhost
- *
- * After deployment, the script appends NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS to root .env
- *
- * Env (required for Sepolia):
- *   PRIVATE_KEY       — deployer private key (without 0x prefix)
- *   SEPOLIA_RPC_URL   — Sepolia RPC URL (Alchemy / Infura)
  */
-const { ethers } = require("hardhat");
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { network } from "hardhat";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main() {
+  const { ethers } = await network.connect();
   const [deployer] = await ethers.getSigners();
   console.log("Deploying PrivatePredictionMarket...");
   console.log("  Deployer :", deployer.address);
@@ -23,9 +17,6 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log("  Balance  :", ethers.formatEther(balance), "ETH");
 
-  // The constructor takes a resolver address.
-  // We use the deployer as the initial resolver so the contract is functional
-  // immediately. It can be updated later via setResolver().
   const resolver = deployer.address;
   console.log("  Resolver :", resolver);
 
@@ -36,7 +27,6 @@ async function main() {
   const address = await contract.getAddress();
   console.log("\n✅  PrivatePredictionMarket deployed to:", address);
 
-  // ── Optionally append to root .env ───────────────────────────────────────
   const envPath = path.resolve(__dirname, "../.env");
   if (fs.existsSync(envPath)) {
     let envContent = fs.readFileSync(envPath, "utf8");
@@ -45,7 +35,7 @@ async function main() {
     if (envContent.includes(key)) {
       envContent = envContent.replace(
         new RegExp(`^${key}=.*$`, "m"),
-        `${key}=${address}`
+        `${key}=${address}`,
       );
     } else {
       envContent += `\n# PrivatePredictionMarket (commit-reveal)\n${key}=${address}\n`;
@@ -55,15 +45,12 @@ async function main() {
     console.log(`\n📝  Updated .env with ${key}=${address}`);
   } else {
     console.log(
-      `\n⚠  .env not found. Add manually: NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=${address}`
+      `\n⚠  .env not found. Add manually: NEXT_PUBLIC_PRIVATE_MARKET_ADDRESS=${address}`,
     );
   }
 
-  // ── Print verification command ────────────────────────────────────────────
   console.log("\nTo verify on Etherscan:");
-  console.log(
-    `  npx hardhat verify --network sepolia ${address}`
-  );
+  console.log(`  npx hardhat verify etherscan ${address}`);
 }
 
 main().catch((err) => {
