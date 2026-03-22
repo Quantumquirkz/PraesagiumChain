@@ -3,6 +3,7 @@
 pub mod cache;
 pub mod chainlink_feeds;
 mod market_sql;
+mod market_cache;
 pub mod market;
 pub mod prediction;
 pub mod indexer;

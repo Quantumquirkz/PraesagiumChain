@@ -1,5 +1,8 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
+use crate::services::market_cache::{
+    TimedEntry, LIST_CACHE_TTL_SECS, MARKET_CACHE_TTL_SECS, STATS_CACHE_TTL_SECS,
+};
 use crate::services::market_sql::MARKET_SELECT;
 use crate::models::{
     ConditionalConditionView, CreateConditionalMarketRequest, CreateMarketRequest, Market,
@@ -10,26 +13,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
-
-const LIST_CACHE_TTL_SECS: u64 = 25;
-const MARKET_CACHE_TTL_SECS: u64 = 20;
-const STATS_CACHE_TTL_SECS: u64 = 45;
-
-#[derive(Clone)]
-struct TimedEntry<T: Clone> {
-    value: T,
-    expires_at: u64,
-}
-
-impl<T: Clone> TimedEntry<T> {
-    fn new(value: T, ttl: u64) -> Self {
-        let now = chrono::Utc::now().timestamp() as u64;
-        Self { value, expires_at: now + ttl }
-    }
-    fn is_valid(&self) -> bool {
-        (chrono::Utc::now().timestamp() as u64) < self.expires_at
-    }
-}
 
 /// Returns effective status: if DB says "Open" but close_time has passed, treat as "Locked".
 fn effective_status(status: &str, close_time: i64) -> String {
