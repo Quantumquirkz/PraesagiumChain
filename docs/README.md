@@ -4,6 +4,7 @@ Canonical guides for PraesagiumChain.
 
 | Document | Description |
 |----------|-------------|
+| [INSTALL.md](INSTALL.md) | Windows / WSL: Node inside WSL, Cursor terminal profile, install scripts |
 | [setup.md](setup.md) | Full stack install: prerequisites, env, Docker, contracts, backend, frontend |
 | [architecture.md](architecture.md) | Repository layout, contracts, DB, PHPE, frontend |
 | [configuration.md](configuration.md) | Environment variables and API keys |

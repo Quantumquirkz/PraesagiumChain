@@ -2,7 +2,7 @@
 
 This document is the **canonical setup guide** for the full stack (prerequisites, env, infrastructure, contracts, backend, frontend). All instructions are in English.
 
-If you use **Windows**, also read **[INSTALL.md](../INSTALL.md)** at the repo root for WSL-only details (Cursor terminal profile, verifying Linux Node, `install-all.sh` quirks).
+If you use **Windows**, also read **[INSTALL.md](INSTALL.md)** for WSL-only details (Cursor terminal profile, verifying Linux Node, `install-all.sh` quirks).
 
 ---
 
@@ -10,7 +10,7 @@ If you use **Windows**, also read **[INSTALL.md](../INSTALL.md)** at the repo ro
 
 If you are joining the project or need to run it on a new machine:
 
-1. **Prerequisites** — Install **Node.js 20** (matches CI), Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands (see [INSTALL.md](../INSTALL.md) if anything fails with Windows Node).
+1. **Prerequisites** — Install **Node.js 20** (matches CI), Rust 1.70+, Docker (for PostgreSQL). On Windows, use **WSL2 (Ubuntu)** for all commands (see [INSTALL.md](INSTALL.md) if anything fails with Windows Node).
 2. **Single `.env`** — The whole stack (backend, frontend, scripts) uses one `.env` file at the repo root. Copy from `env.example` at the repo root.
 3. **Four terminals** — You need: (1) Hardhat node, (2) backend, (3) one-time deploy, (4) frontend. See [Summary: Minimal Commands](#summary-minimal-commands-to-run-the-project) at the bottom.
 4. **Docker permission denied** — On Linux/WSL, if `./scripts/docker-up.sh` fails with permission denied, run `sudo ./scripts/docker-up.sh`.
@@ -154,6 +154,8 @@ docker compose ps
 You should see `postgres`, `redis`, and `clickhouse` running.
 
 **If you prefer local PostgreSQL** (without Docker), create a database and user matching the `DATABASE_URL` in `.env`.
+
+**Backend inside Docker** (same Compose network as Postgres/Redis/ClickHouse): use hostnames `postgres`, `redis`, and `clickhouse` in your URLs. See [`deploy/.env.docker.example`](../deploy/.env.docker.example).
 
 ---
 

@@ -6,7 +6,7 @@ Shared helpers: [`lib/load-env.js`](lib/load-env.js) loads the repo-root `.env` 
 
 | Script | Purpose | Network / prereqs | Typical command |
 |--------|---------|-------------------|-------------------|
-| `install-all.sh` | Install root, frontend, CRE, and optional Rust deps (prefer `./scripts/install-all.sh` on WSL; see [INSTALL.md](../INSTALL.md)) | Node 20+, WSL recommended | `./scripts/install-all.sh` |
+| `install-all.sh` | Install root, frontend, CRE, and optional Rust deps (prefer `./scripts/install-all.sh` on WSL; see [docs/INSTALL.md](../docs/INSTALL.md)) | Node 20+, WSL recommended | `./scripts/install-all.sh` |
 | `install-frontend.sh` | Clean reinstall of `frontend/node_modules` | Node | `./scripts/install-frontend.sh` |
 | `check-node.sh` | On WSL, verify Node is Linux (`linux`), not Windows (`win32`) | WSL | `./scripts/check-node.sh` |
 | `docker-up.sh` | Start Postgres, Redis, ClickHouse (`docker compose`), apply ClickHouse DDL | Docker | `./scripts/docker-up.sh` |

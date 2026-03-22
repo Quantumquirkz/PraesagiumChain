@@ -16,7 +16,7 @@ if [ "$NODE_PLATFORM" = "win32" ]; then
   echo "  process.platform: $NODE_PLATFORM"
   echo ""
   echo "Install Node inside WSL (nvm or apt) and use that node/npm."
-  echo "See INSTALL.md section 'Node inside WSL'."
+  echo "See docs/INSTALL.md section 'Node inside WSL'."
   exit 1
 fi
 

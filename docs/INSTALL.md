@@ -1,6 +1,6 @@
 # PraesagiumChain Installation (Windows / WSL)
 
-**Full stack setup** (PostgreSQL, Docker, contracts, backend, frontend) is documented in **[docs/setup.md](docs/setup.md)** — use that as the primary guide for new machines.
+**Full stack setup** (PostgreSQL, Docker, contracts, backend, frontend) is documented in **[setup.md](setup.md)** — use that as the primary guide for new machines.
 
 This file is the **supplement for Windows developers**: terminal profile, Node inside WSL, and `node-gyp`-related pitfalls. Follow it when you develop on Windows with WSL2.
 

@@ -744,8 +744,10 @@ PraesagiumChain/
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
 ├── deploy/
+│   ├── .env.docker.example       # Env template when backend runs in Docker (service hostnames)
 │   └── k8s/                      # Optional Kubernetes manifests
 ├── docs/
+│   ├── INSTALL.md                # Windows / WSL supplement (Node in WSL, Cursor terminal)
 │   ├── setup.md                  # Setup guide
 │   ├── architecture.md         # Layout + contracts, DB, PHPE, frontend
 │   ├── operations.md            # Security, CI audits, scaling notes
@@ -869,7 +871,7 @@ UI stack: Next.js 14 App Router, wagmi v2, Tailwind, lightweight-charts, dark/li
 | [docs/contracts.md](docs/contracts.md) | Contract overview |
 | [docs/audit.md](docs/audit.md) | Where to verify API flows (source pointers) |
 | [docs/adr/adr-001-clickhouse-analytics.md](docs/adr/adr-001-clickhouse-analytics.md) | ADR: ClickHouse |
-| [INSTALL.md](INSTALL.md) | Windows / WSL supplement |
+| [docs/INSTALL.md](docs/INSTALL.md) | Windows / WSL supplement |
 | [scripts/README.md](scripts/README.md) | `scripts/` index |
 | [docs/startup/](docs/startup/) | Strategy (FODA, roadmap, Spanish) |
 | [cre/README.md](cre/README.md) | CRE workflows |
