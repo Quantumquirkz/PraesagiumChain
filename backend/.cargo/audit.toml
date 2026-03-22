@@ -1,0 +1,9 @@
+# Acknowledged transitive advisories until ethers / sqlx major upgrades land.
+# Revisit when bumping `ethers` or `sqlx` in Cargo.toml (see docs/operations.md).
+[advisories]
+ignore = [
+  "RUSTSEC-2025-0009",
+  "RUSTSEC-2023-0071",
+  "RUSTSEC-2026-0049",
+  "RUSTSEC-2024-0363",
+]

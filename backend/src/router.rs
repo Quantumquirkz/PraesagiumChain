@@ -14,6 +14,7 @@ use crate::state::AppState;
 pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/health", get(api::health::health))
+        .route("/metrics", get(api::prometheus::metrics_prometheus))
         // Markets (Frontend, indexer internal)
         .route("/api/markets", get(api::markets::list).post(api::markets::create))
         .route("/api/markets/conditional", post(api::markets::create_conditional))

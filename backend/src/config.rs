@@ -115,7 +115,7 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or_else(default_rate_limit_burst);
 
-        Ok(Config {
+        let config = Config {
             port,
             database_url,
             db_pool_size,
@@ -142,6 +142,46 @@ impl Config {
             chainlink_eth_usd_feed: std::env::var("CHAINLINK_ETH_USD_FEED").ok(),
             chainlink_btc_usd_feed: std::env::var("CHAINLINK_BTC_USD_FEED").ok(),
             admin_api_key: std::env::var("ADMIN_API_KEY").ok(),
-        })
+        };
+        config.validate_for_deployment()?;
+        Ok(config)
+    }
+
+    /// Enforces production invariants so misconfiguration fails fast at startup.
+    pub fn validate_for_deployment(&self) -> anyhow::Result<()> {
+        if !self.is_production() {
+            return Ok(());
+        }
+
+        let db = self.database_url.to_lowercase();
+        if db.contains("localhost") || db.contains("127.0.0.1") || db.contains("@localhost") {
+            anyhow::bail!(
+                "DATABASE_URL must not use localhost in production (ENVIRONMENT=production). Use a managed PostgreSQL hostname."
+            );
+        }
+
+        let cors_ok = self
+            .cors_origins
+            .as_ref()
+            .map(|o| !o.is_empty())
+            .unwrap_or(false);
+        if !cors_ok {
+            anyhow::bail!(
+                "CORS_ORIGINS must be set to a comma-separated list of allowed browser origins in production (ENVIRONMENT=production)."
+            );
+        }
+
+        if self
+            .prediction_market_address
+            .as_ref()
+            .map(|s| s.trim().is_empty())
+            .unwrap_or(true)
+        {
+            tracing::warn!(
+                "PREDICTION_MARKET_ADDRESS is unset: the on-chain indexer will not run in production until it is set."
+            );
+        }
+
+        Ok(())
     }
 }

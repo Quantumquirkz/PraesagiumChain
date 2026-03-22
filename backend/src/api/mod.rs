@@ -6,6 +6,7 @@ pub mod markets;
 pub mod private_markets;
 pub mod predictions;
 pub mod metrics;
+pub mod prometheus;
 pub mod ai;
 pub mod reputation;
 pub mod hybrid;

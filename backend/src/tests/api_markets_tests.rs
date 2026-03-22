@@ -91,6 +91,26 @@ async fn build_test_app() -> Option<(axum::Router, std::sync::Arc<crate::state::
 }
 
 #[tokio::test]
+async fn prometheus_metrics_exposes_uptime_gauge() {
+    let Some((app, _)) = build_test_app().await else {
+        return;
+    };
+    let req = Request::builder()
+        .uri("/metrics")
+        .body(Body::empty())
+        .unwrap();
+    use tower::util::ServiceExt;
+    let response = app.oneshot(req).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let s = String::from_utf8_lossy(&body);
+    assert!(s.contains("praesagium_uptime_seconds"));
+    assert!(s.contains("praesagium_db_up"));
+}
+
+#[tokio::test]
 async fn list_markets_returns_paginated() {
     let Some((app, _)) = build_test_app().await else { return };
     let req = Request::builder()
