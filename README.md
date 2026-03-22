@@ -325,7 +325,7 @@ REDIS_URL=redis://localhost:6380
 CLICKHOUSE_URL=http://localhost:8123
 ```
 
-Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see [deploy/k8s/README.md](deploy/k8s/README.md).
+Run the backend and frontend on the host as usual (`npm run backend`, `cd frontend && npm run dev`). For Kubernetes (optional, production), see [infrastructure/kubernetes/README.md](infrastructure/kubernetes/README.md).
 
 ### CRE Workflow Simulation
 
@@ -682,14 +682,17 @@ PraesagiumChain/
 │   │   ├── db.rs                 # PostgreSQL pool + migrations
 │   │   ├── models.rs             # Shared request/response types
 │   │   └── error.rs              # Unified error type
-│   ├── phpe/                     # PHPE prediction engine (standalone crate)
+│   ├── crates/predictor/         # PHPE prediction engine (standalone crate)
 │   │   └── src/
 │   │       ├── data/             # Normalization, feature extraction
 │   │       ├── causal/           # Causal DAG inference
 │   │       ├── temporal/         # Temporal encoding (sliding window, regime detection)
 │   │       ├── bayesian/         # Bayesian head with MC dropout
 │   │       └── calibration/      # Isotonic / temperature calibration
-│   └── migrations/               # SQL migration files
+│   ├── chainlink-functions/      # JS snippets for Chainlink Functions (oracles / demos)
+│   ├── migrations/
+│   │   ├── postgres/              # PostgreSQL migrations
+│   │   └── clickhouse/            # ClickHouse DDL (analytics)
 ├── frontend/                     # Next.js 14 App Router frontend
 │   ├── app/                      # Pages (App Router)
 │   │   ├── page.tsx              # Dashboard — market list + stats
@@ -729,7 +732,7 @@ PraesagiumChain/
 │   ├── tailwind.config.ts        # Custom design tokens (dark/light theme)
 │   ├── tsconfig.json             # TypeScript config (@/* alias)
 │   └── package.json              # Frontend dependencies
-├── cre/
+├── cre/                          # Chainlink CRE workflows + synced OracleConsumer ABI
 │   ├── praesagium-resolver/      # Standard market CRE workflow (TypeScript)
 │   │   ├── main.ts               # CRON → HTTP → outcome → oracleCallback
 │   │   ├── config.staging.json
@@ -741,9 +744,9 @@ PraesagiumChain/
 │   ├── verify/verify.js          # Etherscan/Polygonscan verification
 │   ├── simulateCRE.js            # Local CRE simulation
 │   └── resolveFromBackend.js     # Resolve market via backend API
-├── deploy/
-│   ├── .env.docker.example       # Env template when backend runs in Docker (service hostnames)
-│   └── k8s/                      # Optional Kubernetes manifests
+├── infrastructure/
+│   ├── docker/                   # .env.docker.example (Compose service hostnames)
+│   └── kubernetes/               # Optional Kubernetes manifests
 ├── docs/
 │   ├── INSTALL.md                # Windows / WSL supplement (Node in WSL, Cursor terminal)
 │   ├── setup.md                  # Setup guide
@@ -757,7 +760,7 @@ PraesagiumChain/
 │   ├── startup/                  # Strategy (FODA, roadmap, Spanish)
 │   └── research/
 │       └── notebook/             # Optional Python/Jupyter experiments (not runtime)
-├── test/                         # Hardhat contract tests (see hardhat.config.js paths.tests)
+├── tests/contracts/              # Hardhat contract tests (see hardhat.config.js paths.tests)
 ├── env.example                   # Copy to .env at repo root (backend + frontend + scripts)
 ├── hardhat.config.js
 ├── package.json                  # Hardhat + contracts tooling

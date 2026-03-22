@@ -155,7 +155,7 @@ You should see `postgres`, `redis`, and `clickhouse` running.
 
 **If you prefer local PostgreSQL** (without Docker), create a database and user matching the `DATABASE_URL` in `.env`.
 
-**Backend inside Docker** (same Compose network as Postgres/Redis/ClickHouse): use hostnames `postgres`, `redis`, and `clickhouse` in your URLs. See [`deploy/.env.docker.example`](../deploy/.env.docker.example).
+**Backend inside Docker** (same Compose network as Postgres/Redis/ClickHouse): use hostnames `postgres`, `redis`, and `clickhouse` in your URLs. See [`infrastructure/docker/.env.docker.example`](../infrastructure/docker/.env.docker.example).
 
 ---
 
@@ -366,7 +366,7 @@ npm run dev
 
 Do not commit the `.next` folder; it is gitignored.
 
-### Stale Solidity build artifacts (`artifacts/`, `cache/`)
+### Stale Solidity build artifacts (`build/hardhat-artifacts/`, `build/hardhat-cache/`)
 
 If compilation errors persist after changing contracts, clean Hardhat outputs at the repo root:
 

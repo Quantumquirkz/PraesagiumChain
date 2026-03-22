@@ -14,6 +14,6 @@ The root `audit` script ends with `cd backend && cargo audit || true` so a non-z
 
 **Stack:** Stateless Axum API behind a load balancer; Postgres source of truth; optional Redis/ClickHouse ([ADR-001](adr/adr-001-clickhouse-analytics.md)). Size DB pools to server limits; set HTTP timeouts. CI uses npm + Rust caches; parallel jobs in [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
 
-**Later:** OpenTelemetry when SLOs exist; Postgres read replicas if reads dominate; queues for long jobs; [`deploy/k8s/`](../deploy/k8s/) optional for replicas.
+**Later:** OpenTelemetry when SLOs exist; Postgres read replicas if reads dominate; queues for long jobs; [`infrastructure/kubernetes/`](../infrastructure/kubernetes/) optional for replicas.
 
 `NEXT_PUBLIC_*` is browser-visible—only chain ID, public RPC, contract addresses.

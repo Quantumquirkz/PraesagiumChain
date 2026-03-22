@@ -7,13 +7,13 @@ Overview of architecture and **repository layout**. Implementation details live 
 | Directory | Role |
 |-----------|------|
 | [`contracts/`](../contracts/) | Solidity (Hardhat): `npm run compile`, `npm test` |
-| [`test/`](../test/) | Hardhat contract tests (`paths.tests` in `hardhat.config.js`) |
+| [`tests/contracts/`](../tests/contracts/) | Hardhat contract tests (`paths.tests` in `hardhat.config.js`) |
 | [`backend/`](../backend/) | Axum API, PHPE: `npm run backend`, `cargo test` |
 | [`frontend/`](../frontend/) | Next.js: `cd frontend && npm run dev` |
 | [`cre/`](../cre/) | CRE workflows (TypeScript) |
 | [`scripts/`](../scripts/) | Deploy, demo — [scripts/README.md](../scripts/README.md) |
 | [`docs/`](../docs/) | [Index](README.md), guides, ADR, [`startup/`](startup/) (strategy), [`research/notebook/`](research/notebook/) (optional) |
-| [`deploy/k8s/`](../deploy/k8s/) | Optional Kubernetes (not needed locally) |
+| [`infrastructure/kubernetes/`](../infrastructure/kubernetes/) | Optional Kubernetes (not needed locally) |
 | Root | [`env.example`](../env.example) → copy to `.env`; `package.json`, Hardhat, `docker-compose.yml` |
 
 One `.env` at repo root for backend, scripts, and frontend (Next loads via `loadEnvConfig`). Copy from [`env.example`](../env.example) at the repo root.
@@ -85,7 +85,7 @@ Market lifecycle: **Open** → **Locked** (closeTime) → **Resolved** (resolver
 
 ## 2. Database Schema
 
-**Location:** [`backend/migrations_pg/`](../backend/migrations_pg/)
+**Location:** [`backend/migrations/postgres/`](../backend/migrations/postgres/)
 
 Migrations: `001_initial.sql`, `007_resolution_config.sql`, `008_private_market_access_keys.sql`
 
@@ -118,7 +118,7 @@ The **EventIndexer** keeps the database in sync with on-chain events (`MarketCre
 
 ## 4. PHPE and Hybrid Prediction
 
-**PHPE (Praesagium Hybrid Predictive Engine):** [`backend/phpe/`](../backend/phpe/)
+**PHPE (Praesagium Hybrid Predictive Engine):** [`backend/crates/predictor/`](../backend/crates/predictor/)
 
 Pipeline: **Normalize** → **Causal infer** → **Temporal encode** → **Bayesian predict** → **Calibrate**
 
@@ -185,5 +185,5 @@ Single `.env` at repo root. Next.js loads via `loadEnvConfig` in `next.config.js
 
 - Contracts: [`contracts/`](../contracts/)
 - Backend: [`backend/src/`](../backend/src/)
-- PHPE: [`backend/phpe/`](../backend/phpe/)
+- PHPE: [`backend/crates/predictor/`](../backend/crates/predictor/)
 - Frontend: [`frontend/`](../frontend/)

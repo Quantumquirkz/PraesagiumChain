@@ -18,4 +18,4 @@ Workflow for **commit–reveal** / private prediction markets (TEE-oriented reso
 ## Local verification
 
 1. Deploy private market contract: `npm run deploy:private` (localhost) or your Sepolia flow.
-2. Run backend and use private market API routes as documented in the main [cre/README.md](../README.md).
+2. Run backend and use private market API routes as documented in the main [README.md](../README.md).

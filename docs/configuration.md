@@ -10,7 +10,7 @@ For the full template, see [env.example](../env.example) at the repo root.
 
 1. [Root `.env` (Backend)](#1-root-env-backend)
 2. [Frontend Variables (`NEXT_PUBLIC_*`)](#2-frontend-variables-next_public)
-3. [CRE (`cre/.env`)](#3-cre-creenv)
+3. [CRE](#3-cre-environment)
 4. [API Keys and External Services](#4-api-keys-and-external-services)
 5. [Quick Reference](#5-quick-reference)
 
@@ -60,9 +60,9 @@ All frontend variables live in the same root `.env`. Next.js loads them via `loa
 
 ---
 
-## 3. CRE (`cre/.env`)
+## 3. CRE environment
 
-For Chainlink CRE workflow simulation:
+Use the file `cre/.env` for Chainlink CRE workflow simulation:
 
 | Variable | Description |
 |----------|-------------|

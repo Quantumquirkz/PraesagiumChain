@@ -13,7 +13,7 @@ Shared helpers: [`lib/load-env.js`](lib/load-env.js) (`loadRootEnv()`) loads the
 | `backup-db.sh` | PostgreSQL dump using `DATABASE_URL` from `.env` | DB running | `./scripts/backup-db.sh` |
 | `setup-and-run-backend.sh` | Ensure build deps, then `cargo run` in `backend` | Rust | `./scripts/setup-and-run-backend.sh` |
 | `run-backend.js` | Start backend with repo-root `.env` loaded (used by `npm run backend`) | `.env`, Postgres | `npm run backend` |
-| `syncCreAbi.js` | Copy OracleConsumer ABI from Hardhat artifacts into CRE (`npm run sync:cre-abi`) | After `npm run compile` | `npm run sync:cre-abi` |
+| `syncCreAbi.js` | Copy OracleConsumer ABI from `build/hardhat-artifacts/` into CRE (`npm run sync:cre-abi`) | After `npm run compile` | `npm run sync:cre-abi` |
 | `stress-api.js` | Load test `/health` and `/api/markets` on the API | Backend up | `node scripts/stress-api.js [baseUrl]` |
 | `simulateCRE.js` | Textual walkthrough of the CRE resolution flow (no chain) | Optional backend | `node scripts/simulateCRE.js` |
 | `resolveFromBackend.js` | Resolve a market on-chain using backend outcome (demos / automation) | `PRIVATE_KEY`, `ORACLE_CONSUMER_ADDRESS`, RPC | `node scripts/resolveFromBackend.js --market-id N` |
@@ -28,8 +28,8 @@ Shared helpers: [`lib/load-env.js`](lib/load-env.js) (`loadRootEnv()`) loads the
 | `deploy/completeSepoliaSetup.js` | One-shot Sepolia setup (see script comments) | Sepolia | `npx hardhat run scripts/deploy/completeSepoliaSetup.js --network sepolia` |
 | `sync/syncMarketFromTx.js` | Sync market state from a tx (`npm run sync:market`) | RPC, `.env` | `npm run sync:market` |
 | `verify/verify.js` | Verify contracts on Etherscan (`verify:sepolia` / `verify:polygon`) | `ETHERSCAN_API_KEY` | `npm run verify:sepolia` |
-| `../test/testPredictionMarket.js` | Contract tests (Hardhat `paths.tests` → `test/`) | Hardhat | `npm test` |
-| `../test/testCREWorkflow.js` | CRE workflow tests | Hardhat | `npm test` |
+| `../tests/contracts/testPredictionMarket.js` | Contract tests (Hardhat `paths.tests` → `tests/contracts`) | Hardhat | `npm test` |
+| `../tests/contracts/testCREWorkflow.js` | CRE workflow tests | Hardhat | `npm test` |
 | `demo/demoE2E.js` | End-to-end demo (`npm run demo`) | Local stack | `npm run demo` |
 
-For **Kubernetes** manifests, see [deploy/k8s/README.md](../deploy/k8s/README.md).
+For **Kubernetes** manifests, see [infrastructure/kubernetes/README.md](../infrastructure/kubernetes/README.md).

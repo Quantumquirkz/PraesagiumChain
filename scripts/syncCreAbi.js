@@ -7,8 +7,14 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
-const artifactPath = path.join(root, "artifacts/contracts/OracleConsumer.sol/OracleConsumer.json");
-const destPath = path.join(root, "cre/contracts/evm/src/abi/OracleConsumer.abi");
+const artifactPath = path.join(
+  root,
+  "build/hardhat-artifacts/contracts/OracleConsumer.sol/OracleConsumer.json"
+);
+const destPath = path.join(
+  root,
+  "cre/contracts/evm/src/abi/OracleConsumer.abi"
+);
 
 if (!fs.existsSync(artifactPath)) {
   console.error("Run npm run compile first. Artifact not found:", artifactPath);

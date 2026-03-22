@@ -13,7 +13,7 @@ TypeScript workflow using `@chainlink/cre-sdk`. It does **not** send transaction
 
 ## Environment
 
-- **Simulation / local:** set `CRE_ETH_PRIVATE_KEY` in `cre/.env` (see [`cre/.env.example`](../.env.example)).
+- **Simulation / local:** set `CRE_ETH_PRIVATE_KEY` in `cre/.env` (see [`../.env.example`](../.env.example)).
 - **Backend:** root `.env` with `API_BASE_URL` or run `npm run backend` so `api_base_url` in workflow config points at `http://localhost:4000` (or your host).
 
 ## Local verification

@@ -12,7 +12,7 @@ PraesagiumChain needs a place to store high-volume, append-only events (market c
 
 Use **ClickHouse** as the analytics store for event data. When `CLICKHOUSE_URL` is set, the backend subscribes to the in-process `EventBus` and asynchronously writes events to ClickHouse. Failures are logged and do not affect the API (fire-and-forget).
 
-- **Tables:** `market_events` (event_type, market_id, on_chain_market_id, payload JSON string), `prediction_events` (market_id, probability, uncertainty, model_version). DDL in `backend/migrations_clickhouse/001_events.sql`.
+- **Tables:** `market_events` (event_type, market_id, on_chain_market_id, payload JSON string), `prediction_events` (market_id, probability, uncertainty, model_version). DDL in `backend/migrations/clickhouse/001_events.sql`.
 - **Consistency:** Eventual. No transactional guarantee between PostgreSQL and ClickHouse.
 - **Optional:** If `CLICKHOUSE_URL` is not set, no writes are performed and the backend runs as before.
 

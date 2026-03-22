@@ -49,7 +49,7 @@ The root `package.json` declares `"workspaces": ["frontend"]`. Install once from
 ### Cursor: rules, skills, and agents
 
 - **Workspace rules** (`.cursorrules`) define architecture and quality bars; large or risky changes should have an [ADR](docs/adr/) when they introduce new patterns or dependencies.
-- **Skills** in Cursor are optional checklists—use them for the area you touch (e.g. Postgres when editing `backend/migrations_pg/`, React/Next for `frontend/`), not as a reason to add scope.
+- **Skills** in Cursor are optional checklists—use them for the area you touch (e.g. Postgres when editing `backend/migrations/postgres/`, React/Next for `frontend/`), not as a reason to add scope.
 - **Subagents / Task tool:** useful for exploring unfamiliar parts of the repo or fixing CI; human review remains required for architecture and security decisions.
 
 ### Repository layout

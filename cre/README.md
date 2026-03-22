@@ -58,7 +58,7 @@ cre/
 
 ## Simulate with CRE CLI
 
-From the **cre/** directory:
+From the **`cre/`** directory (repo root):
 
 ```bash
 cd cre
