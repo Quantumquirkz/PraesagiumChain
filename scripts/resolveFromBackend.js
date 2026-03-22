@@ -14,7 +14,7 @@
  * Env: PRIVATE_KEY, RPC_URL (or default localhost:8545), ORACLE_CONSUMER_ADDRESS, API_BASE_URL (default http://localhost:4000)
  * Optional: PREDICTION_MARKET_ADDRESS — if set, skips tx when market is already resolved (idempotency).
  */
-require("dotenv").config();
+require("./lib/load-env").loadRootEnv();
 const path = require("path");
 const fs = require("fs");
 

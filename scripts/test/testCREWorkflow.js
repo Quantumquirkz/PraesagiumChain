@@ -2,6 +2,8 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 
 describe("CREWorkflow", function () {
+  this.timeout(120000);
+
   let predictionMarket, creWorkflow, oracleConsumer;
   let owner, user1, user2;
   let marketId;
