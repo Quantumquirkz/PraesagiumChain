@@ -1,4 +1,4 @@
-//! Database: PostgreSQL only. Migrations from migrations_pg/.
+//! Database: PostgreSQL only. Migrations from migrations/postgres/.
 //! Redis is used separately (cache, sessions). ClickHouse for analytics (optional).
 
 use sqlx::migrate::Migrator;
@@ -12,7 +12,7 @@ pub struct Database {
 
 impl Database {
     /// Connect to PostgreSQL. DATABASE_URL must be a postgresql:// URL.
-    /// Runs migrations from `migrations_pg/`.
+    /// Runs migrations from `migrations/postgres/`.
     pub async fn new(url: &str, max_connections: u32) -> anyhow::Result<Self> {
         let url = url.trim();
         if !url.starts_with("postgresql://") && !url.starts_with("postgres://") {
@@ -28,7 +28,7 @@ impl Database {
             .await?;
 
         let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let migrations_path = manifest_dir.join("migrations_pg");
+        let migrations_path = manifest_dir.join("migrations").join("postgres");
         let migrator = Migrator::new(migrations_path.as_path()).await?;
         migrator.run(&pool).await?;
 

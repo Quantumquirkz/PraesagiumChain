@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::services::event_bus::MarketEvent;
 
-/// Row for market_events table. Matches migrations_clickhouse/001_events.sql.
+/// Row for market_events table. Matches migrations/clickhouse/001_events.sql.
 #[derive(clickhouse::Row, Serialize)]
 pub struct MarketEventRow {
     pub created_at: u32,
