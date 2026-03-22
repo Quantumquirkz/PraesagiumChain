@@ -72,7 +72,7 @@ async function simulate() {
   console.log("- contracts/CREWorkflow.sol");
   console.log("- contracts/OracleConsumer.sol");
   console.log("- contracts/PredictionMarket.sol");
-  console.log("- backend/scripts/ai/sentiment-analysis.js (Chainlink Functions)");
+  console.log("- backend/chainlink-functions/sentiment-analysis.js (Chainlink Functions)");
 }
 
 simulate().catch(console.error);
