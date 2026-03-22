@@ -15,6 +15,10 @@ import type {
   ConditionalConditionView,
   FetchResponse,
 } from "@/types/api";
+import {
+  isPaginatedMarketsResponse,
+  type MarketsListResponse,
+} from "@/lib/api-response";
 
 // In the browser: if NEXT_PUBLIC_API_BASE_URL is set, use it (direct requests to backend);
 // otherwise use "" so requests go to same origin and Next's proxy (rewrites) forwards them to the backend.
@@ -72,22 +76,6 @@ export async function getStats(): Promise<MarketStats> {
   return fetchApi<MarketStats>("/api/markets/stats");
 }
 
-/** Backend may return either a direct paginated payload or { data: paginated }. */
-type MarketsListResponse =
-  | PaginatedResponse<MarketView>
-  | { data: PaginatedResponse<MarketView> };
-
-function isPaginatedResponse(
-  raw: MarketsListResponse
-): raw is PaginatedResponse<MarketView> {
-  return (
-    raw != null &&
-    typeof raw === "object" &&
-    "items" in raw &&
-    Array.isArray((raw as PaginatedResponse<MarketView>).items)
-  );
-}
-
 export async function getMarkets(
   page: number,
   limit: number,
@@ -96,7 +84,7 @@ export async function getMarkets(
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) params.set("status", status);
   const raw = await fetchApi<MarketsListResponse>(`/api/markets?${params}`);
-  if (isPaginatedResponse(raw)) {
+  if (isPaginatedMarketsResponse(raw)) {
     return raw;
   }
   if (raw && typeof raw === "object" && "data" in raw) {
@@ -289,3 +277,12 @@ export async function getPrivateMarketsByCreator(
   const params = new URLSearchParams({ address: address.trim() });
   return fetchApi<PrivateMarketByCreatorItem[]>(`/api/markets/private/by-creator?${params}`);
 }
+
+/** Re-export common API types so callers can import from `@/lib/api` only. */
+export type {
+  MarketView,
+  PaginatedResponse,
+  PredictionView,
+  MarketStats,
+  CreatorReputation,
+} from "@/types/api";
