@@ -27,12 +27,7 @@ if [ -f /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
   fi
 fi
 
-echo "==> Root: npm install"
-npm install
-
-echo ""
-echo "==> Frontend: npm install"
-cd "$ROOT/frontend"
+echo "==> Root: npm install (includes frontend workspace)"
 npm install
 
 echo ""

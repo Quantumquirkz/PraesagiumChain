@@ -18,9 +18,9 @@ if [ -f /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
   fi
 fi
 
-echo "==> Frontend: cleaning and installing..."
-cd "$ROOT/frontend"
-rm -rf node_modules package-lock.json
+echo "==> Reinstalling from repo root (includes frontend workspace)"
+cd "$ROOT"
+rm -rf node_modules frontend/node_modules
 npm install
 
 echo ""
