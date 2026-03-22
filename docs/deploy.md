@@ -17,7 +17,7 @@ Step-by-step guide to deploy PraesagiumChain contracts to Sepolia and configure 
 At the **repo root**, copy and edit `.env`:
 
 ```bash
-cp config/env.example .env
+cp env.example .env
 ```
 
 Minimum required for Sepolia deploy:

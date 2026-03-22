@@ -11,13 +11,11 @@ Overview of architecture and **repository layout**. Implementation details live 
 | [`frontend/`](../frontend/) | Next.js: `cd frontend && npm run dev` |
 | [`cre/`](../cre/) | CRE workflows (TypeScript) |
 | [`scripts/`](../scripts/) | Deploy, demo — [scripts/README.md](../scripts/README.md) |
-| [`config/`](../config/) | `env.example` → copy to root `.env` |
-| [`k8s/`](../k8s/) | Optional Kubernetes (not needed locally) |
-| [`research/notebook/`](../research/notebook/) | Optional Jupyter experiments |
-| [`StartUp/`](../StartUp/) | Business strategy (Spanish) |
-| Root | `package.json`, Hardhat, `docker-compose.yml` |
+| [`docs/`](../docs/) | [Index](README.md), guides, ADR, [`startup/`](startup/) (strategy), [`research/notebook/`](research/notebook/) (optional) |
+| [`deploy/k8s/`](../deploy/k8s/) | Optional Kubernetes (not needed locally) |
+| Root | [`env.example`](../env.example) → copy to `.env`; `package.json`, Hardhat, `docker-compose.yml` |
 
-One `.env` at repo root for backend, scripts, and frontend (Next loads via `loadEnvConfig`).
+One `.env` at repo root for backend, scripts, and frontend (Next loads via `loadEnvConfig`). Copy from [`env.example`](../env.example) at the repo root.
 
 ---
 
