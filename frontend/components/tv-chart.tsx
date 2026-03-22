@@ -295,7 +295,6 @@ export function TVChart({
       macdRef.current = macdSigRef.current = macdHistRef.current = null;
     };
   // Chart init/teardown keyed by height only; refs/symbol/timeframe intentionally omitted.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height]);
 
   // Effect 1: new data (rawBars) — update series + auto-scroll

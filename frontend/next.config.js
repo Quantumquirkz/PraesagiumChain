@@ -29,22 +29,13 @@ const nextConfig = {
     ];
   },
   async headers() {
-    return [
+    const base = [
       {
         source: "/:path*",
         headers: [
           {
             key: "X-DNS-Prefetch-Control",
             value: "on",
-          },
-        ],
-      },
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
           },
         ],
       },
@@ -58,17 +49,31 @@ const nextConfig = {
         ],
       },
     ];
+    // Long-lived cache for hashed assets — production only. In development, caching
+    // /_next/static causes stale chunk URLs and ChunkLoadError / timeouts after HMR.
+    if (process.env.NODE_ENV === "production") {
+      base.push({
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      });
+    }
+    return base;
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts"],
-    turbo: {
-      resolveAlias: {
-        "@react-native-async-storage/async-storage": "./empty-module.js",
-        "pino-pretty": "./empty-module.js",
-        fs: "./empty-module.js",
-        net: "./empty-module.js",
-        tls: "./empty-module.js",
-      },
+  },
+  turbopack: {
+    resolveAlias: {
+      "@react-native-async-storage/async-storage": "./empty-module.js",
+      "pino-pretty": "./empty-module.js",
+      fs: "./empty-module.js",
+      net: "./empty-module.js",
+      tls: "./empty-module.js",
     },
   },
   webpack(config, { dev, isServer }) {

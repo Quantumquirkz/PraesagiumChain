@@ -1020,7 +1020,7 @@ export default function CreateMarketPage() {
       </div>
 
       {/* Access key modal for private markets */}
-      <Dialog open={accessKeyModal.open} onOpenChange={(open) => !open && setAccessKeyModal({ open: false })}>
+      <Dialog open={accessKeyModal.open} onOpenChange={(open: boolean) => !open && setAccessKeyModal({ open: false })}>
         <DialogContent className="max-w-md border-border bg-surface" showClose>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-display text-violet">

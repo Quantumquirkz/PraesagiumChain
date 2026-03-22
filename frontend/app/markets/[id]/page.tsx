@@ -10,10 +10,11 @@ export const revalidate = 30;
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const { id } = await params;
   try {
-    const market = await getMarket(Number(params.id));
+    const market = await getMarket(Number(id));
     const totalPool = (
       Number(market.total_yes_stake) + Number(market.total_no_stake)
     ).toFixed(3);
