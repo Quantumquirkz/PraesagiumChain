@@ -4,3 +4,6 @@
 node_modules/
 bun.lock
 tmp.js
+
+# WASM from CRE CLI / workflow build (generated locally; do not commit)
+*.wasm

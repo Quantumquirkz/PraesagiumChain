@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Block committed WASM under cre/
+        run: |
+          if git ls-files | grep -qE '^cre/.*\.wasm$'; then
+            echo "::error::Do not commit .wasm files under cre/ (generated locally; see cre/.gitignore and cre/praesagium-resolver/README.md)"
+            git ls-files | grep -E '^cre/.*\.wasm$' || true
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

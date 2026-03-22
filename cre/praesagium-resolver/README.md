@@ -25,3 +25,7 @@ TypeScript workflow using `@chainlink/cre-sdk`. It does **not** send transaction
 ## Config files
 
 - `config.staging.json` — schedule, `api_base_url`, `text_to_analyze`, `market_id`, `chain_name`, optional `oracle_consumer_address`.
+
+## Build artifacts
+
+- `tmp.wasm` (and other `*.wasm` under `cre/`) is produced by the CRE toolchain when you build or simulate locally; it is gitignored and must not be committed.
