@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCommitReveal } from "@/hooks/use-commit-reveal";
-import { usePrivateMarketCommitCount, usePrivateTotalCommitted } from "@/hooks/use-private-markets";
+import { usePrivateMarketCommitCount, usePrivateTotalCommitted } from "@/features/markets/hooks/use-private-markets";
 import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ArrowDown, PlusCircle } from "lucide-react";
-import { useMarketStats } from "@/hooks/use-markets";
+import { useMarketStats } from "@/features/markets/hooks/use-markets";
 import { Button } from "@/components/ui/button";
 import { HeroDemoPanel } from "@/components/hero-demo-panel";
 import { cn } from "@/lib/utils";

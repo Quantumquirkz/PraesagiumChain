@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { HeroMarketCard } from "@/components/hero-market-card";
-import type { HeroMarketCardData } from "@/components/hero-market-card";
+import { HeroMarketCard } from "@/features/markets/components/hero-market-card";
+import type { HeroMarketCardData } from "@/features/markets/components/hero-market-card";
 
 // Demo data
 

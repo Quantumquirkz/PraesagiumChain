@@ -1,6 +1,6 @@
 "use client";
 
-import { useMarketWatcher } from "@/hooks/use-market-watcher";
+import { useMarketWatcher } from "../hooks/use-market-watcher";
 
 /**
  * Client component that enables polling for watched markets.

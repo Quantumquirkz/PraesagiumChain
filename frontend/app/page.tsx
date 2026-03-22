@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
-import { useInfiniteMarkets, useMarketStats } from "@/hooks/use-markets";
+import { useInfiniteMarkets, useMarketStats } from "@/features/markets/hooks/use-markets";
 import {
   MarketFilters,
   filterStateFromParams,
   filterStateToParams,
   type SortOption,
   type FilterState,
-} from "@/components/market-filters";
+} from "@/features/markets/components/market-filters";
 import { StatsCards } from "@/components/stats-cards";
-import { MarketCard } from "@/components/market-card";
+import { MarketCard } from "@/features/markets/components/market-card";
 import { MarketCardSkeleton, StatsSkeleton } from "@/components/skeletons";
 import { NoMarkets } from "@/components/empty-states/no-markets";
 import { LastUpdated } from "@/components/last-updated";

@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
 import { WrongNetworkBanner } from "@/components/wrong-network-banner";
 import { Footer } from "@/components/footer";
-import { MarketWatcherProvider } from "@/components/market-watcher-provider";
+import { MarketWatcherProvider } from "@/features/markets/components/market-watcher-provider";
 import { LiveTicker } from "@/components/live-ticker";
 import { PWAInstallBanner } from "@/components/pwa-install-banner";
 

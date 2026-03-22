@@ -1,11 +1,11 @@
 /**
  * Markets domain — public exports for pages and widgets.
  */
-export { MarketCard } from "@/components/market-card";
-export { MarketDetail } from "@/components/market-detail";
-export { BetForm } from "@/components/bet-form";
-export { useMarkets } from "@/hooks/use-markets";
-export { usePlaceBet } from "@/hooks/use-place-bet";
+export { MarketCard } from "@/features/markets/components/market-card";
+export { MarketDetail } from "@/features/markets/components/market-detail";
+export { BetForm } from "@/features/markets/components/bet-form";
+export { useMarkets } from "@/features/markets/hooks/use-markets";
+export { usePlaceBet } from "@/features/markets/hooks/use-place-bet";
 export {
   getMarkets,
   getMarket,

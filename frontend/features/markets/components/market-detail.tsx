@@ -28,7 +28,7 @@ import { formatDate, formatEth, formatRelativeTime } from "@/lib/utils";
 import { predictionMarketContract, PREDICTION_MARKET_ADDRESS, OUTCOME, EXPLORER_URL, getMarketCategoryFromMetadata, getBetTokenFromMetadata, BET_TOKENS } from "@/lib/constants";
 import type { IndicatorId } from "@/components/tv-chart";
 import { useCountdown, CountdownBlocks } from "@/components/countdown";
-import { BetForm } from "@/components/bet-form";
+import { BetForm } from "./bet-form";
 import { ShareMarketButton } from "@/components/share-market-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

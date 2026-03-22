@@ -7,7 +7,7 @@ import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2 } from "lucide-react";
-import { usePlaceBet } from "@/hooks/use-place-bet";
+import { usePlaceBet } from "../hooks/use-place-bet";
 import { WalletButton } from "@/components/wallet-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
