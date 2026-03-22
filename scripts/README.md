@@ -28,8 +28,8 @@ Shared helpers: [`lib/load-env.js`](lib/load-env.js) (`loadRootEnv()`) loads the
 | `deploy/completeSepoliaSetup.js` | One-shot Sepolia setup (see script comments) | Sepolia | `npx hardhat run scripts/deploy/completeSepoliaSetup.js --network sepolia` |
 | `sync/syncMarketFromTx.js` | Sync market state from a tx (`npm run sync:market`) | RPC, `.env` | `npm run sync:market` |
 | `verify/verify.js` | Verify contracts on Etherscan (`verify:sepolia` / `verify:polygon`) | `ETHERSCAN_API_KEY` | `npm run verify:sepolia` |
-| `test/testPredictionMarket.js` | Contract tests (Hardhat `paths.tests` → `scripts/test`) | Hardhat | `npm test` |
-| `test/testCREWorkflow.js` | CRE workflow tests | Hardhat | `npm test` |
+| `../test/testPredictionMarket.js` | Contract tests (Hardhat `paths.tests` → `test/`) | Hardhat | `npm test` |
+| `../test/testCREWorkflow.js` | CRE workflow tests | Hardhat | `npm test` |
 | `demo/demoE2E.js` | End-to-end demo (`npm run demo`) | Local stack | `npm run demo` |
 
 For **Kubernetes** manifests, see [deploy/k8s/README.md](../deploy/k8s/README.md).

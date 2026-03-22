@@ -37,7 +37,7 @@ const config = {
   },
   paths: {
     sources: "./contracts",
-    tests: "./scripts/test",
+    tests: "./test",
     scripts: "./scripts",
     cache: "./cache",
     artifacts: "./artifacts"
