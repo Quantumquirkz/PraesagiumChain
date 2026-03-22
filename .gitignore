@@ -9,6 +9,7 @@ node_modules/
 coverage/
 cache/
 artifacts/
+/artifacts
 dist/
 build/
 /.next/

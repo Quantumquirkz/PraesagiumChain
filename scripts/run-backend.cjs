@@ -2,9 +2,26 @@
 const path = require('path');
 const { spawn } = require('child_process');
 const { spawnSync } = require('child_process');
-const { loadRootEnv } = require('./lib/load-env');
+const fs = require('fs');
+const { loadRootEnv } = require("./lib/load-env.cjs");
 
 loadRootEnv();
+
+const repoRoot = path.join(__dirname, '..');
+const envPath = path.join(repoRoot, '.env');
+if (!process.env.DATABASE_URL || String(process.env.DATABASE_URL).trim() === '') {
+  if (!fs.existsSync(envPath)) {
+    console.error(`\n[run-backend] Missing ${envPath}`);
+    console.error('  Create it: cp env.example .env');
+    console.error('  Then set DATABASE_URL (see env.example; Docker Postgres defaults to port 5433).\n');
+  } else {
+    console.error(`\n[run-backend] DATABASE_URL is not set or is empty in ${envPath}`);
+    console.error('  Add a line like:');
+    console.error('  DATABASE_URL=postgresql://praesagium:praesagium@localhost:5433/praesagium');
+    console.error('  (Start Postgres: docker compose up -d postgres)\n');
+  }
+  process.exit(1);
+}
 
 // Liberar el puerto si ya está en uso (evita "Address already in use")
 const port = process.env.PORT || '4000';

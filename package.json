@@ -2,6 +2,10 @@
   "name": "praesagiumchain",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.10.0"
+  },
   "workspaces": [
     "frontend"
   ],
@@ -9,7 +13,7 @@
     "install:all": "bash scripts/install-all.sh",
     "install:frontend": "bash scripts/install-frontend.sh",
     "test": "HARDHAT_DISABLE_ANALYTICS=1 CI=1 npx hardhat test",
-    "compile": "npx hardhat compile && npm run sync:cre-abi",
+    "compile": "npx hardhat compile --no-typechain && npm run sync:cre-abi",
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy/deployLocal.js --network localhost",
     "deploy:private": "npx hardhat run scripts/deploy/deployPrivateMarket.js --network localhost",
@@ -17,24 +21,43 @@
     "deploy:polygon": "npx hardhat run scripts/deploy/deployWithFunctions.js --network polygonAmoy",
     "verify:sepolia": "npx hardhat run scripts/verify/verify.js --network sepolia",
     "verify:polygon": "npx hardhat run scripts/verify/verify.js --network polygonAmoy",
-    "backend": "node scripts/run-backend.js",
+    "backend": "node scripts/run-backend.cjs",
     "demo": "npx hardhat run scripts/demo/demoE2E.js --network localhost",
     "test:backend": "cd backend && cargo test",
     "test:frontend": "npm run test -w frontend",
     "test:all": "npm test && npm run test:backend && npm run test:frontend",
-    "sync:cre-abi": "node scripts/syncCreAbi.js",
+    "sync:cre-abi": "node scripts/syncCreAbi.cjs",
     "sync:market": "npx hardhat run scripts/sync/syncMarketFromTx.js --network sepolia",
     "register:upkeep": "npx hardhat run scripts/registerUpkeep.js --network sepolia",
-    "audit": "npm audit --audit-level=critical && (cd backend && cargo audit || true)"
+    "audit": "npm audit --audit-level=critical && (cd backend && cargo audit || true)",
+    "slither:ci": "python3 -m slither contracts/ --solc-remaps \"@openzeppelin/=node_modules/@openzeppelin/ @chainlink/contracts/=node_modules/@chainlink/contracts/\" --solc-args \"--evm-version cancun\" --exclude-dependencies --filter-paths node_modules --fail-high"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.28.6"
+    "@nomicfoundation/hardhat-ethers": "^4.0.6",
+    "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.3",
+    "@nomicfoundation/hardhat-ignition": "^3.1.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^3.1.0",
+    "@nomicfoundation/hardhat-keystore": "^3.0.5",
+    "@nomicfoundation/hardhat-mocha": "^3.0.14",
+    "@nomicfoundation/hardhat-network-helpers": "^3.0.4",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.3",
+    "@nomicfoundation/hardhat-typechain": "^3.0.4",
+    "@nomicfoundation/hardhat-verify": "^3.0.12",
+    "@nomicfoundation/ignition-core": "^3.1.0",
+    "chai": "^5.3.3",
+    "eslint": "^9.39.4",
+    "ethers": "^6.16.0",
+    "hardhat": "^3.2.0",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@chainlink/contracts": "^1.0.0",
     "@openzeppelin/contracts": "^5.0.2",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "overrides": {
     "serialize-javascript": ">=6.0.4",
