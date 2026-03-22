@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::api::auth::NonceStore;
+use crate::services::siwe::NonceStore;
 use crate::config::Config;
 use crate::db::Database;
 use crate::services::{

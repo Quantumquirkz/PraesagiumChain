@@ -30,7 +30,7 @@ The backend loads `.env` from the **repository root** (parent of `backend-rust`)
 
 1. Copy the template (from repo root):
    ```bash
-   cp config/env.example .env
+   cp env.example .env
    ```
 
 2. Edit `.env`; **required**:
@@ -117,7 +117,7 @@ The server listens on `http://0.0.0.0:4000` by default. Check:
 
 | Action        | Command (from repo root) |
 |---------------|---------------------------|
-| Create `.env` | `cp config/env.example .env` |
+| Create `.env` | `cp env.example .env` |
 | Build        | `cd backend-rust && cargo build --release` |
 | Test         | `cd backend-rust && cargo test` |
 | Run API      | `cd backend-rust && cargo run --release` |

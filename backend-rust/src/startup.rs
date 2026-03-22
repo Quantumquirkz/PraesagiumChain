@@ -135,7 +135,7 @@ pub async fn build_app(config: Config, db: Database) -> anyhow::Result<Router> {
     let btc_feed = config.chainlink_btc_usd_feed.clone();
     let config_arc = Arc::new(config);
 
-    let nonce_store = crate::api::auth::new_nonce_store(redis_url.as_deref())
+    let nonce_store = crate::services::siwe::new_nonce_store(redis_url.as_deref())
         .map_err(|e| anyhow::anyhow!("Nonce store: {}", e))?;
     let chainlink_feeds = ChainlinkFeedsService::from_config(
         rpc_url.as_deref(),

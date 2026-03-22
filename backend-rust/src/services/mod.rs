@@ -13,6 +13,7 @@ pub mod reputation_service;
 pub mod sources;
 mod sources_registry;
 pub mod hybrid;
+pub mod siwe;
 
 pub use chainlink_feeds::ChainlinkFeedsService;
 pub use market::MarketService;
